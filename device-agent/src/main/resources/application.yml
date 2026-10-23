@@ -1,0 +1,22 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: device-agent
+
+testhub:
+  agent:
+    name: ${TESTHUB_AGENT_NAME:device-agent-1}
+    host: ${TESTHUB_AGENT_HOST:127.0.0.1}
+    base-url: ${TESTHUB_AGENT_BASE_URL:http://127.0.0.1:8090}
+    ui-execution-url: ${TESTHUB_UIEXEC_URL:http://127.0.0.1:8081}
+    token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
+    runtime-url: ${TESTHUB_RUNTIME_URL:http://127.0.0.1:8095}
+    mode: ${TESTHUB_AGENT_MODE:simulated}
+    data-dir: ${TESTHUB_AGENT_DATA_DIR:./data/agent}
+    heartbeat-interval-sec: 20
+
+logging:
+  level:
+    com.testhub.agent: INFO

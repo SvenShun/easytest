@@ -1,0 +1,19 @@
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /src
+COPY deploy/maven-settings.xml /root/.m2/settings.xml
+COPY pom.xml .
+COPY common/pom.xml common/pom.xml
+COPY testhub-server/pom.xml testhub-server/pom.xml
+COPY ui-execution/pom.xml ui-execution/pom.xml
+COPY device-agent/pom.xml device-agent/pom.xml
+RUN mvn -B -q -pl ui-execution -am -DskipTests dependency:go-offline
+COPY common common
+COPY ui-execution ui-execution
+RUN mvn -B -q -pl ui-execution -am -DskipTests package
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+RUN mkdir -p /data/artifacts
+COPY --from=build /src/ui-execution/target/ui-execution-1.0.0.jar app.jar
+EXPOSE 8081
+ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-jar","/app/app.jar"]

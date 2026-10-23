@@ -1,0 +1,57 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: ui-execution
+  datasource:
+    url: jdbc:h2:file:./data/db/uiexec;MODE=MySQL;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  data:
+    redis:
+      repositories:
+        enabled: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+testhub:
+  uiexec:
+    core-base-url: ${TESTHUB_CORE_URL:http://127.0.0.1:8080}
+    public-base-url: ${TESTHUB_UIEXEC_PUBLIC_URL:http://127.0.0.1:8081}
+    callback-base-url: ${TESTHUB_UIEXEC_CALLBACK_URL:}
+    artifact-dir: ${TESTHUB_ARTIFACT_DIR:./data/artifacts}
+    artifact-store: ${TESTHUB_ARTIFACT_STORE:local}
+    queue-store: ${TESTHUB_QUEUE_STORE:memory}
+    agent-offline-seconds: 90
+    watchdog-enabled: ${TESTHUB_UIEXEC_WATCHDOG_ENABLED:true}
+    minio:
+      endpoint: ${TESTHUB_MINIO_ENDPOINT:http://127.0.0.1:9000}
+      access-key: ${TESTHUB_MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${TESTHUB_MINIO_SECRET_KEY:minioadmin}
+      bucket: ${TESTHUB_MINIO_BUCKET:testhub}
+  security:
+    jwt-secret: ${TESTHUB_JWT_SECRET:testhub-dev-jwt-secret-change-me-0123456789abcdef}
+    service-token: ${TESTHUB_SERVICE_TOKEN:testhub-dev-service-token}
+    agent-token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
+    encryption-key: ${TESTHUB_ENCRYPTION_KEY:testhub-dev-encryption-key-change-me}
+
+management:
+  health:
+    # Redis is an optional queue backend; its absence must not mark the service DOWN.
+    redis:
+      enabled: false

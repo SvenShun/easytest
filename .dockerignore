@@ -1,0 +1,8 @@
+.m2
+node_modules
+web/dist
+data
+logs
+.git
+**/target
+agents/ai-runtime/.venv

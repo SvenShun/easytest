@@ -1,0 +1,161 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ptesthub"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    ports:
+      - "3306:3306"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-testhub}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-testhub123}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  core:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.core
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/testhub_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
+      TESTHUB_JWT_SECRET: ${TESTHUB_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
+      TESTHUB_SERVICE_TOKEN: ${TESTHUB_SERVICE_TOKEN:-change-me-service-token}
+      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
+      TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
+      TESTHUB_PUBLIC_BASE_URL: http://127.0.0.1:8080
+      TESTHUB_UI_EXECUTION_BASE_URL: http://ui-execution:8081
+      TESTHUB_INTERNAL_BASE_URL: http://core:8080
+      TESTHUB_ARTIFACT_DIR: /data/artifacts
+      TESTHUB_ARTIFACT_STORE: minio
+      TESTHUB_MINIO_ENDPOINT: http://minio:9000
+      TESTHUB_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-testhub}
+      TESTHUB_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-testhub123}
+      TESTHUB_MINIO_BUCKET: testhub-core
+    volumes:
+      - core-artifacts:/data/artifacts
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  ui-execution:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.uiexec
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/testhub_uiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
+      TESTHUB_JWT_SECRET: ${TESTHUB_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
+      TESTHUB_SERVICE_TOKEN: ${TESTHUB_SERVICE_TOKEN:-change-me-service-token}
+      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
+      TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
+      TESTHUB_CORE_URL: http://core:8080
+      TESTHUB_UIEXEC_PUBLIC_URL: http://127.0.0.1:8081
+      TESTHUB_UIEXEC_CALLBACK_URL: http://ui-execution:8081
+      TESTHUB_QUEUE_STORE: redis
+      SPRING_DATA_REDIS_HOST: redis
+      TESTHUB_ARTIFACT_STORE: minio
+      TESTHUB_ARTIFACT_DIR: /data/artifacts
+      TESTHUB_MINIO_ENDPOINT: http://minio:9000
+      TESTHUB_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-testhub}
+      TESTHUB_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-testhub123}
+      TESTHUB_MINIO_BUCKET: testhub-ui
+    volumes:
+      - ui-artifacts:/data/artifacts
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+
+  ai-runtime:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.runtime
+    ports:
+      - "8095:8095"
+
+  device-agent:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.agent
+    environment:
+      TESTHUB_AGENT_NAME: device-agent-docker
+      TESTHUB_AGENT_HOST: device-agent
+      TESTHUB_AGENT_BASE_URL: http://device-agent:8090
+      TESTHUB_UIEXEC_URL: http://ui-execution:8081
+      TESTHUB_RUNTIME_URL: http://ai-runtime:8095
+      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
+      TESTHUB_AGENT_MODE: simulated
+      TESTHUB_AGENT_DATA_DIR: /data/agent
+    volumes:
+      - agent-data:/data/agent
+    depends_on:
+      - ui-execution
+      - ai-runtime
+    ports:
+      - "8090:8090"
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    depends_on:
+      - core
+      - ui-execution
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql-data:
+  redis-data:
+  minio-data:
+  core-artifacts:
+  ui-artifacts:
+  agent-data:

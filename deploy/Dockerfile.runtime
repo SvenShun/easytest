@@ -1,0 +1,9 @@
+FROM python:3.11-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+COPY agents/ai-runtime/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY agents/ai-runtime/app ./app
+EXPOSE 8095
+CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","8095"]

@@ -1,0 +1,32 @@
+# Build artifacts
+target/
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+
+# Local runtime data
+data/
+logs/
+artifacts/
+
+# Node
+node_modules/
+web/dist/
+.pnpm-store/
+.npm-cache/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Maven local repo (workspace sandbox)
+.m2/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+.env
+.tools/

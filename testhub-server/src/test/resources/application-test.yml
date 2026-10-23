@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testhub-${random.uuid};MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: false
+
+testhub:
+  artifact:
+    store: local
+    local-dir: ./target/test-artifacts
+  core:
+    public-base-url: http://127.0.0.1:8080
+    ui-execution-base-url: http://127.0.0.1:18081
+    ticket-ttl: 15m
+    credential-ttl: 15m
+
+logging:
+  level:
+    com.testhub: WARN
+    org.hibernate: WARN

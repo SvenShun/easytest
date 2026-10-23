@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: testhub-server
+  datasource:
+    url: jdbc:h2:file:./data/db/core;MODE=MySQL;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: 60MB
+      max-request-size: 60MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+testhub:
+  security:
+    jwt-secret: ${TESTHUB_JWT_SECRET:testhub-dev-jwt-secret-change-me-0123456789abcdef}
+    token-ttl: ${TESTHUB_TOKEN_TTL:12h}
+    service-token: ${TESTHUB_SERVICE_TOKEN:testhub-dev-service-token}
+    agent-token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
+    encryption-key: ${TESTHUB_ENCRYPTION_KEY:testhub-dev-encryption-key-change-me}
+  core:
+    public-base-url: ${TESTHUB_PUBLIC_BASE_URL:http://127.0.0.1:8080}
+    internal-base-url: ${TESTHUB_INTERNAL_BASE_URL:}
+    ui-execution-base-url: ${TESTHUB_UI_EXECUTION_BASE_URL:http://127.0.0.1:8081}
+    ticket-ttl: 15m
+    credential-ttl: 15m
+  artifact:
+    store: ${TESTHUB_ARTIFACT_STORE:local}
+    local-dir: ${TESTHUB_ARTIFACT_DIR:./data/core-artifacts}
+    minio:
+      endpoint: ${TESTHUB_MINIO_ENDPOINT:http://127.0.0.1:9000}
+      access-key: ${TESTHUB_MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${TESTHUB_MINIO_SECRET_KEY:minioadmin}
+      bucket: ${TESTHUB_MINIO_BUCKET:testhub}
+
+logging:
+  level:
+    com.testhub: INFO
