@@ -63,7 +63,7 @@ RESULT: 47 checks passed, 0 failed
 ## 2.1 真实中间件复验（MySQL 8.0 / Redis 7 / MinIO）
 
 在 Docker 中启动真实中间件后，把 `testhub-server` 与 `ui-execution` 切到 MySQL profile、Redis FIFO、MinIO 产物，
-`device-agent`/`ai-runtime` 不变，**端到端 47 项检查再次全部通过**（运行 `run_f1c1c8ead23c4e9097ce`，事件总线为 Kafka）。
+`device-agent`/`ai-runtime` 不变，**端到端 47 项检查再次全部通过**（运行 `run_35c3ff0a45f74db79e3e`，事件总线为 Kafka）。
 
 | 中间件 | 版本 | 实际使用证据 |
 |---|---|---|
