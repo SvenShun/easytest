@@ -46,6 +46,7 @@ docker exec testhub-kafka /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap
 | 设备 FIFO 队列 | 进程内内存队列 | `TESTHUB_QUEUE_STORE=redis` + `SPRING_DATA_REDIS_HOST` |
 | 产物（截图/报告/脚本包） | 本地文件 `data/artifacts`、`data/core-artifacts` | `TESTHUB_ARTIFACT_STORE=minio` + `TESTHUB_MINIO_*`（或用 `TESTHUB_INFRA=docker`） |
 | AI 模型 | `mock`（离线确定性） | 系统设置里改为 `openai`/`deepseek` 并填 endpoint/key/model |
+| 用例源 | TestHub case-management | `TESTHUB_CASE_SOURCE=metersphere` + MeterSphere 连接配置（见 METERSPHERE-INTEGRATION.md） |
 | 设备 | 模拟设备（2 台） | `TESTHUB_AGENT_MODE=adb`（需 adb 与真机） |
 | 任务事件 | 本地结构化日志 | `TESTHUB_EVENT_BUS=kafka` + `TESTHUB_KAFKA_BOOTSTRAP`（`TESTHUB_INFRA=docker` 自动开启） |
 

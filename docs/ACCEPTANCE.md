@@ -6,7 +6,7 @@
 | 版本 | V1（首个可运行版本） |
 | 验收环境 | macOS（Apple Silicon），Java 17.0.2，Maven 3.9.9，Node 22.20.0，Python 3.9.15，无 Docker daemon、无真机、无大模型 Key |
 | 运行模式 | H2 文件库 + 内存 FIFO 队列 + 本地产物 + `mock` 模型 + 模拟设备（完全离线） |
-| 结论 | **通过**：全量 146 个自动化测试通过，端到端验收 47 项检查全部通过 |
+| 结论 | **通过**：全量 150 个自动化测试通过，端到端验收 47 项检查全部通过 |
 
 ## 1. 构建与自动化测试
 
@@ -14,10 +14,10 @@
 |---|---|---|---|
 | common | 4 | 通过 | `./scripts/mvn.sh -pl common test` |
 | testhub-server | 27 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
-| ui-execution | 32 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
+| ui-execution | 36 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
 | device-agent | 35 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
 | ai-runtime (Python) | 48 | 通过 | `cd agents/ai-runtime && .venv/bin/pytest -q` |
-| **合计** | **146** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
+| **合计** | **150** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
 | web | — | `tsc --noEmit` + Vite build 成功 | `cd web && npm run build` |
 
 覆盖重点：执行器路由、FIFO 队列位置、任务状态机、失败分类、评审流转、执行能力计算、
@@ -114,6 +114,8 @@ Kafka 事件示例（截断）：
 - Docker Compose：已提供，本次未在容器环境实测。
 - 接口测试（JMeter）：不在 V1 范围，仅报告模型预留 `executorType=API`。
 - Kafka 仅作为**任务生命周期事件流**（dispatch/result）接入，任务下发本身仍走 HTTP；把下发也迁到 Kafka 是后续工作。
+- MeterSphere 仅为 **API 级适配**（用例源 + 失败评论回写），未引入其源码、未运行其服务、未接入计划/结果回写；
+  详见 `docs/METERSPHERE-INTEGRATION.md`。
 - 多实例/集群、Flyway、SSE 压测、轨迹生命周期归档未覆盖。
 
 ## 6. 复现命令
@@ -122,7 +124,7 @@ Kafka 事件示例（截断）：
 make setup
 make up
 make e2e          # 期望：RESULT: 47 checks passed, 0 failed
-make check        # Java 98 + Python 48 测试 + Web 构建
+make check        # Java 102 + Python 48 测试 + Web 构建
 make down
 
 # 真实中间件模式（MySQL/Redis/MinIO/Kafka）

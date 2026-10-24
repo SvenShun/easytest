@@ -22,6 +22,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
+# Upstream projects fetched for integration (not vendored)
+upstream/
+
 # Maven local repo (workspace sandbox)
 .m2/
 

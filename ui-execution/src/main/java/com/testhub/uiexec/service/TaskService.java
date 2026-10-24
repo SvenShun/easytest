@@ -7,7 +7,9 @@ import com.testhub.common.web.PageResponse;
 import com.testhub.uiexec.client.AgentClient;
 import com.testhub.uiexec.client.AgentUnavailableException;
 import com.testhub.uiexec.client.CoreClient;
+import com.testhub.uiexec.client.CaseContextSource;
 import com.testhub.uiexec.client.CoreClientException;
+import com.testhub.uiexec.client.FailureAnalysisSink;
 import com.testhub.uiexec.client.dto.DispatchPayload;
 import com.testhub.uiexec.client.dto.ExecutionContext;
 import com.testhub.uiexec.client.dto.FailureAnalysisPayload;
@@ -88,6 +90,8 @@ public class TaskService {
     private final UiExecProperties properties;
     private final SecurityProperties securityProperties;
     private final TaskEventPublisher eventPublisher;
+    private final CaseContextSource caseContextSource;
+    private final FailureAnalysisSink failureAnalysisSink;
 
     public TaskService(TaskRepository tasks, AgentRepository agents, DeviceService devices,
                        DeviceQueueStore queue, CoreClient core, AgentClient agentClient, SkillsService skills,
@@ -95,7 +99,8 @@ public class TaskService {
                        FailureReportService failureReportService, ArtifactService artifactService,
                        StepService stepService, LogService logService, ExecutionLock lock,
                        UiExecProperties properties, SecurityProperties securityProperties,
-                       TaskEventPublisher eventPublisher) {
+                       TaskEventPublisher eventPublisher, CaseContextSource caseContextSource,
+                       FailureAnalysisSink failureAnalysisSink) {
         this.tasks = tasks;
         this.agents = agents;
         this.devices = devices;
@@ -113,6 +118,8 @@ public class TaskService {
         this.properties = properties;
         this.securityProperties = securityProperties;
         this.eventPublisher = eventPublisher;
+        this.caseContextSource = caseContextSource;
+        this.failureAnalysisSink = failureAnalysisSink;
     }
 
     // ---------------------------------------------------------------- create
@@ -127,7 +134,7 @@ public class TaskService {
 
         ExecutionContext context;
         try {
-            context = core.fetchExecutionContext(caseId);
+            context = caseContextSource.fetch(caseId);
         } catch (CoreClientException e) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "CORE_UNAVAILABLE", e.getMessage());
         }
@@ -233,7 +240,7 @@ public class TaskService {
     private void dispatchOne(TaskEntity task, DeviceEntity device) {
         ExecutionContext context;
         try {
-            context = core.fetchExecutionContext(task.getCaseId());
+            context = caseContextSource.fetch(task.getCaseId());
         } catch (CoreClientException e) {
             finishLocked(task, TaskStatus.FAILED, FailureCategory.EXECUTOR_UNAVAILABLE,
                     "获取执行上下文失败: " + e.getMessage());
@@ -487,11 +494,18 @@ public class TaskService {
         current = tasks.save(current);
 
         if (status != TaskStatus.SUCCESS) {
-            core.updateFailureAnalysis(current.getCaseId(), new FailureAnalysisPayload(
-                    current.getId(),
-                    current.getFailureReportUrl(),
-                    effectiveSummary,
-                    category == null ? null : category.name()));
+            try {
+                failureAnalysisSink.write(current.getCaseId(), new FailureAnalysisPayload(
+                        current.getId(),
+                        current.getFailureReportUrl(),
+                        effectiveSummary,
+                        category == null ? null : category.name()));
+            } catch (RuntimeException e) {
+                // The report and task state are already persisted; a failed
+                // write-back must not flip the task result.
+                log.warn("失败分析回写 {} 失败 taskId={}: {}", failureAnalysisSink.backend(),
+                        current.getId(), e.getMessage());
+            }
         }
         core.postPlanItemResult(new PlanItemResultPayload(
                 current.getPlanRunId(),

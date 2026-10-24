@@ -47,6 +47,14 @@ testhub:
     # local: structured task events in the log; kafka: publish to
     # ui-execution.task.dispatch / ui-execution.task.result
     event-bus: ${TESTHUB_EVENT_BUS:local}
+    # testhub: internal case-management API; metersphere: MeterSphere v3 functional case API.
+    case-source: ${TESTHUB_CASE_SOURCE:testhub}
+    metersphere:
+      base-url: ${TESTHUB_METERSHPHERE_BASE_URL:http://127.0.0.1:8081}
+      token: ${TESTHUB_METERSHPHERE_TOKEN:}
+      project-id: ${TESTHUB_METERSHPHERE_PROJECT_ID:}
+      require-review: ${TESTHUB_METERSHPHERE_REQUIRE_REVIEW:false}
+      approved-review-statuses: ${TESTHUB_METERSHPHERE_APPROVED_STATUSES:COMPLETED}
     minio:
       endpoint: ${TESTHUB_MINIO_ENDPOINT:http://127.0.0.1:9000}
       access-key: ${TESTHUB_MINIO_ACCESS_KEY:minioadmin}

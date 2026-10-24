@@ -36,6 +36,11 @@ public class UiExecProperties {
 
     private final Minio minio = new Minio();
 
+    /** {@code testhub} (default) or {@code metersphere}. */
+    private String caseSource = "testhub";
+
+    private final MeterSphere metersphere = new MeterSphere();
+
     public String getCoreBaseUrl() {
         return coreBaseUrl;
     }
@@ -115,6 +120,67 @@ public class UiExecProperties {
             path = path.substring(1);
         }
         return base + "/artifacts/" + path;
+    }
+
+    public String getCaseSource() {
+        return caseSource;
+    }
+
+    public void setCaseSource(String caseSource) {
+        this.caseSource = caseSource;
+    }
+
+    public MeterSphere getMetersphere() {
+        return metersphere;
+    }
+
+    /** MeterSphere v3 connectivity and case-mapping options. */
+    public static class MeterSphere {
+        private String baseUrl = "http://127.0.0.1:8081";
+        private String token = "";
+        private String projectId = "";
+        private boolean requireReview = false;
+        private String approvedReviewStatuses = "COMPLETED";
+
+        public String getBaseUrl() {
+            return baseUrl;
+        }
+
+        public void setBaseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        public String getProjectId() {
+            return projectId;
+        }
+
+        public void setProjectId(String projectId) {
+            this.projectId = projectId;
+        }
+
+        public boolean isRequireReview() {
+            return requireReview;
+        }
+
+        public void setRequireReview(boolean requireReview) {
+            this.requireReview = requireReview;
+        }
+
+        public String getApprovedReviewStatuses() {
+            return approvedReviewStatuses;
+        }
+
+        public void setApprovedReviewStatuses(String approvedReviewStatuses) {
+            this.approvedReviewStatuses = approvedReviewStatuses;
+        }
     }
 
     public static class Minio {

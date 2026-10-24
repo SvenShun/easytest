@@ -6,7 +6,7 @@
 
 > 依据 `docs/V1-SCOPE.md`（范围与偏差）与 `docs/API-CONTRACT.md`（接口契约）实现。
 
-**当前状态**：V1 已完成并通过端到端验收 —— 146 个自动化测试全绿、E2E 47 项检查全部通过（本地模式与 MySQL/Redis/MinIO/Kafka 模式各一轮），
+**当前状态**：V1 已完成并通过端到端验收 —— 150 个自动化测试全绿、E2E 47 项检查全部通过（本地模式与 MySQL/Redis/MinIO/Kafka 模式各一轮），
 证据见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。
 
 ## 组件
@@ -101,6 +101,7 @@ tail -f logs/core.log
 
 - [docs/V1-SCOPE.md](docs/V1-SCOPE.md) — V1 边界、与架构文档的偏差、默认配置
 - [docs/API-CONTRACT.md](docs/API-CONTRACT.md) — 全部接口/DTO/状态机/回调协议
+- [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md) — MeterSphere v3 适配、源码位置、限制
 - [docs/RUNBOOK.md](docs/RUNBOOK.md) — 部署、环境变量、切换到 MySQL/Redis/MinIO、排障
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — E2E 验收结果与证据
 
@@ -122,6 +123,8 @@ scripts/          构建/启动/验收脚本
 ## V1 已知边界
 
 接口测试执行（JMeter）、投屏/scrcpy、Kafka 异步下发、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
-V1 **未引入 MeterSphere / Sonic 源码**（能力等价实现）；MySQL / Redis / MinIO / Kafka 已完成真实验收（Kafka 仅承载任务事件，下发仍走 HTTP），详见 V1-SCOPE §3.1。
+V1 **未引入 MeterSphere / Sonic 源码**（能力等价实现）；已提供 MeterSphere v3 **API 级适配层**
+（用例源 + 失败评论回写，见 [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md)）。
+MySQL / Redis / MinIO / Kafka 已完成真实验收（Kafka 仅承载任务事件，下发仍走 HTTP），详见 V1-SCOPE §3.1。
 
 具体演进路径见 `docs/V1-SCOPE.md` §3。
