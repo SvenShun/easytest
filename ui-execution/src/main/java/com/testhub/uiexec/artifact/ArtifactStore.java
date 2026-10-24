@@ -25,4 +25,11 @@ public interface ArtifactStore {
     }
 
     String publicUrl(String relativePath);
+
+    /**
+     * Reads an artifact by its task-scoped relative path, or {@code null} when
+     * it does not exist. Backed by the same storage as {@link #put}, so S3 and
+     * filesystem artifacts are served through one HTTP route.
+     */
+    byte[] read(String relativePath);
 }

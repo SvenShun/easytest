@@ -23,6 +23,7 @@ import com.testhub.uiexec.domain.SkillsPointerEntity;
 import com.testhub.uiexec.domain.TaskEntity;
 import com.testhub.uiexec.domain.TaskStateMachine;
 import com.testhub.uiexec.domain.TaskStatus;
+import com.testhub.uiexec.events.TaskEventPublisher;
 import com.testhub.uiexec.queue.DeviceQueueStore;
 import com.testhub.uiexec.repository.AgentRepository;
 import com.testhub.uiexec.repository.TaskRepository;
@@ -86,13 +87,15 @@ public class TaskService {
     private final ExecutionLock lock;
     private final UiExecProperties properties;
     private final SecurityProperties securityProperties;
+    private final TaskEventPublisher eventPublisher;
 
     public TaskService(TaskRepository tasks, AgentRepository agents, DeviceService devices,
                        DeviceQueueStore queue, CoreClient core, AgentClient agentClient, SkillsService skills,
                        ExecutorRouter router, FailureClassifier classifier,
                        FailureReportService failureReportService, ArtifactService artifactService,
                        StepService stepService, LogService logService, ExecutionLock lock,
-                       UiExecProperties properties, SecurityProperties securityProperties) {
+                       UiExecProperties properties, SecurityProperties securityProperties,
+                       TaskEventPublisher eventPublisher) {
         this.tasks = tasks;
         this.agents = agents;
         this.devices = devices;
@@ -109,6 +112,7 @@ public class TaskService {
         this.lock = lock;
         this.properties = properties;
         this.securityProperties = securityProperties;
+        this.eventPublisher = eventPublisher;
     }
 
     // ---------------------------------------------------------------- create
@@ -276,6 +280,7 @@ public class TaskService {
         try {
             agentClient.dispatch(agent.getBaseUrl(), payload);
             log.info("任务下发成功 taskId={} deviceId={} agentId={}", task.getId(), device.getId(), agent.getId());
+            publishQuietly(() -> eventPublisher.dispatched(task, device), task);
         } catch (AgentUnavailableException e) {
             log.warn("任务下发失败 taskId={} agentId={}: {}", task.getId(), agent.getId(), e.getMessage());
             finishLocked(task, TaskStatus.FAILED, FailureCategory.EXECUTOR_UNAVAILABLE,
@@ -497,7 +502,17 @@ public class TaskService {
                 category == null ? null : category.name(),
                 current.getFailureReportUrl(),
                 effectiveSummary));
-        return current;
+        TaskEntity finished = current;
+        publishQuietly(() -> eventPublisher.finished(finished, null), finished);
+        return finished;
+    }
+
+    private void publishQuietly(Runnable publish, TaskEntity task) {
+        try {
+            publish.run();
+        } catch (RuntimeException e) {
+            log.warn("task-event 发布失败 taskId={}: {}", task.getId(), e.getMessage());
+        }
     }
 
     // ------------------------------------------------------------ read model

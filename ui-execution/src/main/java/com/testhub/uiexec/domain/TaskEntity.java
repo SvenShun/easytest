@@ -36,13 +36,13 @@ public class TaskEntity {
     @Column(name = "case_title", length = 500)
     private String caseTitle;
 
-    @Column(name = "bdd_given", length = 4000)
+    @Column(name = "bdd_given", columnDefinition = "TEXT")
     private String bddGiven;
 
-    @Column(name = "bdd_when", length = 4000)
+    @Column(name = "bdd_when", columnDefinition = "TEXT")
     private String bddWhen;
 
-    @Column(name = "bdd_then", length = 4000)
+    @Column(name = "bdd_then", columnDefinition = "TEXT")
     private String bddThen;
 
     @Enumerated(EnumType.STRING)
@@ -81,7 +81,7 @@ public class TaskEntity {
     @Column(name = "failure_reason", length = 40)
     private FailureCategory failureReason;
 
-    @Column(name = "failure_summary", length = 4000)
+    @Column(name = "failure_summary", columnDefinition = "TEXT")
     private String failureSummary;
 
     @Column(name = "failure_report_url", length = 1000)

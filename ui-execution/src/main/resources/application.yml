@@ -25,6 +25,11 @@ spring:
     redis:
       repositories:
         enabled: false
+  kafka:
+    bootstrap-servers: ${TESTHUB_KAFKA_BOOTSTRAP:127.0.0.1:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -39,6 +44,9 @@ testhub:
     queue-store: ${TESTHUB_QUEUE_STORE:memory}
     agent-offline-seconds: 90
     watchdog-enabled: ${TESTHUB_UIEXEC_WATCHDOG_ENABLED:true}
+    # local: structured task events in the log; kafka: publish to
+    # ui-execution.task.dispatch / ui-execution.task.result
+    event-bus: ${TESTHUB_EVENT_BUS:local}
     minio:
       endpoint: ${TESTHUB_MINIO_ENDPOINT:http://127.0.0.1:9000}
       access-key: ${TESTHUB_MINIO_ACCESS_KEY:minioadmin}
@@ -52,6 +60,9 @@ testhub:
 
 management:
   health:
-    # Redis is an optional queue backend; its absence must not mark the service DOWN.
+    # Redis and Kafka are opt-in backends; their absence must not mark the
+    # service DOWN when the local/in-memory adapters are used.
     redis:
+      enabled: false
+    kafka:
       enabled: false

@@ -63,15 +63,37 @@ public class MinioArtifactStore implements ArtifactStore {
 
     @Override
     public String publicUrl(String relativePath) {
-        String base = properties.getPublicBaseUrl();
-        if (base != null && !base.isBlank()) {
-            return properties.artifactUrl(relativePath);
+        // Always served by ui-execution's /artifacts/** route, which streams from
+        // this store. Object storage stays private and its internal endpoint is
+        // never exposed to the browser.
+        return properties.artifactUrl(relativePath);
+    }
+
+    @Override
+    public byte[] read(String relativePath) {
+        try (InputStream in = client.getObject(io.minio.GetObjectArgs.builder()
+                .bucket(bucket)
+                .object(relativePath)
+                .build())) {
+            return in.readAllBytes();
+        } catch (Exception e) {
+            if (!objectExists(relativePath)) {
+                return null;
+            }
+            throw new IllegalStateException("读取 MinIO 产物失败: " + relativePath, e);
         }
-        String endpoint = properties.getMinio().getEndpoint();
-        while (endpoint.endsWith("/")) {
-            endpoint = endpoint.substring(0, endpoint.length() - 1);
+    }
+
+    private boolean objectExists(String relativePath) {
+        try {
+            client.statObject(io.minio.StatObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(relativePath)
+                    .build());
+            return true;
+        } catch (Exception e) {
+            return false;
         }
-        return endpoint + "/" + bucket + "/" + relativePath.replace('\\', '/');
     }
 
     private void ensureBucket() throws Exception {

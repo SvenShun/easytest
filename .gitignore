@@ -17,6 +17,7 @@ web/dist/
 
 # Python
 .venv/
+.s3venv/
 __pycache__/
 *.pyc
 .pytest_cache/

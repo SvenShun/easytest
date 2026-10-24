@@ -392,3 +392,27 @@ PENDING ──dispatch──> DISPATCHED ──agent ack/first step──> RUNNI
 
 `RUNNING` → 所有 item 终止后：全 SUCCESS=`COMPLETED`，有失败/超时/取消=`PARTIAL`，全部失败=`FAILED`。
 item 状态与任务状态同名；未通过评审的用例不创建任务，item=`SKIPPED`。
+
+
+---
+
+## 附录 A. Kafka 任务事件（`TESTHUB_EVENT_BUS=kafka`）
+
+| Topic | 生产时机 | Key |
+|---|---|---|
+| `ui-execution.task.dispatch` | 任务成功下发到 Agent 后 | `taskId` |
+| `ui-execution.task.result` | 任务进入终止态（SUCCESS/FAILED/TIMEOUT/CANCELLED） | `taskId` |
+
+事件体（JSON，UTF-8）：
+
+```json
+{"eventId":"evt_...","type":"TASK_DISPATCHED|TASK_FINISHED",
+ "taskId":"...","planId":"...","planRunId":"...","caseId":"...","caseTitle":"...",
+ "executorType":"SCRIPT|AI_RUNTIME","status":"DISPATCHED|SUCCESS|FAILED|TIMEOUT|CANCELLED",
+ "deviceId":"...","deviceSerial":"...","agentId":"...",
+ "failureReason":"...|null","failureReportUrl":"...|null","summary":"...|null",
+ "occurredAt":"2025-01-01T00:00:00Z"}
+```
+
+- 发送失败只记录 WARN，不影响任务执行。
+- V1 中 Kafka 不是任务下发通道；设备下发仍是 HTTP（`POST /agent/tasks`）。

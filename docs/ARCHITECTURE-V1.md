@@ -62,6 +62,7 @@ V1 未实现投屏，设备状态由 Agent 心跳同步。
 | `device` | 设备同步、状态计算、选设备、队列视图 |
 | `queue` | `DeviceQueueStore` 端口：内存实现 / Redis 实现 |
 | `task` | 创建、路由、下发、取消、状态机、看门狗 |
+| `events` | 任务生命周期事件：本地日志 / Kafka（dispatch、result） |
 | `trace` | 步骤、截图、日志、SSE |
 | `report` | 失败轨迹报告生成与存储 |
 | `skills` | 全局指针、同步（git ls-remote）、回滚、审计 |
@@ -163,7 +164,8 @@ sequenceDiagram
 | `ue_audit_log` | 审计 |
 
 队列在 Redis（或内存）中：`ueexec:device:{deviceId}:queue`，元素为 taskId；位置由列表索引计算。
-截图与报告按 `taskId/` 组织存放于 ArtifactStore。
+截图与报告按 `taskId/` 组织存放于 ArtifactStore；`/artifacts/**` 控制器统一从 ArtifactStore 流式读取，
+因此本地文件与 MinIO 使用同一组 URL（已在真实 MinIO 上验收）。
 
 ## 5. 状态机
 
@@ -190,7 +192,7 @@ PENDING ──dispatch──► DISPATCHED ──first step──► RUNNING ─
 
 | 扩展点 | 端口/接口 | 下一步 |
 |---|---|---|
-| 消息总线 | V1 未实现，跨服务使用 HTTP 回调 | 新增事件总线端口 + Kafka Topic：`ui-execution.task.dispatch/log/result` |
+| 消息总线 | `TaskEventPublisher`：local 结构化日志 / Kafka 事件流 | 已发布 `ui-execution.task.dispatch`、`ui-execution.task.result`；下一步把任务下发迁到 Kafka |
 | 队列 | `DeviceQueueStore` | Redis 实现已提供；多副本时需分布式锁/消费组 |
 | 产物 | `ArtifactStore` | MinIO 实现已提供；可换 S3/OSS |
 | 模型 | `TextModelProvider` / `VisionProvider` | 新增 Provider 即接入新模型 |

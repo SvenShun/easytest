@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Start every TestHub service for local development (H2 + in-memory queue + local artifacts).
+# Start every TestHub service for local development.
+#
+#   ./scripts/dev-up.sh                  H2 + in-memory queue + local artifacts
+#   TESTHUB_INFRA=docker ./scripts/dev-up.sh
+#                                        MySQL + Redis + MinIO (scripts/infra-up.sh first)
+#
 # Logs: logs/<service>.log  PIDs: data/pids/<service>.pid
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -19,6 +24,34 @@ export TESTHUB_RUNTIME_URL="http://127.0.0.1:8095"
 export TESTHUB_AGENT_BASE_URL="http://127.0.0.1:8090"
 export TESTHUB_ARTIFACT_DIR="$ROOT/data/artifacts"
 
+INFRA="${TESTHUB_INFRA:-local}"
+CORE_DB_URL="jdbc:h2:file:$ROOT/data/db/core;MODE=MySQL;AUTO_SERVER=TRUE"
+UEXEC_DB_URL="jdbc:h2:file:$ROOT/data/db/uiexec;MODE=MySQL;AUTO_SERVER=TRUE"
+QUEUE_STORE="${TESTHUB_QUEUE_STORE:-memory}"
+ARTIFACT_STORE="${TESTHUB_ARTIFACT_STORE:-local}"
+
+if [ "$INFRA" = "docker" ]; then
+  if ! docker info --format '{{.ServerVersion}}' >/dev/null 2>&1; then
+    echo "Docker daemon is not running. Start Docker Desktop and run scripts/infra-up.sh." >&2
+    exit 1
+  fi
+  echo "[infra] docker: MySQL / Redis / MinIO"
+  export SPRING_PROFILES_ACTIVE=mysql
+  export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-root}"
+  export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-testhub}"
+  export SPRING_DATA_REDIS_HOST="${SPRING_DATA_REDIS_HOST:-127.0.0.1}"
+  export SPRING_DATA_REDIS_PORT="${SPRING_DATA_REDIS_PORT:-6379}"
+  export TESTHUB_MINIO_ENDPOINT="${TESTHUB_MINIO_ENDPOINT:-http://127.0.0.1:9000}"
+  export TESTHUB_MINIO_ACCESS_KEY="${TESTHUB_MINIO_ACCESS_KEY:-testhub}"
+  export TESTHUB_MINIO_SECRET_KEY="${TESTHUB_MINIO_SECRET_KEY:-testhub123}"
+  export TESTHUB_KAFKA_BOOTSTRAP="${TESTHUB_KAFKA_BOOTSTRAP:-127.0.0.1:9092}"
+  export TESTHUB_EVENT_BUS="${TESTHUB_EVENT_BUS:-kafka}"
+  CORE_DB_URL="jdbc:mysql://127.0.0.1:3306/testhub_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
+  UEXEC_DB_URL="jdbc:mysql://127.0.0.1:3306/testhub_uiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
+  QUEUE_STORE="${TESTHUB_QUEUE_STORE:-redis}"
+  ARTIFACT_STORE="${TESTHUB_ARTIFACT_STORE:-minio}"
+fi
+
 start() {
   local name="$1"; shift
   if [ -f "data/pids/$name.pid" ] && kill -0 "$(cat "data/pids/$name.pid")" 2>/dev/null; then
@@ -31,16 +64,23 @@ start() {
 }
 
 start core env \
-  SPRING_DATASOURCE_URL="jdbc:h2:file:$ROOT/data/db/core;MODE=MySQL;AUTO_SERVER=TRUE" \
+  SPRING_DATASOURCE_URL="$CORE_DB_URL" \
   TESTHUB_PUBLIC_BASE_URL="http://127.0.0.1:8080" \
+  TESTHUB_INTERNAL_BASE_URL="http://127.0.0.1:8080" \
   TESTHUB_UI_EXECUTION_BASE_URL="http://127.0.0.1:8081" \
   TESTHUB_ARTIFACT_DIR="$ROOT/data/core-artifacts" \
+  TESTHUB_ARTIFACT_STORE="$ARTIFACT_STORE" \
+  TESTHUB_MINIO_BUCKET=testhub-core \
   ./scripts/mvn.sh -q -pl testhub-server spring-boot:run
 
 start uiexec env \
-  SPRING_DATASOURCE_URL="jdbc:h2:file:$ROOT/data/db/uiexec;MODE=MySQL;AUTO_SERVER=TRUE" \
-  TESTHUB_QUEUE_STORE=memory \
-  TESTHUB_ARTIFACT_STORE=local \
+  SPRING_DATASOURCE_URL="$UEXEC_DB_URL" \
+  TESTHUB_QUEUE_STORE="$QUEUE_STORE" \
+  TESTHUB_ARTIFACT_STORE="$ARTIFACT_STORE" \
+  TESTHUB_EVENT_BUS="$TESTHUB_EVENT_BUS" \
+  TESTHUB_KAFKA_BOOTSTRAP="$TESTHUB_KAFKA_BOOTSTRAP" \
+  TESTHUB_UIEXEC_CALLBACK_URL="http://127.0.0.1:8081" \
+  TESTHUB_MINIO_BUCKET=testhub-ui \
   ./scripts/mvn.sh -q -pl ui-execution spring-boot:run
 
 start agent env \
@@ -55,7 +95,7 @@ else
 fi
 
 echo
-echo "Waiting for services..."
+echo "Waiting for services ($INFRA infra)..."
 wait_for() {
   local name="$1" url="$2" tries="${3:-90}"
   for _ in $(seq 1 "$tries"); do
@@ -75,9 +115,12 @@ wait_for agent   http://127.0.0.1:8090/agent/health
 wait_for runtime http://127.0.0.1:8095/runtime/health 60 || true
 
 echo
-echo "TestHub is up:"
-echo "  core        http://127.0.0.1:8080"
+echo "TestHub is up ($INFRA):"
+echo "  core         http://127.0.0.1:8080"
 echo "  ui-execution http://127.0.0.1:8081"
 echo "  device-agent http://127.0.0.1:8090"
-echo "  ai-runtime  http://127.0.0.1:8095"
-echo "  console     cd web && npm run dev  (http://127.0.0.1:5173)"
+echo "  ai-runtime   http://127.0.0.1:8095"
+echo "  console      cd web && npm run dev  (http://127.0.0.1:5173)"
+if [ "$INFRA" = "docker" ]; then
+  echo "  mysql/redis/minio/kafka: Docker · object-store: ${ARTIFACT_STORE} · queue: ${QUEUE_STORE} · event-bus: ${TESTHUB_EVENT_BUS:-local}"
+fi

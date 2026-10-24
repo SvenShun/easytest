@@ -39,9 +39,9 @@ V1 面向单机 Docker Compose / 本地开发环境，硬性要求：**没有大
 | 文档设计 | V1 实现 | 原因与演进 |
 |---|---|---|
 | 6 个独立微服务 + Eureka + Gateway | `testhub-server` 单服务内含 `case-management / test-plan / system-setting / ai-analysis` 四个**模块包**；`ui-execution` 独立服务 | MeterSphere 源码不在本仓库，V1 需可独立运行；包边界与接口契约按可拆分设计，后续按模块拆出即可 |
-| Kafka 承载下发/日志/结果 | **V1 未实现 Kafka，也未抽象 EventBus 端口**；跨服务全部走 HTTP 回调 | V1 单机不引入 broker；后续需新增事件总线端口 + Kafka 适配器 |
-| MinIO 存储产物 | `ArtifactStore` 端口：默认本地文件系统，`TESTHUB_ARTIFACT_STORE=minio` 切 MinIO | MinIO 实现已编写，但**未在真实 MinIO 上验收** |
-| Redis 设备 FIFO | `DeviceQueueStore` 端口：默认内存，`TESTHUB_QUEUE_STORE=redis` 切 Redis | Redis 实现已编写，但**未在真实 Redis 上验收** |
+| Kafka 承载下发/日志/结果 | 新增 `TaskEventPublisher` 端口：默认写结构化日志，`event-bus=kafka` 时发布 `ui-execution.task.dispatch/result`；任务下发仍走 HTTP | 事件流已按架构文档 Topic 落地；把下发本身迁到 Kafka 是后续工作 |
+| MinIO 存储产物 | `ArtifactStore` 端口：默认本地文件系统，`TESTHUB_ARTIFACT_STORE=minio` 切 MinIO | 已在真实 MinIO 上验收 |
+| Redis 设备 FIFO | `DeviceQueueStore` 端口：默认内存，`TESTHUB_QUEUE_STORE=redis` 切 Redis | 已在真实 Redis 7.4 上验收 |
 | 设备投屏（scrcpy） | 不做投屏流，设备池展示状态/队列；模拟设备提供截图 | 复用 Sonic 设备通道，需真机环境；V1 预留 WebSocket 边界 |
 | 传统脚本执行器 | 解压工程包 + 执行入口命令，解析 JUnit XML 与截图 | 真实 TestNG/uiautomator2 依赖外部 Maven/ADB，V1 提供同构执行链路 |
 | AI Runtime 内核（成熟框架二次开发） | 自实现最小闭环内核（Python） | V1 验证决策-动作-轨迹链路，后续可替换内核 |
@@ -52,8 +52,8 @@ V1 面向单机 Docker Compose / 本地开发环境，硬性要求：**没有大
 ## 3.1 交付边界更正（重要）
 
 1. **未引入 MeterSphere / Sonic 源码**：本仓库是按其能力模型实现的等价新服务，不是对两个项目的 fork 或紧耦合改造；`device-agent` 也不是 Sonic-Agent 改造版。
-2. **数据库**：使用 JPA 持久化；默认 H2 文件库，已提供 MySQL profile，但验收只在 H2 上完成。
-3. **中间件**：Redis 队列与 MinIO 产物实现已编写且按配置装配，但验收只在内存队列 + 本地文件系统上完成；Kafka 未实现。
+2. **数据库**：使用 JPA 持久化；默认 H2 文件库，MySQL profile 已在真实 MySQL 8.0 上完成端到端验收（见 ACCEPTANCE §2.1）。
+3. **中间件**：Redis FIFO 队列、MinIO 产物、Kafka 事件流均已在真实中间件上完成端到端验收；Kafka 目前承载任务事件，不承载任务下发。
 4. 原文档中的「紧耦合融合」在 V1 中体现为**接口与数据模型对齐**，不体现为代码级复用。
 
 ## 4. 执行器路由规则（实现为准）
@@ -89,10 +89,14 @@ V1 面向单机 Docker Compose / 本地开发环境，硬性要求：**没有大
 | ui-execution | 8081 | H2 文件 `./data/db/uiexec` + 内存队列 + 本地产物 | 同上 |
 | device-agent | 8090 | 无 | 默认 `simulated` 驱动 |
 | ai-runtime | 8095 | 本地 Skills 缓存 | Python |
+| MySQL | 3306 | Docker（`make infra`） | 8.0.46 |
+| Redis | 6379 | Docker | 7.4.11 |
+| MinIO | 9000 / 9001 | Docker | RELEASE.2026-10-23 |
+| Kafka | 9092 | Docker（KRaft） | 3.8.0 |
 | web | 5173 (dev) | — | `/api` 直连 8080/8081 |
 
 默认账号：`admin/admin123`、`tester/test123`、`business/biz123`、`ops/ops123`（V1 种子数据，生产必须修改）。
 
 ## 8. 明确不在 V1 范围
 
-投屏/远程控制、真机 ADB 全量动作、JMeter 接口执行、Kafka、集群化、Flyway、Skills 用户级界面、AI 参与评审决策、Windows 设备子服务器。
+投屏/远程控制、真机 ADB 全量动作、JMeter 接口执行、Kafka 异步下发、集群化、Flyway、Skills 用户级界面、AI 参与评审决策、Windows 设备子服务器。

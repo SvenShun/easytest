@@ -6,7 +6,7 @@
 | 版本 | V1（首个可运行版本） |
 | 验收环境 | macOS（Apple Silicon），Java 17.0.2，Maven 3.9.9，Node 22.20.0，Python 3.9.15，无 Docker daemon、无真机、无大模型 Key |
 | 运行模式 | H2 文件库 + 内存 FIFO 队列 + 本地产物 + `mock` 模型 + 模拟设备（完全离线） |
-| 结论 | **通过**：全量 145 个自动化测试通过，端到端验收 47 项检查全部通过 |
+| 结论 | **通过**：全量 146 个自动化测试通过，端到端验收 47 项检查全部通过 |
 
 ## 1. 构建与自动化测试
 
@@ -14,10 +14,10 @@
 |---|---|---|---|
 | common | 4 | 通过 | `./scripts/mvn.sh -pl common test` |
 | testhub-server | 27 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
-| ui-execution | 31 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
+| ui-execution | 32 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
 | device-agent | 35 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
 | ai-runtime (Python) | 48 | 通过 | `cd agents/ai-runtime && .venv/bin/pytest -q` |
-| **合计** | **145** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
+| **合计** | **146** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
 | web | — | `tsc --noEmit` + Vite build 成功 | `cd web && npm run build` |
 
 覆盖重点：执行器路由、FIFO 队列位置、任务状态机、失败分类、评审流转、执行能力计算、
@@ -60,12 +60,45 @@ RESULT: 47 checks passed, 0 failed
 - 取消验证运行：`run_5aef853b5d994f789c52`（1 个排队任务取消，其余 2 个成功）
 - Skills 固化 commit：`33f2217714c9c95e641d7a0fe116c63873485fe0`
 
+## 2.1 真实中间件复验（MySQL 8.0 / Redis 7 / MinIO）
+
+在 Docker 中启动真实中间件后，把 `testhub-server` 与 `ui-execution` 切到 MySQL profile、Redis FIFO、MinIO 产物，
+`device-agent`/`ai-runtime` 不变，**端到端 47 项检查再次全部通过**（运行 `run_f1c1c8ead23c4e9097ce`，事件总线为 Kafka）。
+
+| 中间件 | 版本 | 实际使用证据 |
+|---|---|---|
+| MySQL | 8.0.46 | `testhub_core` 12 张表、`testhub_uiexec` 9 张表；复验后累计 15 用例 / 5 计划运行 / 16 任务 / 28 步骤 / 4 失败报告 |
+| Redis | 7.4.11 | 运行期捕获 `testhub:uiexec:queue:device_*` 列表中有排队任务，执行完自动清空；持久索引键 `testhub:uiexec:queues` 保留设备维度 |
+| MinIO | RELEASE.2026-10-23T20-06-51Z | 桶 `testhub-core`（脚本包）、`testhub-ui`（截图/失败报告/产物）；`/artifacts/**` 由 ArtifactStore 流式读取，e2e 校验了 PNG 与失败报告 JSON |
+| Kafka | 3.8.0（KRaft 单节点） | 主题 `ui-execution.task.dispatch` / `ui-execution.task.result` 自动创建；抓取到 `TASK_DISPATCHED` 与 `TASK_FINISHED`（含 SUCCESS、FAILED、CANCELLED）事件，字段与任务/报告一致 |
+
+**复验中发现并修复的真实兼容问题**：`ue_task` 的 `bdd_given/bdd_when/bdd_then/failure_summary` 原为
+`varchar(4000)`，在 MySQL utf8mb4 下四个字段合计超过 65535 字节行上限，建表失败（H2 不会暴露）。
+已改为 `TEXT`，MySQL 建表成功。
+
+Kafka 事件示例（截断）：
+
+```json
+{"eventId":"evt_305bfb89c1ee4900898b","type":"TASK_DISPATCHED","taskId":"task_1595e603b10441acaa81",
+ "planRunId":"run_54cbabf41f8d4f05b316","executorType":"SCRIPT","status":"DISPATCHED",
+ "deviceSerial":"simulator-0001","occurredAt":"2026-10-24T17:14:10.690512Z"}
+{"eventId":"evt_1bbd738b807f4474a575","type":"TASK_FINISHED","taskId":"task_8b14f11c3bec44b2ac3a",
+ "status":"CANCELLED","failureReason":"MANUAL_INTERRUPT",
+ "failureReportUrl":"http://127.0.0.1:8081/artifacts/task_8b14f11c3bec44b2ac3a/failure-report.json"}
+```
+
+> 网络限制说明：Docker Hub 与 `dl.min.io` 在该网络不可达。MySQL/Redis 使用 AWS ECR Public 的官方镜像；
+> MinIO 使用 Chainguard 构建的**上游 MinIO 二进制**（`cgr.dev/chainguard/minio`）；Kafka 使用 Strimzi 镜像中的
+> Apache Kafka 3.8.0，以单节点 KRaft 模式运行。
+
 ## 3. 验收中发现并修复的问题
 
 | 问题 | 修复 |
 |---|---|
 | AI Runtime 复用了上一任务残留的设备界面，导致新任务在第 1 步就判定“已完成”（1 步轨迹） | Runtime 在每次任务开始时调用 `POST /device/{serial}/reset` 做测试隔离；回归后 AI 任务稳定产生 5 步轨迹（点登录 → 输入用户名 → 输入密码 → 点登录 → done）。48 个 Python 测试仍全绿。 |
 | 快速任务使 FIFO 队列在断言前已排空，队列可观测性不足 | 验收脚本把 6 秒慢速脚本用例放在计划首位，稳定观测到 3 个排队任务及其位置顺序。 |
+| MySQL utf8mb4 行上限导致 `ue_task` 建表失败 | 四个长文本字段改为 `TEXT`；在真实 MySQL 8.0 上复验通过。 |
+| S3 产物 URL 指向本地 `/artifacts` 静态目录 | 改为 `/artifacts/**` 控制器按 ArtifactStore 流式读取，本地/MinIO 共用同一 URL；已用 MinIO 复验截图与报告可读。 |
 | Web 将 SUCCESS 任务的 `failureSummary` 误显示为失败卡 | Web 按状态/失败原因/报告链接判断失败卡片显示（由 Web 工作流修复）。 |
 
 ## 4. 手工验证
@@ -77,10 +110,11 @@ RESULT: 47 checks passed, 0 failed
 
 - 真机 ADB：仅最小实现，未在真实设备上验证；投屏/scrcpy 未实现。
 - 真实大模型：Provider 代码路径已实现，但未用真实 Key 做联网验收（默认 mock）。
-- Redis 队列 / MinIO 产物：实现存在且按条件装配，本次未在真实 Redis/MinIO 上验收（Docker daemon 未运行）。
+- Redis 队列 / MinIO 产物：已在真实 Redis 7.4 / MinIO 上验收（见 §2.1）。
 - Docker Compose：已提供，本次未在容器环境实测。
 - 接口测试（JMeter）：不在 V1 范围，仅报告模型预留 `executorType=API`。
-- 多实例/集群、Kafka、Flyway、SSE 压测、轨迹生命周期归档未覆盖。
+- Kafka 仅作为**任务生命周期事件流**（dispatch/result）接入，任务下发本身仍走 HTTP；把下发也迁到 Kafka 是后续工作。
+- 多实例/集群、Flyway、SSE 压测、轨迹生命周期归档未覆盖。
 
 ## 6. 复现命令
 
@@ -88,8 +122,14 @@ RESULT: 47 checks passed, 0 failed
 make setup
 make up
 make e2e          # 期望：RESULT: 47 checks passed, 0 failed
-make check        # Java 97 + Python 48 测试 + Web 构建
+make check        # Java 98 + Python 48 测试 + Web 构建
 make down
+
+# 真实中间件模式（MySQL/Redis/MinIO/Kafka）
+make infra
+TESTHUB_INFRA=docker ./scripts/dev-up.sh
+make e2e
+make down && make infra-down
 ```
 
 验收证据文件：`data/e2e-report.json`（每次运行覆盖）。

@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.0
+    image: public.ecr.aws/docker/library/mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
       TZ: UTC
@@ -17,7 +17,7 @@ services:
       - "3306:3306"
 
   redis:
-    image: redis:7-alpine
+    image: public.ecr.aws/docker/library/redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
@@ -30,18 +30,16 @@ services:
       - "6379:6379"
 
   minio:
-    image: minio/minio:latest
+    # Docker Hub / dl.min.io are unreachable from this network; Chainguard ships
+    # the upstream MinIO server binary.
+    image: cgr.dev/chainguard/minio:latest
+    user: root
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-testhub}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-testhub123}
     volumes:
       - minio-data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 30
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -74,9 +72,24 @@ services:
       mysql:
         condition: service_healthy
       minio:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "8080:8080"
+
+  kafka:
+    image: quay.io/strimzi/kafka:0.43.0-kafka-3.8.0
+    user: root
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        /opt/kafka/bin/kafka-storage.sh format -t MkU3OEVBNTcwNTJENDM2Qk
+        -c /opt/kafka/config/testhub/server.properties --ignore-formatted &&
+        exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/testhub/server.properties
+    volumes:
+      - ./kafka:/opt/kafka/config/testhub:ro
+      - kafka-data:/tmp/kraft-logs
+    ports:
+      - "9092:9092"
 
   ui-execution:
     build:
@@ -96,6 +109,8 @@ services:
       TESTHUB_UIEXEC_CALLBACK_URL: http://ui-execution:8081
       TESTHUB_QUEUE_STORE: redis
       SPRING_DATA_REDIS_HOST: redis
+      TESTHUB_EVENT_BUS: kafka
+      TESTHUB_KAFKA_BOOTSTRAP: kafka:9092
       TESTHUB_ARTIFACT_STORE: minio
       TESTHUB_ARTIFACT_DIR: /data/artifacts
       TESTHUB_MINIO_ENDPOINT: http://minio:9000
@@ -110,7 +125,9 @@ services:
       redis:
         condition: service_healthy
       minio:
-        condition: service_healthy
+        condition: service_started
+      kafka:
+        condition: service_started
     ports:
       - "8081:8081"
 
@@ -156,6 +173,7 @@ volumes:
   mysql-data:
   redis-data:
   minio-data:
+  kafka-data:
   core-artifacts:
   ui-artifacts:
   agent-data:

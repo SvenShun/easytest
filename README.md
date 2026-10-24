@@ -6,7 +6,7 @@
 
 > 依据 `docs/V1-SCOPE.md`（范围与偏差）与 `docs/API-CONTRACT.md`（接口契约）实现。
 
-**当前状态**：V1 已完成并通过端到端验收 —— 145 个自动化测试全绿、E2E 47 项检查全部通过，
+**当前状态**：V1 已完成并通过端到端验收 —— 146 个自动化测试全绿、E2E 47 项检查全部通过（本地模式与 MySQL/Redis/MinIO/Kafka 模式各一轮），
 证据见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。
 
 ## 组件
@@ -19,6 +19,9 @@
 | ai-runtime | `agents/ai-runtime/` | 8095 | 设备侧 AI 执行期决策器（Python）：截图+UI 树 → 模型决策 → 动作 → 轨迹 |
 | web | `web/` | 5173 | React 控制台 |
 | common | `common/` | — | JWT/角色/服务令牌/异常/加密等共享能力 |
+
+中间件：MySQL 8（业务库）、Redis 7（设备 FIFO）、MinIO（产物）、Kafka 3.8（任务事件流）；
+默认本地模式用 H2/内存/本地文件/日志替代，`TESTHUB_INFRA=docker` 切换真实中间件。
 
 ```
 Browser ── web :5173
@@ -48,6 +51,14 @@ make up
 cd web && npm run dev        # http://127.0.0.1:5173
 
 # 4. 跑端到端验收（另开一个终端）
+make e2e
+```
+
+需要真实中间件（MySQL 8 / Redis 7 / MinIO）时：
+
+```bash
+make infra
+TESTHUB_INFRA=docker ./scripts/dev-up.sh
 make e2e
 ```
 
@@ -110,7 +121,7 @@ scripts/          构建/启动/验收脚本
 
 ## V1 已知边界
 
-接口测试执行（JMeter）、投屏/scrcpy、Kafka、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
-V1 **未引入 MeterSphere / Sonic 源码**（能力等价实现），且 MySQL / Redis / MinIO 只完成实现、未做真实验收，详见 V1-SCOPE §3.1。
+接口测试执行（JMeter）、投屏/scrcpy、Kafka 异步下发、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
+V1 **未引入 MeterSphere / Sonic 源码**（能力等价实现）；MySQL / Redis / MinIO / Kafka 已完成真实验收（Kafka 仅承载任务事件，下发仍走 HTTP），详见 V1-SCOPE §3.1。
 
 具体演进路径见 `docs/V1-SCOPE.md` §3。

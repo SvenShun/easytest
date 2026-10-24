@@ -14,15 +14,40 @@ make down    # 停止服务
 > Maven Central 在本机不可达，`scripts/mvn.sh` 固定使用工作区本地仓库 `.m2/repository` 与 `~/.m2/settings.xml` 中的阿里云镜像。
 > 不要把 `.m2/` 提交到版本库（已 gitignore）。
 
+## 1.1 真实中间件模式（推荐用于联调）
+
+```bash
+make infra                                  # Docker: MySQL 8.0 / Redis 7 / MinIO
+TESTHUB_INFRA=docker ./scripts/dev-up.sh    # 应用切到 MySQL + Redis + MinIO
+make e2e
+make down && make infra-down
+```
+
+中间件端口：MySQL `3306`（root/testhub）、Redis `6379`、MinIO `9000`（控制台 `9001`，testhub/testhub123）、
+Kafka `9092`（KRaft 单节点）。
+
+Kafka 主题（`TESTHUB_EVENT_BUS=kafka` 时启用）：
+
+```bash
+docker exec testhub-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --list
+docker exec testhub-kafka /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server 127.0.0.1:9092 --topic ui-execution.task.result --from-beginning
+```
+
+事件体见 `docs/API-CONTRACT.md` 附录 A。当前 Kafka 只承载任务事件（下发/结果），任务下发仍走 HTTP。
+
+> 该网络无法访问 Docker Hub 与 dl.min.io，`deploy/docker-compose.infra.yml` 使用 AWS ECR Public 的
+> MySQL/Redis 官方镜像与 Chainguard 的上游 MinIO 二进制镜像。Kafka 镜像未能在可接受时间内拉取，暂不可用。
+
 ## 2. 默认存储与运行模式
 
 | 能力 | 默认（dev） | 切换方式 |
 |---|---|---|
 | 元数据 | H2 文件库 `data/db/{core,uiexec}` | `SPRING_PROFILES_ACTIVE=mysql` + `SPRING_DATASOURCE_*` |
 | 设备 FIFO 队列 | 进程内内存队列 | `TESTHUB_QUEUE_STORE=redis` + `SPRING_DATA_REDIS_HOST` |
-| 产物（截图/报告/脚本包） | 本地文件 `data/artifacts`、`data/core-artifacts` | `TESTHUB_ARTIFACT_STORE=minio` + `MINIO_*` |
+| 产物（截图/报告/脚本包） | 本地文件 `data/artifacts`、`data/core-artifacts` | `TESTHUB_ARTIFACT_STORE=minio` + `TESTHUB_MINIO_*`（或用 `TESTHUB_INFRA=docker`） |
 | AI 模型 | `mock`（离线确定性） | 系统设置里改为 `openai`/`deepseek` 并填 endpoint/key/model |
 | 设备 | 模拟设备（2 台） | `TESTHUB_AGENT_MODE=adb`（需 adb 与真机） |
+| 任务事件 | 本地结构化日志 | `TESTHUB_EVENT_BUS=kafka` + `TESTHUB_KAFKA_BOOTSTRAP`（`TESTHUB_INFRA=docker` 自动开启） |
 
 ## 3. 环境变量
 
@@ -60,6 +85,8 @@ make down    # 停止服务
 | `TESTHUB_ARTIFACT_DIR` | `./data/artifacts` | 本地产物目录 |
 | `TESTHUB_ARTIFACT_STORE` | `local` | `minio` |
 | `TESTHUB_AGENT_OFFLINE_SECONDS` | `90` | 心跳超时判定离线 |
+| `TESTHUB_EVENT_BUS` | `local` | `kafka` 发布任务事件 |
+| `TESTHUB_KAFKA_BOOTSTRAP` | `127.0.0.1:9092` | Kafka broker |
 
 ### device-agent
 
@@ -108,8 +135,8 @@ docker compose up -d --build
 包含 MySQL、Redis、MinIO、core、ui-execution、ai-runtime、device-agent（模拟设备）、web。
 默认端口映射与本地一致（8080/8081/8090/8095/5173）。
 
-> 注意：本机 Docker daemon 未运行，本次交付**未在容器环境实测**；本地 dev 模式已完整验证。
-> 首次启动 MySQL 需要初始化时间，core/ui 会依赖健康检查后启动。
+> 说明：`docker-compose.infra.yml`（MySQL/Redis/MinIO/Kafka）已实测；完整 `docker-compose.yml`（含应用容器）
+> 仍建议在目标环境验证。该网络无法访问 Docker Hub，compose 中的镜像已替换为可达的 ECR Public / Chainguard / Strimzi 源。
 
 ## 6. 常见问题
 
@@ -141,7 +168,7 @@ make up
 - [ ] 使用 MySQL + Redis + MinIO，关闭 `ddl-auto=update`，引入 Flyway
 - [ ] TLS 终止在网关，限制 `/internal/**` 仅服务网段可达
 - [ ] `/artifacts/**` 改为签名 URL 或鉴权（V1 为随机路径公开访问）
-- [ ] 引入 Kafka（V1 未实现，需先新增事件总线端口与适配器）、多副本与队列重建
+- [ ] 将任务下发迁移到 Kafka（当前仅事件流）、多副本与队列重建
 - [ ] 配置模型 API Key 轮换策略与出网代理
 - [ ] 配置审计日志保留、执行轨迹生命周期归档
 - [ ] 设备子服务器仅 Linux；ADB/scrcpy 与 USB 直通按部署文档配置

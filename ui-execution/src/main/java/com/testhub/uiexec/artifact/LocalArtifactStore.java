@@ -48,6 +48,20 @@ public class LocalArtifactStore implements ArtifactStore {
         return properties.artifactUrl(relativePath);
     }
 
+    @Override
+    public byte[] read(String relativePath) {
+        String relative = ArtifactPaths.combine("", relativePath);
+        Path target = root.resolve(relative).normalize();
+        if (!target.startsWith(root) || !Files.isRegularFile(target)) {
+            return null;
+        }
+        try {
+            return Files.readAllBytes(target);
+        } catch (IOException e) {
+            throw new IllegalStateException("读取产物失败: " + relative, e);
+        }
+    }
+
     private String store(String taskId, String relativePath, byte[] content) {
         String relative = ArtifactPaths.combine(taskId, relativePath);
         Path target = root.resolve(relative).normalize();
