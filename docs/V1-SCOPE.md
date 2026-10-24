@@ -39,15 +39,22 @@ V1 面向单机 Docker Compose / 本地开发环境，硬性要求：**没有大
 | 文档设计 | V1 实现 | 原因与演进 |
 |---|---|---|
 | 6 个独立微服务 + Eureka + Gateway | `testhub-server` 单服务内含 `case-management / test-plan / system-setting / ai-analysis` 四个**模块包**；`ui-execution` 独立服务 | MeterSphere 源码不在本仓库，V1 需可独立运行；包边界与接口契约按可拆分设计，后续按模块拆出即可 |
-| Kafka 承载下发/日志/结果 | `EventBus` 端口 + 进程内实现；跨服务用 HTTP 回调 | 单机 V1 不引入 broker；Topic 名与事件结构已在契约中固定，可平滑替换 |
-| MinIO 存储产物 | `ArtifactStore` 端口：默认本地文件系统，`TESTHUB_ARTIFACT_STORE=minio` 切 MinIO | 无 Docker 也能演示；接口不变 |
-| Redis 设备 FIFO | `DeviceQueueStore` 端口：默认内存，`TESTHUB_QUEUE_STORE=redis` 切 Redis | 同上；Redis 实现保留队列位置语义 |
+| Kafka 承载下发/日志/结果 | **V1 未实现 Kafka，也未抽象 EventBus 端口**；跨服务全部走 HTTP 回调 | V1 单机不引入 broker；后续需新增事件总线端口 + Kafka 适配器 |
+| MinIO 存储产物 | `ArtifactStore` 端口：默认本地文件系统，`TESTHUB_ARTIFACT_STORE=minio` 切 MinIO | MinIO 实现已编写，但**未在真实 MinIO 上验收** |
+| Redis 设备 FIFO | `DeviceQueueStore` 端口：默认内存，`TESTHUB_QUEUE_STORE=redis` 切 Redis | Redis 实现已编写，但**未在真实 Redis 上验收** |
 | 设备投屏（scrcpy） | 不做投屏流，设备池展示状态/队列；模拟设备提供截图 | 复用 Sonic 设备通道，需真机环境；V1 预留 WebSocket 边界 |
 | 传统脚本执行器 | 解压工程包 + 执行入口命令，解析 JUnit XML 与截图 | 真实 TestNG/uiautomator2 依赖外部 Maven/ADB，V1 提供同构执行链路 |
 | AI Runtime 内核（成熟框架二次开发） | 自实现最小闭环内核（Python） | V1 验证决策-动作-轨迹链路，后续可替换内核 |
 | 接口测试执行 | 不实现（归属 MeterSphere Task Runner） | 计划/报告模型已预留 `executorType=API` |
 | 数据库迁移 | JPA `ddl-auto=update` + 启动种子数据 | V1 快速迭代；上线前替换 Flyway（TODO 已记录） |
 | 产物访问控制 | `/artifacts/**` 无鉴权但路径含随机 ID | V1 内网工具；后续改为签名 URL |
+
+## 3.1 交付边界更正（重要）
+
+1. **未引入 MeterSphere / Sonic 源码**：本仓库是按其能力模型实现的等价新服务，不是对两个项目的 fork 或紧耦合改造；`device-agent` 也不是 Sonic-Agent 改造版。
+2. **数据库**：使用 JPA 持久化；默认 H2 文件库，已提供 MySQL profile，但验收只在 H2 上完成。
+3. **中间件**：Redis 队列与 MinIO 产物实现已编写且按配置装配，但验收只在内存队列 + 本地文件系统上完成；Kafka 未实现。
+4. 原文档中的「紧耦合融合」在 V1 中体现为**接口与数据模型对齐**，不体现为代码级复用。
 
 ## 4. 执行器路由规则（实现为准）
 

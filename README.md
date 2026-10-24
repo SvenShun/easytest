@@ -110,5 +110,7 @@ scripts/          构建/启动/验收脚本
 
 ## V1 已知边界
 
-接口测试执行（JMeter）、投屏/scrcpy、Kafka、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围，
+接口测试执行（JMeter）、投屏/scrcpy、Kafka、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
+V1 **未引入 MeterSphere / Sonic 源码**（能力等价实现），且 MySQL / Redis / MinIO 只完成实现、未做真实验收，详见 V1-SCOPE §3.1。
+
 具体演进路径见 `docs/V1-SCOPE.md` §3。

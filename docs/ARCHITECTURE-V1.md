@@ -190,7 +190,7 @@ PENDING ──dispatch──► DISPATCHED ──first step──► RUNNING ─
 
 | 扩展点 | 端口/接口 | 下一步 |
 |---|---|---|
-| 消息总线 | 事件投递封装（V1 进程内） | Kafka Topic：`ui-execution.task.dispatch/log/result` |
+| 消息总线 | V1 未实现，跨服务使用 HTTP 回调 | 新增事件总线端口 + Kafka Topic：`ui-execution.task.dispatch/log/result` |
 | 队列 | `DeviceQueueStore` | Redis 实现已提供；多副本时需分布式锁/消费组 |
 | 产物 | `ArtifactStore` | MinIO 实现已提供；可换 S3/OSS |
 | 模型 | `TextModelProvider` / `VisionProvider` | 新增 Provider 即接入新模型 |

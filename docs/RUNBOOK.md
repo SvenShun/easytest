@@ -141,7 +141,7 @@ make up
 - [ ] 使用 MySQL + Redis + MinIO，关闭 `ddl-auto=update`，引入 Flyway
 - [ ] TLS 终止在网关，限制 `/internal/**` 仅服务网段可达
 - [ ] `/artifacts/**` 改为签名 URL 或鉴权（V1 为随机路径公开访问）
-- [ ] 配置 Kafka 适配器（`EventBus` 端口已预留）、多副本与队列重建
+- [ ] 引入 Kafka（V1 未实现，需先新增事件总线端口与适配器）、多副本与队列重建
 - [ ] 配置模型 API Key 轮换策略与出网代理
 - [ ] 配置审计日志保留、执行轨迹生命周期归档
 - [ ] 设备子服务器仅 Linux；ADB/scrcpy 与 USB 直通按部署文档配置
