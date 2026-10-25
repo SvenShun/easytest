@@ -12,6 +12,7 @@ import { LoginPage } from './pages/Login';
 import { DashboardPage } from './pages/Dashboard';
 import { CasesPage } from './pages/Cases';
 import { ApiCasesPage } from './pages/ApiCases';
+import { EnvironmentsPage } from './pages/Environments';
 import { RequirementsPage } from './pages/Requirements';
 import { AiPage } from './pages/Ai';
 import { PlansPage } from './pages/Plans';
@@ -32,6 +33,7 @@ const ROUTE_ROLES: Record<string, Role[]> = {
   tasks: ALL_ROLES,
   cases: CROSS,
   'api-cases': TESTERS,
+  environments: TESTERS,
   requirements: CROSS,
   ai: CROSS,
   plans: TESTERS,
@@ -55,6 +57,8 @@ function renderPage(route: RouteState): ReactNode {
       return second ? <NotFoundPage routePath={route.path} /> : <CasesPage />;
     case 'api-cases':
       return second ? <NotFoundPage routePath={route.path} /> : <ApiCasesPage />;
+    case 'environments':
+      return second ? <NotFoundPage routePath={route.path} /> : <EnvironmentsPage />;
     case 'ai':
       return second ? <NotFoundPage routePath={route.path} /> : <AiPage />;
     case 'plans':
@@ -74,7 +78,7 @@ function AppRoutes() {
   const [refreshKey, setRefreshKey] = useState(0);
   const first = route.segments[0] || 'dashboard';
   const isLogin = first === 'login';
-  const knownRoute = ['dashboard', 'devices', 'tasks', 'requirements', 'cases', 'api-cases', 'ai', 'plans', 'runs', 'settings', 'login'];
+  const knownRoute = ['dashboard', 'devices', 'tasks', 'requirements', 'cases', 'api-cases', 'environments', 'ai', 'plans', 'runs', 'settings', 'login'];
   const pageExists = !route.segments.length || knownRoute.includes(first);
 
   useEffect(() => {

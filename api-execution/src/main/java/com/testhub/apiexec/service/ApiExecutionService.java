@@ -9,13 +9,14 @@ import com.testhub.apiexec.assertion.AssertionResult;
 import com.testhub.apiexec.client.CoreCallbackClient;
 import com.testhub.apiexec.client.PlanItemResultPayload;
 import com.testhub.apiexec.config.ApiExecProperties;
-import com.testhub.apiexec.config.ExecutorConfig;
 import com.testhub.apiexec.domain.ApiTaskEntity;
 import com.testhub.apiexec.domain.ApiTaskStatus;
 import com.testhub.apiexec.execution.HttpExchangeResult;
 import com.testhub.apiexec.execution.HttpExecutor;
 import com.testhub.apiexec.execution.HttpRequestSpec;
 import com.testhub.apiexec.execution.RequestUrlBuilder;
+import com.testhub.apiexec.queue.CancellationStore;
+import com.testhub.apiexec.queue.TaskQueue;
 import com.testhub.apiexec.report.TaskReportFactory;
 import com.testhub.apiexec.repository.ApiTaskRepository;
 import com.testhub.apiexec.web.dto.ApiExecutionDtos.CancelTaskResponse;
@@ -33,11 +34,11 @@ import com.testhub.common.web.PageResponse;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.net.http.HttpTimeoutException;
@@ -50,13 +51,11 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
 
 /**
- * Task lifecycle for api-execution: create → FIFO queue → HTTP execution →
- * assertion evaluation → terminal state → best-effort core callback, plus
- * cancellation, reporting and statistics.
+ * Task lifecycle for api-execution: create → shared FIFO queue → worker claim →
+ * HTTP execution → assertion evaluation → terminal state → best-effort core
+ * callback, plus cancellation, reporting and statistics.
  */
 @Service
 public class ApiExecutionService {
@@ -75,17 +74,18 @@ public class ApiExecutionService {
     private final TaskReportFactory reportFactory;
     private final CoreCallbackClient callbackClient;
     private final ObjectMapper objectMapper;
-    private final ExecutorService executor;
+    private final TaskQueue taskQueue;
+    private final CancellationStore cancellationStore;
 
-    /** Guards every state transition; also makes cancel-vs-finish races deterministic. */
+    /** Serializes local transitions; DB conditional updates guard cross-instance races. */
     private final Object transitionLock = new Object();
     private final Map<String, CompletableFuture<HttpExchangeResult>> inFlight = new java.util.concurrent.ConcurrentHashMap<>();
 
     public ApiExecutionService(ApiTaskRepository tasks, ApiExecProperties properties,
                                HttpExecutor httpExecutor, AssertionEvaluator assertionEvaluator,
                                TaskReportFactory reportFactory, CoreCallbackClient callbackClient,
-                               ObjectMapper objectMapper,
-                               @Qualifier(ExecutorConfig.EXECUTOR_BEAN) ExecutorService executor) {
+                               ObjectMapper objectMapper, TaskQueue taskQueue,
+                               CancellationStore cancellationStore) {
         this.tasks = tasks;
         this.properties = properties;
         this.httpExecutor = httpExecutor;
@@ -93,7 +93,8 @@ public class ApiExecutionService {
         this.reportFactory = reportFactory;
         this.callbackClient = callbackClient;
         this.objectMapper = objectMapper;
-        this.executor = executor;
+        this.taskQueue = taskQueue;
+        this.cancellationStore = cancellationStore;
     }
 
     // ---------------------------------------------------------------- create
@@ -140,44 +141,50 @@ public class ApiExecutionService {
 
         final String taskId = task.getId();
         try {
-            executor.execute(() -> execute(taskId));
-        } catch (RejectedExecutionException e) {
-            log.warn("执行器拒绝任务 taskId={}: {}", taskId, e.getMessage());
-            markRejected(taskId, "executor rejected task: " + e.getMessage());
+            taskQueue.enqueue(taskId);
+            log.info("接口执行任务已入队 taskId={}", taskId);
+        } catch (RuntimeException e) {
+            log.warn("接口执行任务入队失败 taskId={}: {}", taskId, e.getMessage());
+            markRejected(taskId, "queue unavailable: " + describe(e));
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "QUEUE_UNAVAILABLE",
+                    "任务队列不可用，请稍后重试");
         }
         return new CreateTaskResponse(taskId, ApiTaskStatus.PENDING.name());
     }
 
     // --------------------------------------------------------------- execute
 
-    /** Runs one queued task on a worker thread. */
-    void execute(String taskId) {
+    /** Claims and runs one queued task on the calling worker thread. */
+    void execute(String taskId, String workerId) {
         HttpRequestSpec spec;
         synchronized (transitionLock) {
-            ApiTaskEntity task = tasks.findById(taskId).orElse(null);
-            if (task == null || task.getStatus() != ApiTaskStatus.PENDING) {
-                return;
-            }
-            task.setStatus(ApiTaskStatus.RUNNING);
-            task.setStartedAt(Instant.now());
-            tasks.save(task);
-            spec = new HttpRequestSpec(task.getMethod(), task.getUrl(), readStringMap(task.getHeadersJson()),
-                    task.getBody(), task.getTimeoutSec());
+            spec = claim(taskId, workerId);
+        }
+        if (spec == null) {
+            return;
+        }
+        if (isCancelFlagSet(taskId) || !isRunning(taskId)) {
+            finishCancelledByWorker(taskId, 0L);
+            return;
         }
 
         long startedAt = System.nanoTime();
         try {
             CompletableFuture<HttpExchangeResult> future = httpExecutor.executeAsync(spec);
             inFlight.put(taskId, future);
-            if (isCancelRequested(taskId)) {
+            if (isCancelFlagSet(taskId)) {
                 future.cancel(true);
             }
             HttpExchangeResult result = future.get();
+            if (isCancelFlagSet(taskId) || !isRunning(taskId)) {
+                finishCancelledByWorker(taskId, startedAt);
+                return;
+            }
             complete(taskId, result);
         } catch (CancellationException e) {
             finishCancelledByWorker(taskId, startedAt);
         } catch (InterruptedException e) {
-            // Executor shutdown (or an external interrupt) must not look like a user cancel:
+            // Worker shutdown (or an external interrupt) must not look like a user cancel:
             // leave the task RUNNING so startup recovery marks it FAILED (contract §1).
             Thread.currentThread().interrupt();
             log.warn("任务执行线程被中断，保留未完成状态等待启动恢复 taskId={}", taskId);
@@ -199,56 +206,95 @@ public class ApiExecutionService {
         }
     }
 
-    private void complete(String taskId, HttpExchangeResult result) {
-        ApiTaskEntity terminal;
-        synchronized (transitionLock) {
-            ApiTaskEntity task = tasks.findById(taskId).orElse(null);
-            if (task == null || task.getStatus() != ApiTaskStatus.RUNNING) {
-                return;
-            }
-            List<ApiAssertion> assertions = readAssertions(task.getAssertionsJson());
-            List<AssertionResult> results = assertionEvaluator.evaluate(assertions, result);
-            boolean hasStatusAssertion = assertions.stream()
-                    .anyMatch(a -> "STATUS_CODE".equalsIgnoreCase(trim(a.type())));
-            long failures = results.stream().filter(r -> !r.passed()).count();
-
-            ApiTaskStatus status;
-            String failureReason;
-            String summary;
-            if (result.status() >= 400 && !hasStatusAssertion) {
-                status = ApiTaskStatus.FAILED;
-                failureReason = "HTTP_ERROR";
-                summary = "HTTP " + result.status() + " without STATUS_CODE assertion, "
-                        + result.durationMs() + "ms";
-            } else if (failures > 0) {
-                status = ApiTaskStatus.FAILED;
-                failureReason = "ASSERTION_FAILED";
-                summary = failures + "/" + results.size() + " assertions failed, HTTP "
-                        + result.status() + ", " + result.durationMs() + "ms";
-            } else {
-                status = ApiTaskStatus.SUCCESS;
-                failureReason = null;
-                summary = results.isEmpty()
-                        ? "no assertions, HTTP " + result.status() + ", " + result.durationMs() + "ms"
-                        : results.size() + "/" + results.size() + " assertions passed, HTTP "
-                        + result.status() + ", " + result.durationMs() + "ms";
-            }
-
-            task.setStatus(status);
-            task.setFailureReason(failureReason);
-            task.setSummary(summary);
-            task.setHttpStatus(result.status());
-            task.setDurationMs(result.durationMs());
-            task.setResponseHeaders(toJson(result.headers(), "{}"));
-            task.setResponseBody(truncate(result.body()));
-            task.setAssertionResultsJson(toJson(results, "[]"));
-            task.setFinishedAt(Instant.now());
-            task.setReportJson(reportFactory.toJson(task));
-            tasks.save(task);
-            terminal = task;
-            log.info("接口执行任务完成 taskId={} status={} httpStatus={} durationMs={}",
-                    taskId, status, task.getHttpStatus(), task.getDurationMs());
+    /** Atomically moves PENDING → RUNNING and records the worker identity. */
+    private HttpRequestSpec claim(String taskId, String workerId) {
+        Instant now = Instant.now();
+        int claimed = tasks.claim(taskId, ApiTaskStatus.RUNNING, ApiTaskStatus.PENDING, workerId, now);
+        if (claimed == 0) {
+            return null;
         }
+        ApiTaskEntity task = tasks.findById(taskId).orElse(null);
+        if (task == null || task.getStatus() != ApiTaskStatus.RUNNING) {
+            return null;
+        }
+        log.info("接口执行任务已被 worker 领取 taskId={} workerId={}", taskId, workerId);
+        return new HttpRequestSpec(task.getMethod(), task.getUrl(), readStringMap(task.getHeadersJson()),
+                task.getBody(), task.getTimeoutSec());
+    }
+
+    private boolean isRunning(String taskId) {
+        return tasks.findById(taskId)
+                .map(task -> task.getStatus() == ApiTaskStatus.RUNNING)
+                .orElse(false);
+    }
+
+    private boolean isCancelFlagSet(String taskId) {
+        try {
+            return cancellationStore.isCancelled(taskId);
+        } catch (RuntimeException e) {
+            // DB status remains the authoritative source when the flag store is unavailable.
+            log.warn("读取取消标记失败 taskId={}: {}", taskId, e.getMessage());
+            return false;
+        }
+    }
+
+    private void complete(String taskId, HttpExchangeResult result) {
+        ApiTaskEntity current = tasks.findById(taskId).orElse(null);
+        if (current == null) {
+            return;
+        }
+        List<ApiAssertion> assertions = readAssertions(current.getAssertionsJson());
+        List<AssertionResult> results = assertionEvaluator.evaluate(assertions, result);
+        boolean hasStatusAssertion = assertions.stream()
+                .anyMatch(a -> "STATUS_CODE".equalsIgnoreCase(trim(a.type())));
+        long failures = results.stream().filter(r -> !r.passed()).count();
+
+        ApiTaskStatus status;
+        String failureReason;
+        String summary;
+        if (result.status() >= 400 && !hasStatusAssertion) {
+            status = ApiTaskStatus.FAILED;
+            failureReason = "HTTP_ERROR";
+            summary = "HTTP " + result.status() + " without STATUS_CODE assertion, "
+                    + result.durationMs() + "ms";
+        } else if (failures > 0) {
+            status = ApiTaskStatus.FAILED;
+            failureReason = "ASSERTION_FAILED";
+            summary = failures + "/" + results.size() + " assertions failed, HTTP "
+                    + result.status() + ", " + result.durationMs() + "ms";
+        } else {
+            status = ApiTaskStatus.SUCCESS;
+            failureReason = null;
+            summary = results.isEmpty()
+                    ? "no assertions, HTTP " + result.status() + ", " + result.durationMs() + "ms"
+                    : results.size() + "/" + results.size() + " assertions passed, HTTP "
+                    + result.status() + ", " + result.durationMs() + "ms";
+        }
+
+        boolean won;
+        synchronized (transitionLock) {
+            won = tasks.transition(taskId, ApiTaskStatus.RUNNING, status, failureReason, summary,
+                    Instant.now()) > 0;
+        }
+        if (!won) {
+            // A cancel or another instance already moved the task to a terminal state.
+            log.debug("任务已进入终态，跳过完成写入 taskId={}", taskId);
+            return;
+        }
+
+        ApiTaskEntity terminal = tasks.findById(taskId).orElse(null);
+        if (terminal == null) {
+            return;
+        }
+        terminal.setHttpStatus(result.status());
+        terminal.setDurationMs(result.durationMs());
+        terminal.setResponseHeaders(toJson(result.headers(), "{}"));
+        terminal.setResponseBody(truncate(result.body()));
+        terminal.setAssertionResultsJson(toJson(results, "[]"));
+        terminal.setReportJson(reportFactory.toJson(terminal));
+        tasks.save(terminal);
+        log.info("接口执行任务完成 taskId={} workerId={} status={} httpStatus={} durationMs={}",
+                taskId, terminal.getWorkerId(), status, terminal.getHttpStatus(), terminal.getDurationMs());
         notifyCore(terminal);
     }
 
@@ -257,52 +303,60 @@ public class ApiExecutionService {
                 HttpExecutor.elapsedMillis(startedAt));
     }
 
-    /** A task rejected before it ever reached a worker is failed directly. */
+    /** A task that never made it onto the queue is failed directly. */
     private void markRejected(String taskId, String message) {
-        ApiTaskEntity terminal;
+        boolean won;
         synchronized (transitionLock) {
-            ApiTaskEntity task = tasks.findById(taskId).orElse(null);
-            if (task == null || task.getStatus() != ApiTaskStatus.PENDING) {
-                return;
-            }
-            task.setStatus(ApiTaskStatus.FAILED);
-            task.setFailureReason("HTTP_ERROR");
-            task.setSummary(message);
-            task.setFinishedAt(Instant.now());
-            task.setAssertionResultsJson(toJson(List.of(), "[]"));
-            task.setReportJson(reportFactory.toJson(task));
-            tasks.save(task);
-            terminal = task;
+            won = tasks.transition(taskId, ApiTaskStatus.PENDING, ApiTaskStatus.FAILED, "HTTP_ERROR",
+                    message, Instant.now()) > 0;
         }
+        if (!won) {
+            return;
+        }
+        ApiTaskEntity terminal = tasks.findById(taskId).orElse(null);
+        if (terminal == null) {
+            return;
+        }
+        terminal.setAssertionResultsJson(toJson(List.of(), "[]"));
+        terminal.setReportJson(reportFactory.toJson(terminal));
+        tasks.save(terminal);
         notifyCore(terminal);
     }
 
     /**
-     * Applies a terminal state only when the task is still RUNNING, so a
-     * user-initiated cancel always wins the race.
+     * Applies a terminal state only when the task is still RUNNING. The
+     * conditional DB update also guards against a cancel from another
+     * instance; the loser never overwrites the winner or sends a callback.
      */
     private void finishTerminal(String taskId, ApiTaskStatus status, String failureReason,
                                 String summary, Long durationMs) {
-        ApiTaskEntity terminal;
+        boolean won;
         synchronized (transitionLock) {
-            ApiTaskEntity task = tasks.findById(taskId).orElse(null);
-            if (task == null || task.getStatus() != ApiTaskStatus.RUNNING) {
-                return;
-            }
-            task.setStatus(status);
-            task.setFailureReason(failureReason);
-            task.setSummary(summary);
-            if (durationMs != null) {
-                task.setDurationMs(durationMs);
-            }
-            task.setAssertionResultsJson(toJson(List.of(), "[]"));
-            task.setFinishedAt(Instant.now());
-            task.setReportJson(reportFactory.toJson(task));
-            tasks.save(task);
-            terminal = task;
-            log.info("接口执行任务结束 taskId={} status={} reason={}", taskId, status, failureReason);
+            won = tasks.transition(taskId, ApiTaskStatus.RUNNING, status, failureReason, summary,
+                    Instant.now()) > 0;
         }
+        if (!won) {
+            return;
+        }
+        ApiTaskEntity terminal = tasks.findById(taskId).orElse(null);
+        if (terminal == null) {
+            return;
+        }
+        if (durationMs != null) {
+            terminal.setDurationMs(durationMs);
+        }
+        terminal.setAssertionResultsJson(toJson(List.of(), "[]"));
+        terminal.setReportJson(reportFactory.toJson(terminal));
+        tasks.save(terminal);
+        log.info("接口执行任务结束 taskId={} workerId={} status={} reason={}",
+                taskId, terminal.getWorkerId(), status, failureReason);
         notifyCore(terminal);
+    }
+
+    /** Called by a worker when execution throws unexpectedly; leaves terminal states untouched. */
+    void failUnexpected(String taskId, Throwable error) {
+        finishTerminal(taskId, ApiTaskStatus.FAILED, "HTTP_ERROR",
+                "worker error: " + describe(error), null);
     }
 
     // ------------------------------------------------------------------ reads
@@ -322,8 +376,9 @@ public class ApiExecutionService {
                 : new ResponseView(task.getHttpStatus(), readHeaders(task.getResponseHeaders()),
                 task.getResponseBody(), task.getDurationMs());
         return new TaskDetailView(task.getId(), task.getPlanId(), task.getPlanRunId(), task.getCaseId(),
-                task.getCaseName(), name(task.getStatus()), task.getFailureReason(), task.getSummary(),
-                request, response, reportFactory.readAssertionResults(task.getAssertionResultsJson()),
+                task.getCaseName(), name(task.getStatus()), task.getWorkerId(), task.getFailureReason(),
+                task.getSummary(), request, response,
+                reportFactory.readAssertionResults(task.getAssertionResultsJson()),
                 task.getHttpStatus(), task.getDurationMs(), reportUrl(task.getId()), task.getCreatedBy(),
                 task.getCreatedAt(), task.getStartedAt(), task.getFinishedAt());
     }
@@ -355,7 +410,7 @@ public class ApiExecutionService {
                 tasks.countByStatus(ApiTaskStatus.FAILED),
                 tasks.countByStatus(ApiTaskStatus.TIMEOUT),
                 tasks.countByStatus(ApiTaskStatus.CANCELLED),
-                Math.max(1, properties.getWorkers()));
+                Math.max(0, properties.getWorkers()));
     }
 
     public JsonNode report(String taskId) {
@@ -373,64 +428,109 @@ public class ApiExecutionService {
     // ----------------------------------------------------------------- cancel
 
     public CancelTaskResponse cancel(String taskId) {
-        ApiTaskEntity terminal;
-        CompletableFuture<HttpExchangeResult> future;
-        synchronized (transitionLock) {
-            ApiTaskEntity task = requireTask(taskId);
-            if (task.getStatus().isTerminal()) {
-                return new CancelTaskResponse(task.getId(), task.getStatus().name());
-            }
-            ApiTaskStatus previous = task.getStatus();
-            Instant now = Instant.now();
-            task.setCancelRequestedAt(now);
-            task.setStatus(ApiTaskStatus.CANCELLED);
-            task.setFailureReason("CANCELLED");
-            task.setSummary(previous == ApiTaskStatus.PENDING
-                    ? "cancelled before execution" : "cancelled while running");
-            task.setFinishedAt(now);
-            if (task.getStartedAt() != null) {
-                task.setDurationMs(Math.max(0L,
-                        now.toEpochMilli() - task.getStartedAt().toEpochMilli()));
-            }
-            task.setAssertionResultsJson(toJson(List.of(), "[]"));
-            task.setReportJson(reportFactory.toJson(task));
-            tasks.save(task);
-            terminal = task;
-            future = inFlight.get(taskId);
-            log.info("接口执行任务已取消 taskId={} previous={}", taskId, previous);
+        ApiTaskEntity before = requireTask(taskId);
+        if (before.getStatus().isTerminal()) {
+            return new CancelTaskResponse(before.getId(), before.getStatus().name());
         }
+        ApiTaskStatus previous = before.getStatus();
+        Instant now = Instant.now();
+
+        // Remove a still-queued task and publish the cross-instance cancel flag
+        // before touching the DB, so a worker about to start cannot miss it.
+        try {
+            taskQueue.remove(taskId);
+        } catch (RuntimeException e) {
+            log.warn("取消时移除队列任务失败 taskId={}: {}", taskId, e.getMessage());
+        }
+        try {
+            cancellationStore.requestCancel(taskId);
+        } catch (RuntimeException e) {
+            log.warn("取消标记写入失败 taskId={}: {}", taskId, e.getMessage());
+        }
+
+        int updated;
+        synchronized (transitionLock) {
+            updated = tasks.cancelActive(taskId, ApiTaskStatus.CANCELLED, ApiTaskStatus.PENDING,
+                    ApiTaskStatus.RUNNING, "CANCELLED", now, now);
+        }
+        if (updated == 0) {
+            // Another instance/worker already finished the task; never overwrite it.
+            ApiTaskEntity current = requireTask(taskId);
+            if (current.getStatus() != ApiTaskStatus.CANCELLED) {
+                try {
+                    cancellationStore.clear(taskId);
+                } catch (RuntimeException e) {
+                    log.debug("清理取消标记失败 taskId={}: {}", taskId, e.getMessage());
+                }
+            }
+            return new CancelTaskResponse(current.getId(), current.getStatus().name());
+        }
+
+        ApiTaskEntity terminal = requireTask(taskId);
+        terminal.setSummary(previous == ApiTaskStatus.PENDING
+                ? "cancelled before execution" : "cancelled while running");
+        if (terminal.getStartedAt() != null) {
+            terminal.setDurationMs(Math.max(0L,
+                    now.toEpochMilli() - terminal.getStartedAt().toEpochMilli()));
+        }
+        terminal.setAssertionResultsJson(toJson(List.of(), "[]"));
+        terminal.setReportJson(reportFactory.toJson(terminal));
+        tasks.save(terminal);
+
+        CompletableFuture<HttpExchangeResult> future = inFlight.get(taskId);
         if (future != null) {
             future.cancel(true);
         }
+        log.info("接口执行任务已取消 taskId={} previous={} workerId={}",
+                taskId, previous, terminal.getWorkerId());
         notifyCore(terminal);
         return new CancelTaskResponse(terminal.getId(), terminal.getStatus().name());
     }
 
     // -------------------------------------------------------------- recovery
 
-    /** Contract §1: unfinished tasks after a restart are marked FAILED. */
+    /**
+     * Contract §1 + shared-queue recovery: RUNNING tasks from the previous
+     * process become FAILED, and every still-PENDING task is re-enqueued.
+     * {@link TaskQueue#enqueue(String)} de-duplicates, so repeated runs are
+     * idempotent.
+     */
     public int recoverInterrupted() {
-        List<ApiTaskEntity> interrupted = tasks.findByStatusIn(
-                List.of(ApiTaskStatus.PENDING, ApiTaskStatus.RUNNING));
+        List<ApiTaskEntity> running = tasks.findByStatus(ApiTaskStatus.RUNNING);
         int recovered = 0;
-        for (ApiTaskEntity task : interrupted) {
+        for (ApiTaskEntity task : running) {
+            boolean won;
             synchronized (transitionLock) {
-                ApiTaskEntity current = tasks.findById(task.getId()).orElse(null);
-                if (current == null || !current.getStatus().isActive()) {
-                    continue;
-                }
-                current.setStatus(ApiTaskStatus.FAILED);
-                current.setFailureReason("INTERRUPTED");
-                current.setSummary("service restarted before task finished");
-                current.setFinishedAt(Instant.now());
-                current.setAssertionResultsJson(toJson(List.of(), "[]"));
-                current.setReportJson(reportFactory.toJson(current));
-                tasks.save(current);
-                recovered++;
+                won = tasks.transition(task.getId(), ApiTaskStatus.RUNNING, ApiTaskStatus.FAILED,
+                        "INTERRUPTED", "service restarted before task finished", Instant.now()) > 0;
+            }
+            if (!won) {
+                continue;
+            }
+            ApiTaskEntity current = tasks.findById(task.getId()).orElse(null);
+            if (current == null) {
+                continue;
+            }
+            current.setAssertionResultsJson(toJson(List.of(), "[]"));
+            current.setReportJson(reportFactory.toJson(current));
+            tasks.save(current);
+            recovered++;
+        }
+
+        List<ApiTaskEntity> pending = tasks.findByStatus(ApiTaskStatus.PENDING);
+        for (ApiTaskEntity task : pending) {
+            try {
+                taskQueue.enqueue(task.getId());
+            } catch (RuntimeException e) {
+                log.warn("启动恢复重新入队失败 taskId={}: {}", task.getId(), e.getMessage());
             }
         }
+
         if (recovered > 0) {
-            log.warn("启动时标记 {} 个未完成接口执行任务为 FAILED", recovered);
+            log.warn("启动时标记 {} 个 RUNNING 接口执行任务为 FAILED", recovered);
+        }
+        if (!pending.isEmpty()) {
+            log.info("启动时确认 {} 个 PENDING 接口执行任务已入队", pending.size());
         }
         return recovered;
     }
@@ -448,18 +548,12 @@ public class ApiExecutionService {
         }
     }
 
-    private boolean isCancelRequested(String taskId) {
-        return tasks.findById(taskId)
-                .map(task -> task.getCancelRequestedAt() != null || task.getStatus() == ApiTaskStatus.CANCELLED)
-                .orElse(false);
-    }
-
     private TaskSummaryView summary(ApiTaskEntity task) {
         return new TaskSummaryView(task.getId(), task.getPlanId(), task.getPlanRunId(), task.getCaseId(),
                 task.getCaseName(), task.getMethod(), task.getUrl(), name(task.getStatus()),
-                task.getHttpStatus(), task.getDurationMs(), task.getFailureReason(), task.getSummary(),
-                reportUrl(task.getId()), task.getCreatedBy(), task.getCreatedAt(), task.getStartedAt(),
-                task.getFinishedAt());
+                task.getWorkerId(), task.getHttpStatus(), task.getDurationMs(), task.getFailureReason(),
+                task.getSummary(), reportUrl(task.getId()), task.getCreatedBy(), task.getCreatedAt(),
+                task.getStartedAt(), task.getFinishedAt());
     }
 
     private String reportUrl(String taskId) {

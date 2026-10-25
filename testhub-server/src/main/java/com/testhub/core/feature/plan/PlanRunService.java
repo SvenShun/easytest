@@ -6,6 +6,9 @@ import com.testhub.common.util.Ids;
 import com.testhub.common.web.ApiException;
 import com.testhub.common.web.PageResponse;
 import com.testhub.core.feature.apicase.ApiCase;
+import com.testhub.core.feature.apienv.ApiEnvironment;
+import com.testhub.core.feature.apienv.ApiEnvironmentRepository;
+import com.testhub.core.feature.apienv.ApiEnvironmentResolver;
 import com.testhub.core.feature.apicase.ApiCaseRepository;
 import com.testhub.core.feature.apicase.ApiCaseService;
 import com.testhub.core.feature.casemgmt.ClientCase;
@@ -51,6 +54,8 @@ public class PlanRunService {
     private final ApiExecutionClient apiExecutionClient;
     private final ApiCaseRepository apiCaseRepository;
     private final ApiCaseService apiCaseService;
+    private final ApiEnvironmentRepository environmentRepository;
+    private final ApiEnvironmentResolver environmentResolver;
 
     public PlanRunService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                           PlanRunRepository runRepository, PlanRunItemRepository itemRepository,
@@ -58,7 +63,8 @@ public class PlanRunService {
                           UiExecutionClient uiExecutionClient, AuditService auditService,
                           MeterSphereResultSink meterSphereResultSink,
                           ApiExecutionClient apiExecutionClient, ApiCaseRepository apiCaseRepository,
-                          ApiCaseService apiCaseService) {
+                          ApiCaseService apiCaseService, ApiEnvironmentRepository environmentRepository,
+                          ApiEnvironmentResolver environmentResolver) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -71,6 +77,8 @@ public class PlanRunService {
         this.apiExecutionClient = apiExecutionClient;
         this.apiCaseRepository = apiCaseRepository;
         this.apiCaseService = apiCaseService;
+        this.environmentRepository = environmentRepository;
+        this.environmentResolver = environmentResolver;
     }
 
     public TriggerResponse trigger(String planId, TriggerRequest request) {
@@ -84,6 +92,7 @@ public class PlanRunService {
         if (executable == 0) {
             throw noExecutableCase("测试计划没有可执行的用例（UI 需已评审，API 需启用）");
         }
+        ApiEnvironmentResolver.ResolvedEnvironment environment = resolveEnvironment(plan);
 
         TriggerRequest options = request == null
                 ? new TriggerRequest(null, null, null, null) : request;
@@ -103,32 +112,45 @@ public class PlanRunService {
             Instant itemTime = startedAt.plusMillis(index++);
             if (mount.getCaseType() == CaseType.API) {
                 ApiCase apiCase = apiCaseRepository.findById(mount.getCaseId()).orElse(null);
-                PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), mount.getCaseId(),
-                        apiCase == null ? "(已删除接口用例)" : apiCase.getName(),
-                        ExecutorType.API, RunItemStatus.PENDING, itemTime);
                 if (apiCase == null || !apiCase.isEnabled()) {
-                    item.setStatus(RunItemStatus.SKIPPED);
+                    PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), mount.getCaseId(),
+                            apiCase == null ? "(已删除接口用例)" : apiCase.getName(),
+                            ExecutorType.API, RunItemStatus.SKIPPED, itemTime);
                     item.setError(apiCase == null ? "接口用例已不存在，已跳过" : "接口用例已禁用，已跳过");
                     item.setUpdatedAt(Instant.now());
                     itemRepository.save(item);
                     views.add(triggerView(item));
                     continue;
                 }
-                itemRepository.save(item);
-                try {
-                    int apiTimeout = Math.max(1, Math.min(timeoutSec, apiCase.getTimeoutSec()));
-                    ApiExecutionClient.TaskCreated created = apiExecutionClient.createTask(
-                            apiPayload(planId, run.getId(), apiCase, apiTimeout, actor));
-                    item.setTaskId(created.taskId());
-                    RunItemStatus status = RunItemStatus.parse(created.status());
-                    item.setStatus(status == null ? RunItemStatus.PENDING : status);
-                } catch (Exception e) {
-                    item.setStatus(RunItemStatus.FAILED);
-                    item.setError(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                List<Map<String, Object>> rows = apiCaseService.dataset(apiCase);
+                if (rows.isEmpty()) {
+                    rows = List.of(Map.of());
                 }
-                item.setUpdatedAt(Instant.now());
-                itemRepository.save(item);
-                views.add(triggerView(item));
+                for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+                    Map<String, Object> row = rows.get(rowIndex);
+                    String title = rows.size() > 1
+                            ? apiCase.getName() + " [" + (rowIndex + 1) + "/" + rows.size() + "]"
+                            : apiCase.getName();
+                    PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), mount.getCaseId(),
+                            title, ExecutorType.API, RunItemStatus.PENDING, itemTime.plusMillis(rowIndex),
+                            rows.size() > 1 ? rowIndex + 1 : 0);
+                    itemRepository.save(item);
+                    try {
+                        int apiTimeout = Math.max(1, Math.min(timeoutSec, apiCase.getTimeoutSec()));
+                        ApiExecutionClient.TaskCreated created = apiExecutionClient.createTask(
+                                apiPayload(planId, run.getId(), apiCase, apiTimeout, actor, environment, row));
+                        item.setTaskId(created.taskId());
+                        RunItemStatus status = RunItemStatus.parse(created.status());
+                        item.setStatus(status == null ? RunItemStatus.PENDING : status);
+                    } catch (Exception e) {
+                        item.setStatus(RunItemStatus.FAILED);
+                        item.setError(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                    }
+                    item.setUpdatedAt(Instant.now());
+                    itemRepository.save(item);
+                    views.add(triggerView(item));
+                }
+                index += rows.size() - 1;
                 continue;
             }
 
@@ -432,24 +454,48 @@ public class PlanRunService {
                 .orElse(false);
     }
 
+    private ApiEnvironmentResolver.ResolvedEnvironment resolveEnvironment(TestPlan plan) {
+        if (plan.getEnvironmentId() == null || plan.getEnvironmentId().isBlank()) {
+            return new ApiEnvironmentResolver.ResolvedEnvironment("", Map.of(), Map.of());
+        }
+        ApiEnvironment environment = environmentRepository.findById(plan.getEnvironmentId())
+                .orElseThrow(() -> ApiException.notFound("环境不存在: " + plan.getEnvironmentId()));
+        if (!environment.isEnabled()) {
+            throw new ApiException(HttpStatus.CONFLICT, "ENV_DISABLED",
+                    "测试计划引用的环境已禁用: " + environment.getName());
+        }
+        return environmentResolver.resolve(environment);
+    }
+
     private Map<String, Object> apiPayload(String planId, String runId, ApiCase apiCase, int timeoutSec,
-                                            String actor) {
+                                            String actor,
+                                            ApiEnvironmentResolver.ResolvedEnvironment environment,
+                                            Map<String, Object> dataRow) {
         var view = apiCaseService.view(apiCase);
+        String baseUrl = isBlank(view.baseUrl()) ? environment.baseUrl() : view.baseUrl();
+        baseUrl = environmentResolver.apply(baseUrl, environment, dataRow);
+        String path = environmentResolver.apply(view.path(), environment, dataRow);
+        if (isBlank(baseUrl) && !path.startsWith("http://") && !path.startsWith("https://")) {
+            throw ApiException.badRequest("接口用例没有 baseUrl，且环境未配置 Base URL: " + apiCase.getName());
+        }
+        Map<String, String> headers = new LinkedHashMap<>(environment.headers());
+        headers.putAll(environmentResolver.applyMap(view.headers(), environment, dataRow));
         Map<String, Object> request = new LinkedHashMap<>();
         request.put("method", view.method());
-        request.put("baseUrl", view.baseUrl());
-        request.put("path", view.path());
-        request.put("headers", view.headers());
-        request.put("query", view.query());
-        request.put("body", view.body());
+        request.put("baseUrl", baseUrl);
+        request.put("path", path);
+        request.put("headers", headers);
+        request.put("query", environmentResolver.applyMap(view.query(), environment, dataRow));
+        request.put("body", view.body() == null ? null : environmentResolver.apply(view.body(), environment, dataRow));
         request.put("timeoutSec", timeoutSec);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("planId", planId);
         payload.put("planRunId", runId);
         payload.put("caseId", apiCase.getId());
-        payload.put("caseName", apiCase.getName());
+        payload.put("caseName", view.name());
+        payload.put("iteration", dataRow.isEmpty() ? 0 : 0);
         payload.put("request", request);
-        payload.put("assertions", view.assertions());
+        payload.put("assertions", environmentResolver.applyAssertions(view.assertions(), environment, dataRow));
         payload.put("createdBy", actor);
         return payload;
     }

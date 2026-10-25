@@ -152,6 +152,91 @@ class ApiPlanTriggerTest extends ApiTestSupport {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void resolvesEnvironmentAndRunsDatasetIterations() throws Exception {
+        String token = testerToken();
+        Map<String, Object> envBody = new LinkedHashMap<>();
+        envBody.put("name", "数据驱动环境");
+        envBody.put("baseUrl", "${host}");
+        envBody.put("headers", Map.of("X-Env", "env-${hostName}"));
+        envBody.put("variables", Map.of("host", "http://env.local", "hostName", "demo"));
+        envBody.put("auth", Map.of("type", "NONE"));
+        envBody.put("enabled", true);
+        String envId = callJson(post("/api/v1/api-environments"), token, envBody).path("id").asText();
+
+        Map<String, Object> caseBody = apiCaseBody("数据驱动接口");
+        caseBody.put("baseUrl", null);
+        caseBody.put("path", "/users/${id}");
+        caseBody.put("query", Map.of("q", "${q}"));
+        caseBody.put("headers", Map.of("X-Case", "row-${id}"));
+        caseBody.put("dataset", List.of(Map.of("id", "1", "q", "a"), Map.of("id", "2", "q", "b")));
+        String apiCase = callJson(post("/api/v1/api-cases"), token, caseBody).path("id").asText();
+
+        Map<String, Object> planBody = new LinkedHashMap<>();
+        planBody.put("name", "数据驱动计划");
+        planBody.put("description", "env+dataset");
+        planBody.put("environmentId", envId);
+        String planId = callJson(post("/api/v1/plans"), token, planBody).path("id").asText();
+        Map<String, Object> mountBody = new LinkedHashMap<>();
+        mountBody.put("apiCaseIds", List.of(apiCase));
+        mockMvc.perform(post("/api/v1/plans/{id}/cases", planId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(mountBody)))
+                .andExpect(status().isOk());
+
+        when(apiExecutionClient.createTask(anyMap()))
+                .thenReturn(new ApiExecutionClient.TaskCreated("api-row-1", "PENDING"))
+                .thenReturn(new ApiExecutionClient.TaskCreated("api-row-2", "PENDING"));
+
+        MvcResult trigger = mockMvc.perform(post("/api/v1/plans/{id}/trigger", planId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"timeoutSec\":60}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].caseTitle").value("数据驱动接口 [1/2]"))
+                .andExpect(jsonPath("$.items[1].caseTitle").value("数据驱动接口 [2/2]"))
+                .andReturn();
+        String runId = json(trigger).path("runId").asText();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(apiExecutionClient, org.mockito.Mockito.times(2)).createTask(captor.capture());
+        Map<String, Object> first = captor.getAllValues().get(0);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> request = (Map<String, Object>) first.get("request");
+        assertThat(request.get("baseUrl")).isEqualTo("http://env.local");
+        assertThat(request.get("path")).isEqualTo("/users/1");
+        @SuppressWarnings("unchecked")
+        Map<String, String> query = (Map<String, String>) request.get("query");
+        assertThat(query.get("q")).isEqualTo("a");
+        @SuppressWarnings("unchecked")
+        Map<String, String> headers = (Map<String, String>) request.get("headers");
+        assertThat(headers).containsEntry("X-Env", "env-demo");
+        assertThat(headers).containsEntry("X-Case", "row-1");
+
+        Map<String, Object> second = captor.getAllValues().get(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> secondRequest = (Map<String, Object>) second.get("request");
+        assertThat(secondRequest.get("path")).isEqualTo("/users/2");
+
+        JsonNode run = getJson("/api/v1/plan-runs/" + runId, token);
+        assertThat(run.path("items")).hasSize(2);
+        assertThat(run.path("items").get(0).path("iteration").asInt()).isEqualTo(1);
+        assertThat(run.path("items").get(1).path("iteration").asInt()).isEqualTo(2);
+    }
+
+    private JsonNode callJson(org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder builder,
+                              String token, Map<String, Object> body) throws Exception {
+        MvcResult result = mockMvc.perform(builder.header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andReturn();
+        return json(result);
+    }
+
     private String createApiCase(String token, String name) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/api-cases")
                         .header("Authorization", "Bearer " + token)

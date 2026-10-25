@@ -40,14 +40,15 @@ public final class ApiExecutionDtos {
 
     public record TaskSummaryView(String taskId, String planId, String planRunId, String caseId,
                                   String caseName, String method, String url, String status,
-                                  Integer httpStatus, Long durationMs, String failureReason,
-                                  String summary, String failureReportUrl, String createdBy,
-                                  Instant createdAt, Instant startedAt, Instant finishedAt) {
+                                  String workerId, Integer httpStatus, Long durationMs,
+                                  String failureReason, String summary, String failureReportUrl,
+                                  String createdBy, Instant createdAt, Instant startedAt,
+                                  Instant finishedAt) {
     }
 
     public record TaskDetailView(String taskId, String planId, String planRunId, String caseId,
-                                 String caseName, String status, String failureReason, String summary,
-                                 RequestView request, ResponseView response,
+                                 String caseName, String status, String workerId, String failureReason,
+                                 String summary, RequestView request, ResponseView response,
                                  List<AssertionResult> assertionResults, Integer httpStatus,
                                  Long durationMs, String failureReportUrl, String createdBy,
                                  Instant createdAt, Instant startedAt, Instant finishedAt) {

@@ -270,4 +270,7 @@ docker exec -i testhub-mysql mysql -uroot -ptesthub < backups/my.sql
 - `3306` 目前映射到 `0.0.0.0`，同一局域网可访问；生产必须改密、限制来源、加 TLS，不要直接暴露公网。
 - 数据在 Docker named volume 中，删除 volume（`docker compose -f deploy/docker-compose.infra.yml down -v`）会清空全部数据。
 - 接口执行：`./scripts/dev-up.sh` 会启动 api-execution；主服务用 `TESTHUB_API_EXECUTION_URLS`（逗号分隔）配置多个实例。
+- 共享队列：Docker 模式下自动 `TESTHUB_APIEXEC_QUEUE=redis`；`make apiexec-scale` 启动 :8085 第二实例，
+  `TESTHUB_APIEXEC_SECOND_URL=http://127.0.0.1:8085 make part3` 验收，`make apiexec-scale-down` 停止。
+- 环境与数据驱动：页面「环境管理」配置变量/鉴权；接口用例「数据集」一行一次执行；计划创建/编辑选择环境。
 - 其他中间件：Redis `127.0.0.1:6379`；MinIO API `9000`、控制台 `http://127.0.0.1:9001`（`testhub/testhub123`）；Kafka `127.0.0.1:9092`。

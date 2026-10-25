@@ -186,6 +186,7 @@ export interface Plan {
   id: string;
   name: string;
   description?: string;
+  environmentId?: string | null;
   status?: string;
   createdBy?: string;
   createdAt?: string;
@@ -206,6 +207,7 @@ export interface ApiCase {
   query?: Record<string, string>;
   body?: string | null;
   assertions?: Array<Record<string, unknown>>;
+  dataset?: Array<Record<string, unknown>>;
   timeoutSec: number;
   enabled: boolean;
   createdBy?: string;
@@ -222,7 +224,47 @@ export interface ApiCaseInput {
   query?: Record<string, string>;
   body?: string;
   assertions?: Array<Record<string, unknown>>;
+  dataset?: Array<Record<string, unknown>>;
   timeoutSec?: number;
+  enabled?: boolean;
+}
+
+export interface ApiAuthConfig {
+  type: string;
+  token?: string;
+  username?: string;
+  password?: string;
+  headerName?: string;
+  headerValue?: string;
+  prefix?: string;
+  loginMethod?: string;
+  loginPath?: string;
+  loginHeaders?: Record<string, string>;
+  loginBody?: string;
+  tokenPath?: string;
+  tokenHeader?: string;
+  tokenPrefix?: string;
+}
+
+export interface ApiEnvironment {
+  id: string;
+  name: string;
+  baseUrl: string;
+  headers?: Record<string, string>;
+  variables?: Record<string, string>;
+  auth?: ApiAuthConfig;
+  enabled: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiEnvironmentInput {
+  name: string;
+  baseUrl: string;
+  headers?: Record<string, string>;
+  variables?: Record<string, string>;
+  auth?: ApiAuthConfig;
   enabled?: boolean;
 }
 

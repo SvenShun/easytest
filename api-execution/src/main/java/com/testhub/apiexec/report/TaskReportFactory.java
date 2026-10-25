@@ -33,6 +33,7 @@ public class TaskReportFactory {
                 task.getCaseId(),
                 task.getCaseName(),
                 task.getStatus() == null ? null : task.getStatus().name(),
+                task.getWorkerId(),
                 task.getFailureReason(),
                 new TaskReport.RequestView(task.getMethod(), task.getUrl(), readStringMap(task.getHeadersJson()),
                         readStringMap(task.getQueryJson()), task.getBody(), task.getTimeoutSec()),

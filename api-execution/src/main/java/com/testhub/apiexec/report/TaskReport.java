@@ -8,8 +8,8 @@ import java.util.Map;
 
 /** JSON document returned by {@code GET .../tasks/{id}/report} (contract §5). */
 public record TaskReport(String taskId, String caseId, String caseName, String status,
-                         String failureReason, RequestView request, ResponseView response,
-                         List<AssertionResult> assertions, String summary,
+                         String workerId, String failureReason, RequestView request,
+                         ResponseView response, List<AssertionResult> assertions, String summary,
                          Instant createdAt, Instant startedAt, Instant finishedAt) {
 
     public record RequestView(String method, String url, Map<String, String> headers,

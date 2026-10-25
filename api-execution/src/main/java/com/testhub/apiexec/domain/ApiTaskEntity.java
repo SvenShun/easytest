@@ -70,6 +70,10 @@ public class ApiTaskEntity {
     @Column(name = "status", nullable = false, length = 32)
     private ApiTaskStatus status;
 
+    /** Instance and worker index that claimed the task (e.g. host-a1b2-1). */
+    @Column(name = "worker_id", length = 128)
+    private String workerId;
+
     @Column(name = "http_status")
     private Integer httpStatus;
 
@@ -226,6 +230,14 @@ public class ApiTaskEntity {
 
     public void setStatus(ApiTaskStatus status) {
         this.status = status;
+    }
+
+    public String getWorkerId() {
+        return workerId;
+    }
+
+    public void setWorkerId(String workerId) {
+        this.workerId = workerId;
     }
 
     public Integer getHttpStatus() {

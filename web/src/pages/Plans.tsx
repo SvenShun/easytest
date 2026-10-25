@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { plansApi } from '../api';
+import { apiEnvironmentsApi, plansApi } from '../api';
+import type { ApiEnvironment } from '../api/types';
 import type { Plan, TriggerResponse } from '../api/types';
 import { PLAN_RUN_STATUS_META, metaOf } from '../constants';
 import { useDebouncedValue } from '../hooks';
@@ -17,6 +18,7 @@ import {
   Input,
   PageHeading,
   Pagination,
+  Select,
   SkeletonRows,
   StatusPill,
   Textarea,
@@ -46,7 +48,8 @@ export function PlansPage() {
   const [enrichLoading, setEnrichLoading] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: '', description: '' });
+  const [createForm, setCreateForm] = useState({ name: '', description: '', environmentId: '' });
+  const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [createErrors, setCreateErrors] = useState<{ name?: string }>({});
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -122,7 +125,8 @@ export function PlansPage() {
   }, [items]);
 
   const openCreate = () => {
-    setCreateForm({ name: '', description: '' });
+    setCreateForm({ name: '', description: '', environmentId: '' });
+    void apiEnvironmentsApi.list('', 1, 100).then((data) => setEnvironments(data.items)).catch(() => setEnvironments([]));
     setCreateErrors({});
     setCreateError('');
     setCreateOpen(true);
@@ -136,7 +140,8 @@ export function PlansPage() {
     setCreating(true);
     setCreateError('');
     try {
-      await plansApi.create({ name: createForm.name.trim(), description: createForm.description.trim() });
+      await plansApi.create({ name: createForm.name.trim(), description: createForm.description.trim(),
+        environmentId: createForm.environmentId || null });
       toastSuccess('测试计划已创建');
       setCreateOpen(false);
       await load();
@@ -390,6 +395,18 @@ export function PlansPage() {
               invalid={Boolean(createErrors.name)}
               onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
             />
+          </Field>
+          <Field label="API 环境" htmlFor="plan-environment" hint="可选；接口用例可用环境变量与鉴权">
+            <Select
+              id="plan-environment"
+              value={createForm.environmentId}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, environmentId: event.target.value }))}
+            >
+              <option value="">不绑定环境</option>
+              {environments.filter((env) => env.enabled).map((env) => (
+                <option key={env.id} value={env.id}>{env.name}</option>
+              ))}
+            </Select>
           </Field>
           <Field label="描述" htmlFor="plan-desc" hint="可选，说明计划覆盖范围与执行时机">
             <Textarea

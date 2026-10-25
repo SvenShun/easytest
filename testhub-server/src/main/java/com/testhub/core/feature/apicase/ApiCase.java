@@ -40,6 +40,10 @@ public class ApiCase {
     @Column(name = "assertions_json", columnDefinition = "TEXT")
     private String assertionsJson;
 
+    /** Optional data rows; each row produces one execution iteration. */
+    @Column(name = "dataset_json", columnDefinition = "TEXT")
+    private String datasetJson;
+
     @Column(name = "timeout_sec", nullable = false)
     private int timeoutSec = 30;
 
@@ -59,8 +63,8 @@ public class ApiCase {
     }
 
     public ApiCase(String id, String name, String method, String baseUrl, String path, String headersJson,
-                   String queryJson, String body, String assertionsJson, int timeoutSec, boolean enabled,
-                   String createdBy, Instant createdAt, Instant updatedAt) {
+                   String queryJson, String body, String assertionsJson, String datasetJson,
+                   int timeoutSec, boolean enabled, String createdBy, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.name = name;
         this.method = method;
@@ -70,6 +74,7 @@ public class ApiCase {
         this.queryJson = queryJson;
         this.body = body;
         this.assertionsJson = assertionsJson;
+        this.datasetJson = datasetJson;
         this.timeoutSec = timeoutSec;
         this.enabled = enabled;
         this.createdBy = createdBy;
@@ -86,6 +91,7 @@ public class ApiCase {
     public String getQueryJson() { return queryJson; }
     public String getBody() { return body; }
     public String getAssertionsJson() { return assertionsJson; }
+    public String getDatasetJson() { return datasetJson; }
     public int getTimeoutSec() { return timeoutSec; }
     public boolean isEnabled() { return enabled; }
     public String getCreatedBy() { return createdBy; }
@@ -100,6 +106,7 @@ public class ApiCase {
     public void setQueryJson(String queryJson) { this.queryJson = queryJson; }
     public void setBody(String body) { this.body = body; }
     public void setAssertionsJson(String assertionsJson) { this.assertionsJson = assertionsJson; }
+    public void setDatasetJson(String datasetJson) { this.datasetJson = datasetJson; }
     public void setTimeoutSec(int timeoutSec) { this.timeoutSec = timeoutSec; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }

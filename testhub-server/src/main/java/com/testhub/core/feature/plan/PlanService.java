@@ -6,6 +6,7 @@ import com.testhub.common.util.Ids;
 import com.testhub.common.web.ApiException;
 import com.testhub.common.web.PageResponse;
 import com.testhub.core.feature.apicase.ApiCase;
+import com.testhub.core.feature.apienv.ApiEnvironmentRepository;
 import com.testhub.core.feature.apicase.ApiCaseRepository;
 import com.testhub.core.feature.casemgmt.CapabilityView;
 import com.testhub.core.feature.casemgmt.CaseService;
@@ -42,11 +43,12 @@ public class PlanService {
     private final ScriptService scriptService;
     private final CaseService caseService;
     private final ApiCaseRepository apiCaseRepository;
+    private final ApiEnvironmentRepository environmentRepository;
 
     public PlanService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                        PlanRunRepository runRepository, ClientCaseRepository caseRepository,
                        ScriptService scriptService, CaseService caseService,
-                       ApiCaseRepository apiCaseRepository) {
+                       ApiCaseRepository apiCaseRepository, ApiEnvironmentRepository environmentRepository) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -54,6 +56,7 @@ public class PlanService {
         this.scriptService = scriptService;
         this.caseService = caseService;
         this.apiCaseRepository = apiCaseRepository;
+        this.environmentRepository = environmentRepository;
     }
 
     public PageResponse<PlanView> list(String keyword, Integer page, Integer size) {
@@ -87,6 +90,7 @@ public class PlanService {
         Instant now = Instant.now();
         TestPlan plan = new TestPlan(Ids.newId("plan"), request.name().trim(), request.description(), "READY",
                 principal.username(), now, now);
+        plan.setEnvironmentId(validateEnvironment(request.environmentId()));
         return PlanView.of(planRepository.save(plan));
     }
 
@@ -96,6 +100,7 @@ public class PlanService {
         TestPlan plan = require(id);
         plan.setName(request.name().trim());
         plan.setDescription(request.description());
+        plan.setEnvironmentId(validateEnvironment(request.environmentId()));
         plan.setUpdatedAt(Instant.now());
         return PlanView.of(planRepository.save(plan));
     }
@@ -194,6 +199,18 @@ public class PlanService {
                     capability.availableExecutors(), CaseType.UI, null, null));
         }
         return views;
+    }
+
+    private String validateEnvironment(String environmentId) {
+        if (environmentId == null || environmentId.isBlank()) {
+            return null;
+        }
+        var environment = environmentRepository.findById(environmentId)
+                .orElseThrow(() -> ApiException.notFound("环境不存在: " + environmentId));
+        if (!environment.isEnabled()) {
+            throw ApiException.badRequest("环境已禁用: " + environment.getName());
+        }
+        return environmentId;
     }
 
     private void validate(PlanRequest request) {

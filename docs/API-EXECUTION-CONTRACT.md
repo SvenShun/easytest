@@ -123,3 +123,54 @@ X-Service-Token: ...
 - 触发时：UI 用例 → `ui-execution`；API 用例 → `api-execution`（按配置轮询）。
 - 计划报告 `executors` 中新增 `API`；运行项 `executorType=API`。
 - API 用例要求 `enabled=true`，否则 item 记 SKIPPED。
+
+
+## 7. 环境、鉴权与数据驱动（V2）
+
+### 7.1 环境
+
+`api_environment`：
+
+```json
+{
+  "name": "测试环境",
+  "baseUrl": "${host}",
+  "headers": {"X-Env": "demo"},
+  "variables": {"host": "http://127.0.0.1:9099", "user": "tester", "pass": "secret"},
+  "auth": {
+    "type": "LOGIN",
+    "loginMethod": "POST",
+    "loginPath": "/login",
+    "loginHeaders": {"Content-Type": "application/json"},
+    "loginBody": "{\"username\":\"${user}\",\"password\":\"${pass}\"}",
+    "tokenPath": "$.data.token",
+    "tokenHeader": "Authorization",
+    "tokenPrefix": "Bearer "
+  },
+  "enabled": true
+}
+```
+
+- 类型：`NONE` / `BEARER` / `BASIC` / `API_KEY` / `LOGIN`。
+- 登录鉴权在**每次计划触发时执行一次**，Token 注入该次运行的所有接口请求。
+- `${var}` 在 Base URL、路径、Headers、Query、Body、断言 expected/path 中解析；未定义变量直接报错。
+- 计划 `environmentId` 绑定环境；接口用例 `baseUrl` 为空时使用环境 Base URL。
+
+### 7.2 数据集
+
+`api_case.dataset`：
+
+```json
+[{"id":"1","name":"alice"},{"id":"2","name":"bob"}]
+```
+
+- 每个数据行生成一个计划运行项，标题带 `[i/n]`，`iteration` 为 1..n。
+- 行字段用 `${field}` 或 `${data.field}` 引用；最多 200 行。
+- 登录鉴权仍是运行级（不会按行登录）。
+
+### 7.3 共享队列
+
+- `testhub.apiexec.queue=memory|redis`（`TESTHUB_APIEXEC_QUEUE`）。
+- Redis key：`testhub:apiexec:queue`；多实例 worker 从同一队列取任务。
+- 任务记录 `workerId = {instanceId}-{workerIndex}`；实例 ID 可用 `TESTHUB_APIEXEC_INSTANCE_ID` 固定。
+- 排队取消会从队列移除；运行中取消写 Redis 取消标记并置 CANCELLED。

@@ -9,7 +9,7 @@ if [ -d data/pids ]; then
     name="$(basename "$pidfile" .pid)"
     # Only manage TestHub's own services; MeterSphere has its own script.
     case "$name" in
-      core|uiexec|apiexec|agent|ai-runtime|web) ;;
+      core|uiexec|apiexec|apiexec-2|agent|ai-runtime|web) ;;
       *) continue ;;
     esac
     pid="$(cat "$pidfile")"
@@ -26,6 +26,7 @@ fi
 pkill -f 'testhub-server.*spring-boot:run' 2>/dev/null || true
 pkill -f 'ui-execution.*spring-boot:run' 2>/dev/null || true
 pkill -f 'api-execution.*spring-boot:run' 2>/dev/null || true
+pkill -f 'api-execution-1.0.0.jar' 2>/dev/null || true
 pkill -f 'device-agent.*spring-boot:run' 2>/dev/null || true
 pkill -f 'uvicorn app.main:app' 2>/dev/null || true
 echo "stopped"

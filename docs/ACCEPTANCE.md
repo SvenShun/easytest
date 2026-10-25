@@ -6,19 +6,19 @@
 | 版本 | V1（首个可运行版本） |
 | 验收环境 | macOS（Apple Silicon），Java 17.0.2，Maven 3.9.9，Node 22.20.0，Python 3.9.15，无 Docker daemon、无真机、无大模型 Key |
 | 运行模式 | H2 文件库 + 内存 FIFO 队列 + 本地产物 + `mock` 模型 + 模拟设备（完全离线） |
-| 结论 | **通过**：全量 189 个自动化测试通过，E2E 47 项 + 第二部分 18 项检查全部通过 |
+| 结论 | **通过**：全量 198 个自动化测试通过，E2E 47 项 + 接口执行 18 项 + 增强能力 16 项检查全部通过 |
 
 ## 1. 构建与自动化测试
 
 | 模块 | 测试数 | 结果 | 命令 |
 |---|---|---|---|
 | common | 4 | 通过 | `./scripts/mvn.sh -pl common test` |
-| testhub-server | 39 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
-| api-execution | 26 | 通过 | `./scripts/mvn.sh -pl api-execution test` |
+| testhub-server | 42 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
+| api-execution | 32 | 通过 | `./scripts/mvn.sh -pl api-execution test` |
 | ui-execution | 36 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
 | device-agent | 36 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
 | ai-runtime (Python) | 48 | 通过 | `cd agents/ai-runtime && .venv/bin/pytest -q` |
-| **合计** | **189** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
+| **合计** | **198** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
 | web | — | `tsc --noEmit` + Vite build 成功 | `cd web && npm run build` |
 
 覆盖重点：执行器路由、FIFO 队列位置、任务状态机、失败分类、评审流转、执行能力计算、
@@ -143,6 +143,18 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 
 详见 [docs/ACCEPTANCE-PART2.md](ACCEPTANCE-PART2.md)。
 
+## 2.5 接口自动化增强：环境/鉴权、数据驱动、共享队列
+
+| 项 | 结果 |
+|---|---|
+| 环境与登录鉴权 | 登录一次，Token 注入所有请求，变量 Header/Base URL 生效 |
+| 数据驱动 | 3 行 → 3 个运行项，iteration 1/2/3，全部 SUCCESS |
+| 共享队列 | 两个 api-execution 实例共同消费 8 个任务 |
+| 验收脚本 | 单实例 14/14；双实例 16/16 |
+| 证据 | `run_931231e0e14e43e9b444`、`run_8ab2e031626a4a878633`、`run_e1ed04d54ed942b994fc` |
+
+详见 [docs/ACCEPTANCE-PART3.md](ACCEPTANCE-PART3.md)。
+
 ## 3. 验收中发现并修复的问题
 
 | 问题 | 修复 |
@@ -165,8 +177,8 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 - 真实大模型：Provider 代码路径已实现，但未用真实 Key 做联网验收（默认 mock）。
 - Redis 队列 / MinIO 产物：已在真实 Redis 7.4 / MinIO 上验收（见 §2.1）。
 - Docker Compose：已提供，本次未在容器环境实测。
-- 接口自动化已实现 V1（见 §2.4 / `docs/ACCEPTANCE-PART2.md`）：无环境变量、鉴权预设、数据驱动、前后置脚本、用例级重试；
-  执行队列为实例内存 + DB，不是 Redis 共享队列。
+- 接口自动化已实现 V1 + 增强（见 §2.4/§2.5）：环境变量、登录鉴权、数据驱动、Redis 共享队列已验收；
+  前后置脚本、用例级重试、CSV 文件数据源、Token 过期自动刷新仍未实现。
 - Kafka 仅作为**任务生命周期事件流**（dispatch/result）接入，任务下发本身仍走 HTTP；把下发也迁到 Kafka 是后续工作。
 - MeterSphere：已真实构建、启动，完成用例源、失败评论回写、计划结果回写；
   源码级内嵌已完成队列/看门狗/失败报告/关联/取消（见 §2.3），脚本执行器/产物/前端尚未迁入。
@@ -181,7 +193,7 @@ make setup
 make up
 make e2e          # 期望：RESULT: 47 checks passed, 0 failed
 python3 scripts/part2_smoke.py   # 期望：PART 2 RESULT: 18 checks passed, 0 failed
-make check        # Java 141 + Python 48 测试 + Web 构建
+make check        # Java 150 + Python 48 测试 + Web 构建
 make down
 
 # 真实中间件模式（MySQL/Redis/MinIO/Kafka）

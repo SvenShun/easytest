@@ -45,7 +45,8 @@ V1 未实现投屏，设备状态由 Agent 心跳同步。
 | `auth` | 登录、用户、角色 | system-setting |
 | `system` | 模型配置（文本/视觉）、审计 | system-setting |
 | `requirement` | 测试需求 | test-track |
-| `apicase` | 接口用例（请求/断言）CRUD | api-test |
+| `apicase` | 接口用例（请求/断言/数据集）CRUD | api-test |
+| `apienv` | 环境、变量、鉴权预设、登录提取 Token | api-test |
 | `casemgmt` | 客户端前端用例、评审、能力计算、失败分析 | case-management |
 | `script` | 脚本工程包、下载票据 | case-management |
 | `plan` | 测试计划、运行、统一报告、对账 | test-plan |
@@ -79,6 +80,7 @@ V1 未实现投屏，设备状态由 Agent 心跳同步。
 | `execution` | URL 构建、HttpClient 请求、响应截断 |
 | `assertion` | 状态码/JSONPath/文本/耗时/响应头断言 |
 | `report` | 报告 JSON 生成 |
+| `queue` | TaskQueue：内存 / Redis 共享队列；workerId |
 | `client` | 回调 core 计划结果 |
 | `domain` | `api_task` 持久化 |
 
@@ -161,7 +163,8 @@ sequenceDiagram
 | `client_case` | id, title, bdd_given/when/then, requirement_id, review_status, source, model_id, script_id, failure_analysis, failure_report_url |
 | `case_review` | id, case_id, action, actor, comment |
 | `script_project` | id, name, script_type, entry_command, object_key, size_bytes |
-| `api_case` | id, name, method, base_url, path, headers/query/assertions_json, timeout_sec, enabled |
+| `api_environment` | id, name, base_url, headers/variables, auth_type/auth_json, enabled |
+| `api_case` | id, name, method, base_url, path, headers/query/assertions_json, dataset_json, timeout_sec, enabled |
 | `test_plan` / `plan_case` | 计划与挂载（case_type UI/API、executor_type_override） |
 | `plan_run` / `plan_run_item` | 运行与逐用例结果（task_id、failure_reason、report_url） |
 | `ai_job` | id, requirement_id, model_id, prompt_version, status, output_case_ids |
@@ -170,7 +173,7 @@ sequenceDiagram
 
 | 表 | 关键字段 |
 |---|---|
-| `api_task` | id, plan_run_id, case_id, method, url, request/response, assertions, status, failure_reason, report_json |
+| `api_task` | id, plan_run_id, case_id, method, url, request/response, assertions, status, worker_id, failure_reason, report_json |
 
 ### ui-execution（`testhub_uiexec`）
 

@@ -25,6 +25,11 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  data:
+    redis:
+      # We use Redis as a queue only; no Spring Data Redis repositories.
+      repositories:
+        enabled: false
 
 testhub:
   apiexec:
@@ -34,6 +39,11 @@ testhub:
     # Optional callback-token override; blank reuses testhub.security.service-token.
     service-token: ${TESTHUB_APIEXEC_SERVICE_TOKEN:}
     workers: ${TESTHUB_APIEXEC_WORKERS:4}
+    # memory (default, in-process) or redis (shared queue across instances).
+    queue: ${TESTHUB_APIEXEC_QUEUE:memory}
+    redis-key-prefix: ${TESTHUB_APIEXEC_REDIS_KEY_PREFIX:testhub:apiexec:}
+    # Blank means hostname + random suffix; workers are {instance-id}-{index}.
+    instance-id: ${TESTHUB_APIEXEC_INSTANCE_ID:}
     default-timeout-sec: ${TESTHUB_APIEXEC_DEFAULT_TIMEOUT_SEC:30}
     callback-enabled: ${TESTHUB_APIEXEC_CALLBACK_ENABLED:true}
   security:
@@ -50,3 +60,7 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    # The memory queue does not need Redis; opt in with TESTHUB_APIEXEC_REDIS_HEALTH=true.
+    redis:
+      enabled: ${TESTHUB_APIEXEC_REDIS_HEALTH:false}

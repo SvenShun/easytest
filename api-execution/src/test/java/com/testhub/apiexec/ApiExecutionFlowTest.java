@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.testhub.apiexec.client.CoreCallbackClient;
+import com.testhub.apiexec.config.ApiExecProperties;
+import com.testhub.apiexec.queue.TaskQueue;
 import com.testhub.common.security.AuthPrincipal;
 import com.testhub.common.security.JwtTokenProvider;
 import com.testhub.common.security.Role;
@@ -13,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -36,6 +40,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,6 +60,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "testhub.apiexec.core-base-url=http://127.0.0.1:1",
         "testhub.apiexec.callback-enabled=false",
         "testhub.apiexec.workers=1",
+        "testhub.apiexec.instance-id=test-instance",
         "testhub.apiexec.public-base-url=http://127.0.0.1:8084"
 })
 @AutoConfigureMockMvc
@@ -69,6 +78,15 @@ class ApiExecutionFlowTest {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private ApiExecProperties properties;
+
+    @Autowired
+    private TaskQueue taskQueue;
+
+    @MockBean
+    private CoreCallbackClient callbackClient;
+
     private HttpServer server;
     private ExecutorService serverExecutor;
     private CountDownLatch blockReceived;
@@ -77,6 +95,7 @@ class ApiExecutionFlowTest {
 
     @BeforeEach
     void startServer() throws IOException {
+        reset(callbackClient);
         blockReceived = new CountDownLatch(1);
         blockRelease = new CountDownLatch(1);
         captured.set(null);
@@ -135,6 +154,7 @@ class ApiExecutionFlowTest {
         assertThat(detail.path("failureReason").isNull()).isTrue();
         assertThat(detail.path("httpStatus").asInt()).isEqualTo(200);
         assertThat(detail.path("durationMs").asLong()).isGreaterThanOrEqualTo(0L);
+        assertThat(detail.path("workerId").asText()).isEqualTo(properties.getInstanceId() + "-1");
         assertThat(detail.path("summary").asText()).contains("5/5 assertions passed").contains("HTTP 200");
         assertThat(detail.path("assertionResults")).hasSize(5);
         detail.path("assertionResults").forEach(result -> assertThat(result.path("passed").asBoolean()).isTrue());
@@ -151,6 +171,8 @@ class ApiExecutionFlowTest {
         assertThat(request.query()).contains("lang=zh").contains("q=a%20b");
         assertThat(request.body()).isEqualTo("{\"username\":\"tester\"}");
         assertThat(request.customHeader()).isEqualTo("abc");
+        verify(callbackClient, times(1)).postPlanItemResult(argThat(payload ->
+                taskId.equals(payload.taskId()) && "SUCCESS".equals(payload.status())));
     }
 
     @Test
@@ -175,6 +197,7 @@ class ApiExecutionFlowTest {
         assertThat(report.path("taskId").asText()).isEqualTo(taskId);
         assertThat(report.path("status").asText()).isEqualTo("FAILED");
         assertThat(report.path("failureReason").asText()).isEqualTo("ASSERTION_FAILED");
+        assertThat(report.path("workerId").asText()).isEqualTo("test-instance-1");
         assertThat(report.path("request").path("method").asText()).isEqualTo("GET");
         assertThat(report.path("request").path("url").asText()).contains("/fail");
         assertThat(report.path("response").path("status").asInt()).isEqualTo(500);
@@ -234,8 +257,10 @@ class ApiExecutionFlowTest {
         awaitStatus(blocking, "RUNNING");
 
         String queued = createTask("/ok", "GET", 5, List.of());
+        assertThat(taskQueue.size()).isEqualTo(1);
         JsonNode queuedDetail = detail(queued);
         assertThat(queuedDetail.path("status").asText()).isEqualTo("PENDING");
+        assertThat(queuedDetail.path("workerId").isNull()).isTrue();
 
         mockMvc.perform(post("/api/v1/api-execution/tasks/" + queued + "/cancel")
                         .header("X-Service-Token", SERVICE_TOKEN))
@@ -243,20 +268,27 @@ class ApiExecutionFlowTest {
                 .andExpect(jsonPath("$.taskId").value(queued))
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
+        assertThat(taskQueue.size()).isZero();
         JsonNode cancelled = detail(queued);
         assertThat(cancelled.path("status").asText()).isEqualTo("CANCELLED");
         assertThat(cancelled.path("failureReason").asText()).isEqualTo("CANCELLED");
         assertThat(cancelled.path("summary").asText()).contains("cancelled before execution");
+        assertThat(cancelled.path("workerId").isNull()).isTrue();
+        assertThat(cancelled.path("httpStatus").isNull()).isTrue();
+        assertThat(cancelled.path("assertionResults")).isEmpty();
 
         blockRelease.countDown();
         assertThat(awaitTerminal(blocking).path("status").asText()).isEqualTo("SUCCESS");
+        verify(callbackClient, times(1)).postPlanItemResult(argThat(payload ->
+                queued.equals(payload.taskId()) && "CANCELLED".equals(payload.status())));
     }
 
     @Test
     void cancelRunningTaskAbortsAndMarksItCancelled() throws Exception {
         String taskId = createTask("/block", "GET", 10, List.of());
         assertThat(blockReceived.await(5, TimeUnit.SECONDS)).isTrue();
-        awaitStatus(taskId, "RUNNING");
+        JsonNode running = awaitStatus(taskId, "RUNNING");
+        assertThat(running.path("workerId").asText()).isEqualTo("test-instance-1");
 
         mockMvc.perform(post("/api/v1/api-execution/tasks/" + taskId + "/cancel")
                         .header("X-Service-Token", SERVICE_TOKEN))
@@ -266,8 +298,14 @@ class ApiExecutionFlowTest {
         JsonNode detail = detail(taskId);
         assertThat(detail.path("status").asText()).isEqualTo("CANCELLED");
         assertThat(detail.path("summary").asText()).contains("cancelled while running");
+        assertThat(detail.path("workerId").asText()).isEqualTo("test-instance-1");
+        assertThat(taskQueue.size()).isZero();
 
         blockRelease.countDown();
+        Thread.sleep(300);
+        // The cancel path sends the terminal callback; the worker must not duplicate it.
+        verify(callbackClient, times(1)).postPlanItemResult(argThat(payload ->
+                taskId.equals(payload.taskId()) && "CANCELLED".equals(payload.status())));
     }
 
     @Test
@@ -332,6 +370,7 @@ class ApiExecutionFlowTest {
                 .andExpect(jsonPath("$.total").value(1))
                 .andExpect(jsonPath("$.items[0].taskId").value(taskId))
                 .andExpect(jsonPath("$.items[0].status").value("SUCCESS"))
+                .andExpect(jsonPath("$.items[0].workerId").value("test-instance-1"))
                 .andExpect(jsonPath("$.items[0].summary").isNotEmpty());
 
         mockMvc.perform(get("/api/v1/api-execution/tasks")

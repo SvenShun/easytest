@@ -34,6 +34,10 @@ public class TestPlan {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    /** Optional API environment (base URL, variables, auth preset). */
+    @Column(name = "api_environment_id", length = 64)
+    private String environmentId;
+
     /** MeterSphere test plan id used for execution-result write-back (optional). */
     @Column(name = "metersphere_test_plan_id", length = 64)
     private String metersphereTestPlanId;
@@ -94,6 +98,14 @@ public class TestPlan {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getEnvironmentId() {
+        return environmentId;
+    }
+
+    public void setEnvironmentId(String environmentId) {
+        this.environmentId = environmentId;
     }
 
     public String getMetersphereTestPlanId() {

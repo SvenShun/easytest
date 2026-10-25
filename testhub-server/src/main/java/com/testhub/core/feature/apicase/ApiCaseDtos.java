@@ -21,14 +21,16 @@ public final class ApiCaseDtos {
             Map<String, String> query,
             String body,
             List<Map<String, Object>> assertions,
+            List<Map<String, Object>> dataset,
             Integer timeoutSec,
             Boolean enabled) {
     }
 
     public record ApiCaseView(String id, String name, String method, String baseUrl, String path,
                               Map<String, String> headers, Map<String, String> query, String body,
-                              List<Map<String, Object>> assertions, int timeoutSec, boolean enabled,
-                              String createdBy, Instant createdAt, Instant updatedAt) {
+                              List<Map<String, Object>> assertions, List<Map<String, Object>> dataset,
+                              int timeoutSec, boolean enabled, String createdBy, Instant createdAt,
+                              Instant updatedAt) {
     }
 
     public record ApiCaseListView(List<ApiCaseView> items, long total, int page, int size) {

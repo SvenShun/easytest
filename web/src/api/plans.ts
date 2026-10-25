@@ -15,9 +15,9 @@ export const plansApi = {
       asPage<Plan>(data, page, size),
     ),
   get: (id: string) => request<PlanDetail>('core', `/api/v1/plans/${encodeURIComponent(id)}`),
-  create: (input: { name: string; description: string }) =>
+  create: (input: { name: string; description: string; environmentId?: string | null }) =>
     request<Plan>('core', '/api/v1/plans', { method: 'POST', body: input }),
-  update: (id: string, input: { name: string; description: string }) =>
+  update: (id: string, input: { name: string; description: string; environmentId?: string | null }) =>
     request<Plan>('core', `/api/v1/plans/${encodeURIComponent(id)}`, { method: 'PUT', body: input }),
   remove: (id: string) =>
     request<void>('core', `/api/v1/plans/${encodeURIComponent(id)}`, { method: 'DELETE' }),

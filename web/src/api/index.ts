@@ -4,6 +4,7 @@ export { requirementsApi } from './requirements';
 export { scriptsApi } from './scripts';
 export { casesApi } from './cases';
 export { apiCasesApi } from './apicases';
+export { apiEnvironmentsApi } from './apienvironments';
 export type { CaseListParams } from './cases';
 export { aiApi } from './ai';
 export { plansApi } from './plans';

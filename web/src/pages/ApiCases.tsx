@@ -36,6 +36,7 @@ interface FormState {
   query: string;
   body: string;
   assertions: string;
+  dataset: string;
   timeoutSec: string;
   enabled: boolean;
 }
@@ -49,6 +50,7 @@ const EMPTY_FORM: FormState = {
   query: '{}',
   body: '',
   assertions: DEFAULT_ASSERTIONS,
+  dataset: '[]',
   timeoutSec: '30',
   enabled: true,
 };
@@ -111,6 +113,7 @@ export function ApiCasesPage() {
       query: JSON.stringify(item.query || {}, null, 2),
       body: item.body || '',
       assertions: JSON.stringify(item.assertions || [], null, 2),
+      dataset: JSON.stringify(item.dataset || [], null, 2),
       timeoutSec: String(item.timeoutSec || 30),
       enabled: item.enabled !== false,
     });
@@ -123,13 +126,17 @@ export function ApiCasesPage() {
     let headers: Record<string, string>;
     let query: Record<string, string>;
     let assertions: Array<Record<string, unknown>>;
+    let dataset: Array<Record<string, unknown>>;
     try {
       headers = JSON.parse(form.headers || '{}');
       query = JSON.parse(form.query || '{}');
       assertions = JSON.parse(form.assertions || '[]');
+      dataset = JSON.parse(form.dataset || '[]');
       if (typeof headers !== 'object' || Array.isArray(headers)) throw new Error('Headers 必须是 JSON 对象');
       if (typeof query !== 'object' || Array.isArray(query)) throw new Error('Query 必须是 JSON 对象');
       if (!Array.isArray(assertions)) throw new Error('断言必须是 JSON 数组');
+      if (!Array.isArray(dataset)) throw new Error('数据集必须是 JSON 数组');
+      if (dataset.length > 200) throw new Error('数据集最多 200 行');
     } catch (err) {
       setFormError(`JSON 格式错误：${safeErrorMessage(err)}`);
       return;
@@ -152,6 +159,7 @@ export function ApiCasesPage() {
       query,
       body: form.body,
       assertions,
+      dataset,
       timeoutSec: timeout,
       enabled: form.enabled,
     };
@@ -228,6 +236,7 @@ export function ApiCasesPage() {
                 <th style={{ width: 80 }}>方法</th>
                 <th>请求</th>
                 <th style={{ width: 100 }}>断言</th>
+                <th style={{ width: 90 }}>数据行</th>
                 <th style={{ width: 90 }}>状态</th>
                 <th style={{ width: 170 }}>更新时间</th>
                 <th style={{ width: 130 }}>操作</th>
@@ -235,7 +244,7 @@ export function ApiCasesPage() {
             </thead>
             <tbody>
               {loading && items.length === 0 ? (
-                <SkeletonRows rows={5} cols={7} />
+                <SkeletonRows rows={5} cols={8} />
               ) : error ? (
                 <tr>
                   <td colSpan={7}>
@@ -268,6 +277,7 @@ export function ApiCasesPage() {
                       {item.path}
                     </td>
                     <td>{(item.assertions || []).length}</td>
+                    <td>{(item.dataset || []).length}</td>
                     <td>
                       <Pill tone={item.enabled ? 'green' : 'red'} dot>
                         {item.enabled ? '启用' : '禁用'}
@@ -390,6 +400,20 @@ export function ApiCasesPage() {
               value={form.body}
               placeholder='{"username":"tester"}'
               onChange={(event) => setForm((prev) => ({ ...prev, body: event.target.value }))}
+            />
+          </Field>
+          <Field
+            label="数据集 (JSON 数组)"
+            htmlFor="api-dataset"
+            hint='每行一次执行；行字段可用 ${field} 或 ${data.field} 引用，例如 [{"username":"a","password":"b"}]'
+          >
+            <Textarea
+              id="api-dataset"
+              rows={5}
+              className="mono"
+              value={form.dataset}
+              placeholder='[{"username":"tester","password":"secret"}]'
+              onChange={(event) => setForm((prev) => ({ ...prev, dataset: event.target.value }))}
             />
           </Field>
           <Field

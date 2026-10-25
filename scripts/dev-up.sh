@@ -29,6 +29,8 @@ CORE_DB_URL="jdbc:h2:file:$ROOT/data/db/core;MODE=MySQL;AUTO_SERVER=TRUE"
 UEXEC_DB_URL="jdbc:h2:file:$ROOT/data/db/uiexec;MODE=MySQL;AUTO_SERVER=TRUE"
 APIEXEC_DB_URL="jdbc:h2:file:$ROOT/data/db/apiexec;MODE=MySQL;AUTO_SERVER=TRUE"
 QUEUE_STORE="${TESTHUB_QUEUE_STORE:-memory}"
+APIEXEC_QUEUE="${TESTHUB_APIEXEC_QUEUE:-memory}"
+APIEXEC_INSTANCE_ID="${TESTHUB_APIEXEC_INSTANCE_ID:-apiexec-local-1}"
 ARTIFACT_STORE="${TESTHUB_ARTIFACT_STORE:-local}"
 
 if [ "$INFRA" = "docker" ]; then
@@ -51,6 +53,7 @@ if [ "$INFRA" = "docker" ]; then
   UEXEC_DB_URL="jdbc:mysql://127.0.0.1:3306/testhub_uiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
   APIEXEC_DB_URL="jdbc:mysql://127.0.0.1:3306/testhub_apiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
   QUEUE_STORE="${TESTHUB_QUEUE_STORE:-redis}"
+  APIEXEC_QUEUE="${TESTHUB_APIEXEC_QUEUE:-redis}"
   ARTIFACT_STORE="${TESTHUB_ARTIFACT_STORE:-minio}"
 fi
 
@@ -70,7 +73,7 @@ start core env \
   TESTHUB_PUBLIC_BASE_URL="http://127.0.0.1:8080" \
   TESTHUB_INTERNAL_BASE_URL="http://127.0.0.1:8080" \
   TESTHUB_UI_EXECUTION_BASE_URL="http://127.0.0.1:8081" \
-  TESTHUB_API_EXECUTION_URLS="http://127.0.0.1:8084" \
+  TESTHUB_API_EXECUTION_URLS="${TESTHUB_API_EXECUTION_URLS:-http://127.0.0.1:8084}" \
   TESTHUB_WEB_STATIC_DIR="$ROOT/web/dist" \
   TESTHUB_ARTIFACT_DIR="$ROOT/data/core-artifacts" \
   TESTHUB_ARTIFACT_STORE="$ARTIFACT_STORE" \
@@ -92,7 +95,9 @@ start apiexec env \
   TESTHUB_CORE_URL="http://127.0.0.1:8080" \
   TESTHUB_APIEXEC_PUBLIC_URL="http://127.0.0.1:8084" \
   TESTHUB_APIEXEC_CALLBACK_URL="http://127.0.0.1:8080" \
-  TESTHUB_APIEXEC_WORKERS=4 \
+  TESTHUB_APIEXEC_QUEUE="$APIEXEC_QUEUE" \
+  TESTHUB_APIEXEC_INSTANCE_ID="$APIEXEC_INSTANCE_ID" \
+  TESTHUB_APIEXEC_WORKERS="${TESTHUB_APIEXEC_WORKERS:-4}" \
   ./scripts/mvn.sh -q -pl api-execution spring-boot:run
 
 start agent env \

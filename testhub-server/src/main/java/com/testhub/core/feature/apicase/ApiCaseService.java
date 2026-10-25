@@ -67,8 +67,9 @@ public class ApiCaseService {
         Instant now = Instant.now();
         ApiCase apiCase = new ApiCase(Ids.newId("ac"), request.name().trim(), normalizeMethod(request.method()),
                 blankToNull(request.baseUrl()), request.path().trim(), json(request.headers()), json(request.query()),
-                blankToNull(request.body()), json(request.assertions()), timeout(request.timeoutSec()),
-                request.enabled() == null || request.enabled(), principal.username(), now, now);
+                blankToNull(request.body()), json(request.assertions()), jsonDataset(request.dataset()),
+                timeout(request.timeoutSec()), request.enabled() == null || request.enabled(),
+                principal.username(), now, now);
         return view(repository.save(apiCase));
     }
 
@@ -83,6 +84,7 @@ public class ApiCaseService {
         apiCase.setQueryJson(json(request.query()));
         apiCase.setBody(blankToNull(request.body()));
         apiCase.setAssertionsJson(json(request.assertions()));
+        apiCase.setDatasetJson(jsonDataset(request.dataset()));
         apiCase.setTimeoutSec(timeout(request.timeoutSec()));
         apiCase.setEnabled(request.enabled() == null || request.enabled());
         apiCase.setUpdatedAt(Instant.now());
@@ -98,10 +100,15 @@ public class ApiCaseService {
         repository.delete(apiCase);
     }
 
+    public List<Map<String, Object>> dataset(ApiCase apiCase) {
+        return readDataset(apiCase.getDatasetJson());
+    }
+
     public ApiCaseView view(ApiCase apiCase) {
         return new ApiCaseView(apiCase.getId(), apiCase.getName(), apiCase.getMethod(), apiCase.getBaseUrl(),
                 apiCase.getPath(), readMap(apiCase.getHeadersJson()), readMap(apiCase.getQueryJson()),
-                apiCase.getBody(), readAssertions(apiCase.getAssertionsJson()), apiCase.getTimeoutSec(),
+                apiCase.getBody(), readAssertions(apiCase.getAssertionsJson()),
+                readDataset(apiCase.getDatasetJson()), apiCase.getTimeoutSec(),
                 apiCase.isEnabled(), apiCase.getCreatedBy(), apiCase.getCreatedAt(), apiCase.getUpdatedAt());
     }
 
@@ -152,6 +159,31 @@ public class ApiCaseService {
             return objectMapper.readValue(json, new TypeReference<LinkedHashMap<String, String>>() { });
         } catch (Exception e) {
             return Map.of();
+        }
+    }
+
+    private String jsonDataset(List<Map<String, Object>> dataset) {
+        if (dataset == null || dataset.isEmpty()) {
+            return null;
+        }
+        if (dataset.size() > 200) {
+            throw ApiException.badRequest("数据集最多 200 行");
+        }
+        try {
+            return objectMapper.writeValueAsString(dataset);
+        } catch (Exception e) {
+            throw ApiException.badRequest("数据集序列化失败: " + e.getMessage());
+        }
+    }
+
+    private List<Map<String, Object>> readDataset(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() { });
+        } catch (Exception e) {
+            return List.of();
         }
     }
 

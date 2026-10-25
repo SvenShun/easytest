@@ -2,9 +2,14 @@ package com.testhub.apiexec.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.net.InetAddress;
+import java.util.UUID;
+
 /** Runtime configuration for api-execution ({@code testhub.apiexec.*}). */
 @ConfigurationProperties(prefix = "testhub.apiexec")
 public class ApiExecProperties {
+
+    private static final String DEFAULT_INSTANCE_ID = createDefaultInstanceId();
 
     /** Base URL of testhub-server, used for internal (service-token) callbacks. */
     private String coreBaseUrl = "http://127.0.0.1:8080";
@@ -19,8 +24,17 @@ public class ApiExecProperties {
      */
     private String serviceToken = "";
 
-    /** Number of HTTP execution workers (bounded pool, FIFO queue). */
+    /** Number of worker threads polling the queue on this instance (0 disables workers). */
     private int workers = 4;
+
+    /** Queue backend: {@code memory} (default) or {@code redis}. */
+    private String queue = "memory";
+
+    /** Prefix for Redis queue / dedup / cancellation keys. */
+    private String redisKeyPrefix = "testhub:apiexec:";
+
+    /** Stable worker identity prefix; defaults to hostname + random suffix. */
+    private String instanceId = "";
 
     /** Fallback request timeout when the task does not carry one. */
     private int defaultTimeoutSec = 30;
@@ -60,6 +74,30 @@ public class ApiExecProperties {
         this.workers = workers;
     }
 
+    public String getQueue() {
+        return queue;
+    }
+
+    public void setQueue(String queue) {
+        this.queue = queue;
+    }
+
+    public String getRedisKeyPrefix() {
+        return redisKeyPrefix;
+    }
+
+    public void setRedisKeyPrefix(String redisKeyPrefix) {
+        this.redisKeyPrefix = redisKeyPrefix;
+    }
+
+    public String getInstanceId() {
+        return instanceId == null || instanceId.isBlank() ? DEFAULT_INSTANCE_ID : instanceId.trim();
+    }
+
+    public void setInstanceId(String instanceId) {
+        this.instanceId = instanceId;
+    }
+
     public int getDefaultTimeoutSec() {
         return defaultTimeoutSec;
     }
@@ -83,5 +121,23 @@ public class ApiExecProperties {
             base = base.substring(0, base.length() - 1);
         }
         return base + "/api/v1/api-execution/tasks/" + taskId + "/report";
+    }
+
+    private static String createDefaultInstanceId() {
+        String host;
+        try {
+            host = InetAddress.getLocalHost().getHostName();
+        } catch (Exception e) {
+            host = "apiexec";
+        }
+        String sanitized = host == null ? "" : host.replaceAll("[^A-Za-z0-9._-]", "-");
+        if (sanitized.isBlank()) {
+            sanitized = "apiexec";
+        }
+        if (sanitized.length() > 100) {
+            sanitized = sanitized.substring(0, 100);
+        }
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        return sanitized + "-" + suffix;
     }
 }

@@ -35,6 +35,10 @@ public class PlanRunItem {
     @Column(name = "executor_type", length = 16)
     private ExecutorType executorType;
 
+    /** 1-based data-driven iteration; 0 for a normal single execution. */
+    @Column(name = "iteration")
+    private int iteration;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 16, nullable = false)
     private RunItemStatus status;
@@ -67,6 +71,11 @@ public class PlanRunItem {
 
     public PlanRunItem(String id, String runId, String caseId, String caseTitle, ExecutorType executorType,
                        RunItemStatus status, Instant createdAt) {
+        this(id, runId, caseId, caseTitle, executorType, status, createdAt, 0);
+    }
+
+    public PlanRunItem(String id, String runId, String caseId, String caseTitle, ExecutorType executorType,
+                       RunItemStatus status, Instant createdAt, int iteration) {
         this.id = id;
         this.runId = runId;
         this.caseId = caseId;
@@ -74,6 +83,7 @@ public class PlanRunItem {
         this.executorType = executorType;
         this.status = status;
         this.createdAt = createdAt;
+        this.iteration = iteration;
         this.updatedAt = createdAt;
     }
 
@@ -103,6 +113,14 @@ public class PlanRunItem {
 
     public void setTaskId(String taskId) {
         this.taskId = taskId;
+    }
+
+    public int getIteration() {
+        return iteration;
+    }
+
+    public void setIteration(int iteration) {
+        this.iteration = iteration;
     }
 
     public ExecutorType getExecutorType() {

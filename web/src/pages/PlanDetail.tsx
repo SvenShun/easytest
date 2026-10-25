@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { apiCasesApi, casesApi, plansApi, uiexecApi } from '../api';
+import { apiCasesApi, apiEnvironmentsApi, casesApi, plansApi, uiexecApi } from '../api';
 import { MAIN_ONLY } from '../config';
 import type {
   CaseDetail,
   Device,
   ExecutorType,
   ApiCase,
+  ApiEnvironment,
   PlanCase,
   PlanDetail,
   RunSummary,
@@ -86,7 +87,8 @@ export function PlanDetailPage() {
   const [error, setError] = useState('');
 
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', description: '' });
+  const [editForm, setEditForm] = useState({ name: '', description: '', environmentId: '' });
+  const [environments, setEnvironments] = useState<ApiEnvironment[]>([]);
   const [editError, setEditError] = useState('');
   const [editFieldError, setEditFieldError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
@@ -172,7 +174,8 @@ export function PlanDetailPage() {
 
   const openEdit = () => {
     if (!plan) return;
-    setEditForm({ name: plan.name || '', description: plan.description || '' });
+    setEditForm({ name: plan.name || '', description: plan.description || '',
+      environmentId: plan.environmentId || '' });
     setEditError('');
     setEditFieldError('');
     setEditOpen(true);
@@ -187,7 +190,8 @@ export function PlanDetailPage() {
     setEditSaving(true);
     setEditError('');
     try {
-      await plansApi.update(planId, { name: editForm.name.trim(), description: editForm.description.trim() });
+      await plansApi.update(planId, { name: editForm.name.trim(), description: editForm.description.trim(),
+        environmentId: editForm.environmentId || null });
       toastSuccess('计划信息已更新');
       setEditOpen(false);
       await load(true);
@@ -364,7 +368,14 @@ export function PlanDetailPage() {
       );
   }, [approvedCases, alreadyInPlan, caseSearch]);
 
+  useEffect(() => {
+    void apiEnvironmentsApi.list('', 1, 100)
+      .then((data) => setEnvironments(data.items))
+      .catch(() => setEnvironments([]));
+  }, []);
+
   const activeRunCount = runs.filter((run) => run.status === 'RUNNING' || run.status === 'PENDING').length;
+  const environmentName = environments.find((env) => env.id === plan?.environmentId)?.name;
 
   if (loading && !detail) {
     return (
@@ -449,6 +460,10 @@ export function PlanDetailPage() {
         <div className="summary-chip">
           <span className="summary-chip-label">进行中</span>
           <span className="summary-chip-value">{activeRunCount}</span>
+        </div>
+        <div className="summary-chip is-wide">
+          <span className="summary-chip-label">环境</span>
+          <span className="summary-chip-value sm">{environmentName || '未绑定'}</span>
         </div>
         <div className="summary-chip is-wide">
           <span className="summary-chip-label">创建</span>
@@ -695,6 +710,18 @@ export function PlanDetailPage() {
                 setEditFieldError('');
               }}
             />
+          </Field>
+          <Field label="API 环境" htmlFor="edit-plan-environment" hint="接口用例执行时解析变量与鉴权">
+            <Select
+              id="edit-plan-environment"
+              value={editForm.environmentId}
+              onChange={(event) => setEditForm((prev) => ({ ...prev, environmentId: event.target.value }))}
+            >
+              <option value="">不绑定环境</option>
+              {environments.filter((env) => env.enabled).map((env) => (
+                <option key={env.id} value={env.id}>{env.name}</option>
+              ))}
+            </Select>
           </Field>
           <Field label="描述" htmlFor="edit-plan-desc">
             <Textarea

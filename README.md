@@ -6,7 +6,7 @@
 
 > 依据 `docs/V1-SCOPE.md`（范围与偏差）与 `docs/API-CONTRACT.md`（接口契约）实现。
 
-**当前状态**：V1 + 第二部分接口自动化已完成验收 —— **189 个自动化测试全绿**，E2E 47 项、接口执行 18 项检查全部通过
+**当前状态**：V1 + 第二部分接口自动化已完成验收 —— **198 个自动化测试全绿**，E2E 47 项、接口执行 18 项、增强能力 16 项检查全部通过
 （本地模式与 MySQL/Redis/MinIO/Kafka 模式各一轮），证据见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) 与
 [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md)。
 
@@ -16,7 +16,7 @@
 |---|---|---|---|
 | testhub-server | `testhub-server/` | 8080 | 主服务器：用例/评审、测试计划、系统设置、AI 分析 Agent（模块化单体，边界可按服务拆分） |
 | ui-execution | `ui-execution/` | 8081 | UI 执行编排：执行器路由、设备 FIFO 队列、状态机、轨迹、失败报告、Skills 指针 |
-| api-execution | `api-execution/` | 8084 | 接口执行服务（独立部署/水平扩容）：HTTP 请求、断言、超时/取消、报告、回调 |
+| api-execution | `api-execution/` | 8084 | 接口执行服务（独立部署/水平扩容）：HTTP 请求、断言、超时/取消、报告、回调、Redis 共享队列 |
 | device-agent | `device-agent/` | 8090 | 设备子服务器 Agent：注册心跳、模拟设备/ADB、传统脚本执行器、AI Runtime 桥接、Skills 缓存 |
 | ai-runtime | `agents/ai-runtime/` | 8095 | 设备侧 AI 执行期决策器（Python）：截图+UI 树 → 模型决策 → 动作 → 轨迹 |
 | web | `web/` | 5173 | React 控制台 |
@@ -57,6 +57,7 @@ cd web && npm run dev        # http://127.0.0.1:5173
 # 4. 跑端到端验收（另开一个终端）
 make e2e
 python3 scripts/part2_smoke.py   # 接口自动化 18 项
+make part3                       # 环境/数据驱动 14 项（共享队列另启实例后 16 项）
 
 # 只部署第一部分（主服务：用户/用例/计划等，不含执行）
 make main-up        # http://127.0.0.1:8080
@@ -87,7 +88,7 @@ TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 
 1. 登录 `tester/test123` → **AI 分析**：选择需求，生成 BDD 草稿（默认 mock 模型，确定性输出）。
 2. 到 **用例管理**：草稿状态为「草稿」→ 提交评审 → 通过；页面展示「可用执行器」。
-3. **测试计划**：新建计划，混合挂载「UI 用例（AI Runtime / 传统脚本）」与「接口用例」，按类型自动路由。
+3. **测试计划**：新建计划并绑定 API 环境，混合挂载「UI 用例（AI Runtime / 传统脚本）」与「接口用例」，按类型自动路由。
 4. **设备池**：观察设备 FIFO 队列（排队位置）、执行状态。
 5. **执行任务**：打开任务详情，查看每步截图、模型决策原文、动作、耗时与实时日志。
 6. 失败用例自动生成**失败轨迹报告**（JSON），并回写到用例的「失败分析」字段。
@@ -96,7 +97,10 @@ TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 
 ## 关键设计
 
-- **执行器路由**：计划层可覆盖；未指定时有脚本→传统脚本，无脚本→AI Runtime；AI 模型不可用时按文档回退传统脚本。
+- **执行器路由**：计划层可覆盖；未指定时有脚本→传统脚本，无脚本→AI Runtime；接口用例固定 api-execution。
+- **环境与鉴权**：环境提供 Base URL/公共 Headers/变量，支持 Bearer/Basic/API Key/登录接口提取 Token；登录每次计划触发执行一次。
+- **数据驱动**：接口用例数据集一行一次执行，运行项带 `[i/n]` 和 `iteration`，行字段可用 `${field}`/`${data.field}`。
+- **共享队列**：api-execution 可多实例部署，Redis List 共享任务队列，任务记录 `workerId`。
 - **设备 FIFO**：同一设备严格串行，队列位置由 ui-execution 集中维护，设备侧不自行排队。
 - **Skills**：真相源是外部 Git；主服务器只存全局指针，任务下发时固化 commit，Agent 按 commit 拉取并本地缓存，Git 不可达时降级到最近缓存。
 - **失败分类**：`MODEL_DECISION_FAILED` / `ACTION_FAILED` / `ELEMENT_NOT_FOUND` / `TIMEOUT` / `MANUAL_INTERRUPT` / `EXECUTOR_UNAVAILABLE` / `SKILLS_UNAVAILABLE` / `SCRIPT_FAILED`。
@@ -123,6 +127,7 @@ tail -f logs/core.log
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — E2E 验收结果与证据
 - [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md) — 第二部分（接口自动化）验收
 - [docs/API-EXECUTION-CONTRACT.md](docs/API-EXECUTION-CONTRACT.md) — 接口执行契约
+- [docs/ACCEPTANCE-PART3.md](docs/ACCEPTANCE-PART3.md) — 环境/鉴权、数据驱动、共享队列验收
 
 ## 目录结构
 
@@ -142,7 +147,7 @@ scripts/          构建/启动/验收脚本
 
 ## V1 已知边界
 
-接口执行 V1 已实现（HTTP + 断言 + 超时/取消），但环境变量、鉴权预设、数据驱动、前后置脚本、用例级重试不在本版；
+接口执行 V1 + 增强已实现（HTTP + 断言 + 超时/取消 + 环境/登录鉴权 + 数据驱动 + Redis 共享队列）；前后置脚本、用例级重试、CSV 文件数据源、Token 过期自动刷新不在本版；
 投屏/scrcpy、Kafka 异步下发、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
 MeterSphere v3 已按你提供的源码**本地构建并运行**，已真实验证“用例源 + 失败评论回写 + 计划结果回写”，
 并完成 **ui-execution 源码级内嵌**（MS 同进程；FIFO 队列、看门狗、失败报告、取消、计划关联、会话自动登录）；
