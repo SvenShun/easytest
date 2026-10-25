@@ -63,7 +63,7 @@ RESULT: 47 checks passed, 0 failed
 ## 2.1 真实中间件复验（MySQL 8.0 / Redis 7 / MinIO）
 
 在 Docker 中启动真实中间件后，把 `testhub-server` 与 `ui-execution` 切到 MySQL profile、Redis FIFO、MinIO 产物，
-`device-agent`/`ai-runtime` 不变，**端到端 47 项检查再次全部通过**（运行 `run_35c3ff0a45f74db79e3e`，事件总线为 Kafka）。
+`device-agent`/`ai-runtime` 不变，**端到端 47 项检查再次全部通过**（运行 `run_e7a48159beec4c0d82e9`，事件总线为 Kafka）。
 
 | 中间件 | 版本 | 实际使用证据 |
 |---|---|---|
@@ -119,7 +119,7 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 | 持久化 | Flyway `3.7.0.1 - ui execution`，`ui_execution_task` / `ui_execution_step` |
 | 下发 | 复用 TestHub device-agent 协议（AI_RUNTIME） |
 | 实测 | MS 原生接口创建任务 → 5 步轨迹 → 任务 SUCCESS → 计划用例 `lastExecResult=SUCCESS` |
-| 证据 | 任务 `1707862409173041152`，计划用例 `1707773434630599999`（lastExecTime 更新） |
+| 证据 | 任务 `1707866188744261632`（5 步，SUCCESS），计划用例 `1707773434630599999`（lastExecTime 更新） |
 
 未迁移：FIFO 队列、看门狗、失败轨迹报告、脚本执行器、截图/报告产物、MeterSphere 前端入口。
 
