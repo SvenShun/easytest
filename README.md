@@ -131,7 +131,7 @@ scripts/          构建/启动/验收脚本
 
 接口测试执行（JMeter）、投屏/scrcpy、Kafka 异步下发、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
 MeterSphere v3 已按你提供的源码**本地构建并运行**，已真实验证“用例源 + 失败评论回写 + 计划结果回写”，
-并完成 **ui-execution 源码级内嵌切片**（MS 同进程、复用其会话/用例/计划服务）；
+并完成 **ui-execution 源码级内嵌**（MS 同进程；FIFO 队列、看门狗、失败报告、取消、计划关联、会话自动登录）；
 Sonic 的 **driver-core（Apache-2.0）** 已接入为 `mode=sonic` 真机驱动。
 计划-用例关联自动化、源码级模块内嵌与真机运行仍未完成，见 [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md)
 与 [docs/SONIC-INTEGRATION.md](docs/SONIC-INTEGRATION.md)。

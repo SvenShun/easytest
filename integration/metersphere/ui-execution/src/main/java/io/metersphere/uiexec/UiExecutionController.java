@@ -8,6 +8,7 @@ import io.metersphere.uiexec.UiExecutionDtos.ResultCallback;
 import io.metersphere.uiexec.UiExecutionDtos.StepCallback;
 import io.metersphere.uiexec.UiExecutionDtos.TaskView;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
+import org.apache.shiro.authz.UnauthorizedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,6 +52,18 @@ public class UiExecutionController {
         return ResultHolder.success(service.get(id));
     }
 
+    @PostMapping("/{id}/cancel")
+    @RequiresPermissions(PermissionConstants.TEST_PLAN_READ_EXECUTE)
+    public ResultHolder cancel(@PathVariable String id) {
+        return ResultHolder.success(service.cancel(id, SessionUtils.getUserId()));
+    }
+
+    @GetMapping("/{id}/report")
+    @RequiresPermissions(PermissionConstants.TEST_PLAN_READ)
+    public ResultHolder report(@PathVariable String id) {
+        return ResultHolder.success(service.report(id));
+    }
+
     @PostMapping("/{id}/steps")
     public ResultHolder step(@PathVariable String id,
                              @RequestHeader(value = "X-Agent-Token", required = false) String token,
@@ -81,7 +94,7 @@ public class UiExecutionController {
         if (token == null || !MessageDigest.isEqual(
                 token.getBytes(StandardCharsets.UTF_8),
                 properties.getAgentToken().getBytes(StandardCharsets.UTF_8))) {
-            throw new org.apache.shiro.authz.UnauthorizedException("invalid agent token");
+            throw new UnauthorizedException("invalid agent token");
         }
     }
 }

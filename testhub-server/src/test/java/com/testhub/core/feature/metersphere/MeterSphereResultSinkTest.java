@@ -39,6 +39,9 @@ class MeterSphereResultSinkTest {
     @BeforeEach
     void startServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/login", exchange -> respond(exchange, 200,
+                "{\"code\":100200,\"message\":null,\"data\":{\"sessionId\":\"session-from-login\","
+                        + "\"csrfToken\":\"csrf-from-login\"}}"));
         server.createContext("/test-plan/functional/case/run", exchange -> {
             calls.incrementAndGet();
             lastToken.set(exchange.getRequestHeaders().getFirst("X-AUTH-TOKEN"));
@@ -56,7 +59,7 @@ class MeterSphereResultSinkTest {
 
     @Test
     void writesSuccessResultWithMappingAndHeaders() throws Exception {
-        MeterSphereResultSink sink = new MeterSphereResultSink(properties(true));
+        MeterSphereResultSink sink = sink(properties(true));
 
         sink.write(plan(), planCase(), run(), item(RunItemStatus.SUCCESS));
 
@@ -77,7 +80,7 @@ class MeterSphereResultSinkTest {
 
     @Test
     void mapsFailureToErrorAndTimeoutToBlocked() throws Exception {
-        MeterSphereResultSink sink = new MeterSphereResultSink(properties(true));
+        MeterSphereResultSink sink = sink(properties(true));
 
         sink.write(plan(), planCase(), run(), item(RunItemStatus.FAILED));
         assertThat(mapper.readTree(lastBody.get()).get("lastExecResult").asText()).isEqualTo("ERROR");
@@ -87,15 +90,35 @@ class MeterSphereResultSinkTest {
     }
 
     @Test
+    void logsInWhenCredentialsAreConfigured() throws Exception {
+        MeterSphereProperties properties = properties(true);
+        properties.setToken("");
+        properties.setCsrfToken("");
+        properties.setUsername("admin");
+        properties.setPassword("metersphere");
+        MeterSphereResultSink sink = sink(properties);
+
+        sink.write(plan(), planCase(), run(), item(RunItemStatus.SUCCESS));
+
+        assertThat(lastToken.get()).isEqualTo("session-from-login");
+        assertThat(lastCsrf.get()).isEqualTo("csrf-from-login");
+        assertThat(mapper.readTree(lastBody.get()).get("lastExecResult").asText()).isEqualTo("SUCCESS");
+    }
+
+    @Test
     void doesNothingWhenDisabledOrUnmapped() {
-        MeterSphereResultSink disabled = new MeterSphereResultSink(properties(false));
+        MeterSphereResultSink disabled = sink(properties(false));
         disabled.write(plan(), planCase(), run(), item(RunItemStatus.SUCCESS));
 
-        MeterSphereResultSink unmapped = new MeterSphereResultSink(properties(true));
+        MeterSphereResultSink unmapped = sink(properties(true));
         unmapped.write(plan(), new PlanCase("pc", "plan-1", "case-1", null, Instant.now()),
                 run(), item(RunItemStatus.SUCCESS));
 
         assertThat(calls.get()).isZero();
+    }
+
+    private MeterSphereResultSink sink(MeterSphereProperties properties) {
+        return new MeterSphereResultSink(properties, new MeterSphereSession(properties, mapper));
     }
 
     private MeterSphereProperties properties(boolean enabled) {

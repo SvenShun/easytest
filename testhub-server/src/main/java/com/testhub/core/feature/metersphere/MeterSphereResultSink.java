@@ -30,27 +30,21 @@ public class MeterSphereResultSink {
     private static final Logger log = LoggerFactory.getLogger(MeterSphereResultSink.class);
 
     private final MeterSphereProperties properties;
+    private final MeterSphereSession session;
     private final RestClient client;
 
-    public MeterSphereResultSink(MeterSphereProperties properties) {
+    public MeterSphereResultSink(MeterSphereProperties properties, MeterSphereSession session) {
         this.properties = properties;
-        RestClient.Builder builder = RestClient.builder()
-                .baseUrl(trimTrailingSlash(properties.getBaseUrl()));
-        if (hasText(properties.getToken())) {
-            builder.defaultHeader("X-AUTH-TOKEN", properties.getToken());
-        }
-        if (hasText(properties.getCsrfToken())) {
-            builder.defaultHeader("CSRF-TOKEN", properties.getCsrfToken());
-        }
-        if (hasText(properties.getProjectId())) {
-            builder.defaultHeader("PROJECT", properties.getProjectId());
-        }
-        this.client = builder.build();
+        this.session = session;
+        this.client = RestClient.builder()
+                .baseUrl(trimTrailingSlash(properties.getBaseUrl()))
+                .build();
     }
 
     public boolean applicable(TestPlan plan, PlanCase planCase) {
         return properties.isEnabled()
                 && hasText(properties.getProjectId())
+                && session.available()
                 && plan != null && hasText(plan.getMetersphereTestPlanId())
                 && planCase != null && hasText(planCase.getMetersphereCaseId())
                 && hasText(planCase.getMetersphereTestPlanCaseId());
@@ -68,25 +62,35 @@ public class MeterSphereResultSink {
         body.put("lastExecResult", mapStatus(item.getStatus()));
         body.put("content", content(run, item));
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> response = client.post()
-                    .uri("/test-plan/functional/case/run")
-                    .body(body)
-                    .retrieve()
-                    .body(Map.class);
-            Object code = response == null ? null : response.get("code");
-            if (code != null && !"100200".equals(String.valueOf(code))) {
-                log.warn("MeterSphere 结果回写返回异常 plan={} case={} response={}",
-                        plan.getId(), planCase.getCaseId(), response);
-            } else {
-                log.info("MeterSphere 结果已回写 plan={} case={} planCase={} status={}",
-                        plan.getId(), planCase.getCaseId(), planCase.getMetersphereTestPlanCaseId(),
-                        item.getStatus());
+            post(body, plan, planCase, item);
+        } catch (RuntimeException first) {
+            // Session expiry (or a transient auth failure): log in again and retry once.
+            log.info("MeterSphere 回写失败，刷新会话后重试: {}", first.getMessage());
+            session.refresh();
+            try {
+                post(body, plan, planCase, item);
+            } catch (RuntimeException second) {
+                log.warn("MeterSphere 结果回写失败 plan={} case={}: {}",
+                        plan.getId(), planCase.getCaseId(), second.getMessage());
             }
-        } catch (RuntimeException e) {
-            log.warn("MeterSphere 结果回写失败 plan={} case={}: {}",
-                    plan.getId(), planCase.getCaseId(), e.getMessage());
         }
+    }
+
+    private void post(Map<String, Object> body, TestPlan plan, PlanCase planCase, PlanRunItem item) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = client.post()
+                .uri("/test-plan/functional/case/run")
+                .headers(headers -> headers.setAll(session.headers()))
+                .body(body)
+                .retrieve()
+                .body(Map.class);
+        Object code = response == null ? null : response.get("code");
+        if (code != null && !"100200".equals(String.valueOf(code))) {
+            throw new IllegalStateException("MeterSphere 返回异常: " + response);
+        }
+        log.info("MeterSphere 结果已回写 plan={} case={} planCase={} status={}",
+                plan.getId(), planCase.getCaseId(), planCase.getMetersphereTestPlanCaseId(),
+                item.getStatus());
     }
 
     /** TestHub status → MeterSphere FunctionalCaseExecuteStatus. */

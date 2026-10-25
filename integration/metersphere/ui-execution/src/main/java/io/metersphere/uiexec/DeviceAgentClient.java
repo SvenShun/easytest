@@ -8,11 +8,11 @@ import org.springframework.web.client.RestClient;
 import java.util.Map;
 
 /**
- * HTTP client for the TestHub device-agent dispatch protocol ({@code POST /agent/tasks}).
+ * HTTP client for the TestHub device-agent protocol.
  *
  * <p>The payload is serialized explicitly to JSON: MeterSphere ships both JSON and
- * XML message converters, and sending a raw {@code Map} can otherwise be encoded as
- * XML by the default converter selection.</p>
+ * XML message converters, and sending a raw {@code Map} can otherwise be encoded
+ * as XML by the default converter selection.</p>
  */
 @Component
 public class DeviceAgentClient {
@@ -30,12 +30,11 @@ public class DeviceAgentClient {
 
     public void dispatch(Map<String, Object> payload) {
         try {
-            String json = objectMapper.writeValueAsString(payload);
             client.post()
                     .uri("/agent/tasks")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
-                    .body(json)
+                    .body(objectMapper.writeValueAsString(payload))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RuntimeException e) {
@@ -43,6 +42,10 @@ public class DeviceAgentClient {
         } catch (Exception e) {
             throw new IllegalStateException("无法序列化设备下发报文: " + e.getMessage(), e);
         }
+    }
+
+    public void cancel(String agentTaskId) {
+        client.delete().uri("/agent/tasks/{id}", agentTaskId).retrieve().toBodilessEntity();
     }
 
     private static String trim(String value) {

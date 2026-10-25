@@ -19,6 +19,9 @@ public final class UiExecutionDtos {
     public record ResultCallback(String status, String failureReason, String reasonCategory, String summary) {
     }
 
+    public record AssociateRequest(String testPlanId, String caseId) {
+    }
+
     public record StepView(String id, int seq, String status, String decision, String action, Long elapsedMs) {
     }
 
@@ -26,6 +29,7 @@ public final class UiExecutionDtos {
                            String caseTitle, String given, String when, String then,
                            String deviceSerial, String taskId, String status, String summary,
                            String failureReason, String reportUrl, String createdBy,
-                           long createdAt, long updatedAt, List<StepView> steps) {
+                           int timeoutSec, int stepTimeoutSec, Integer queuePosition, Long dispatchedAt,
+                           Long finishedAt, long createdAt, long updatedAt, List<StepView> steps) {
     }
 }

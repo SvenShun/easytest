@@ -49,6 +49,8 @@ testhub:
     project-id: ${TESTHUB_METERSHPHERE_PROJECT_ID:}
     token: ${TESTHUB_METERSHPHERE_TOKEN:}
     csrf-token: ${TESTHUB_METERSHPHERE_CSRF_TOKEN:}
+    username: ${TESTHUB_METERSHPHERE_USERNAME:}
+    password: ${TESTHUB_METERSHPHERE_PASSWORD:}
   artifact:
     store: ${TESTHUB_ARTIFACT_STORE:local}
     local-dir: ${TESTHUB_ARTIFACT_DIR:./data/core-artifacts}
