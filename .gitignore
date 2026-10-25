@@ -35,3 +35,4 @@ upstream/
 .env
 .tools/
 **/.flattened-pom.xml
+backups/
