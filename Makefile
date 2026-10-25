@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
 
-.PHONY: help setup build test e2e main-up main-down up up-mw down infra-down ms-build ms-up ms-down ms-token ms-install-module web fmt clean
+.PHONY: help setup build test e2e main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
 
 help:
 	@echo "TestHub V1"
@@ -10,6 +10,8 @@ help:
 	@echo "  make test    run Java tests + Python tests"
 	@echo "  make main-up deploy Part 1 main service (MySQL + core + web console)"
 	@echo "  make main-down stop the Part 1 deployment"
+	@echo "  make db      open a MySQL shell (testhub_core)"
+	@echo "  make db-backup dump core/uiexec databases to backups/"
 	@echo "  make up      start core, ui-execution, device-agent, ai-runtime (H2/memory)"
 	@echo "  make up-mw   start with Docker MySQL/Redis/MinIO (run make infra first)"
 	@echo "  make infra   start middleware containers (mysql/redis/minio/kafka)"
@@ -37,6 +39,12 @@ main-up:
 
 main-down:
 	./scripts/main-down.sh
+
+db:
+	./scripts/db.sh
+
+db-backup:
+	./scripts/db-backup.sh
 
 up:
 	./scripts/dev-up.sh

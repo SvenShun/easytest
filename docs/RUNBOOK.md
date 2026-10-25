@@ -204,3 +204,68 @@ make up
 - [ ] 配置模型 API Key 轮换策略与出网代理
 - [ ] 配置审计日志保留、执行轨迹生命周期归档
 - [ ] 设备子服务器仅 Linux；ADB/scrcpy 与 USB 直通按部署文档配置
+
+## 9. 数据库访问与备份
+
+### 9.1 部署位置
+
+- 容器：`testhub-mysql`（镜像 `public.ecr.aws/docker/library/mysql:8.0`）
+- 宿主机端口：`3306`
+- 数据卷：`deploy_testhub-mysql-data`，容器内路径 `/var/lib/mysql`
+- 账号（开发默认）：`root / testhub`
+
+库：
+
+| 库 | 用途 |
+|---|---|
+| `testhub_core` | 主服务：用户、需求、用例、脚本、计划、AI、配置、审计 |
+| `testhub_uiexec` | ui-execution：设备、Agent、任务、步骤、队列、失败报告、Skills 指针 |
+| `metersphere` | MeterSphere 源码实例（含内嵌 ui-execution 的 `ui_execution_*` 表） |
+
+主服务核心表：`app_user`、`req_item`、`client_case`、`case_review`、`script_project`、
+`test_plan`、`plan_case`、`plan_run`、`plan_run_item`、`ai_job`、`model_config`、`audit_log`。
+
+### 9.2 访问方式
+
+```bash
+# 项目内快捷入口（进入 testhub_core）
+make db
+
+# 指定库
+./scripts/db.sh uiexec
+./scripts/db.sh metersphere
+
+# 直接用本机 mysql 客户端
+mysql -h127.0.0.1 -P3306 -uroot -ptesthub testhub_core
+
+# 不装客户端也可以
+docker exec -it testhub-mysql mysql -uroot -ptesthub testhub_core
+```
+
+GUI（DBeaver / Navicat / TablePlus）：Host `127.0.0.1`，Port `3306`，User `root`，Password `testhub`，Database `testhub_core`。
+
+### 9.3 常用操作
+
+```sql
+SHOW TABLES;
+SELECT id, username, display_name, role, enabled FROM app_user;
+SELECT id, title, review_status, source FROM client_case ORDER BY created_at DESC LIMIT 20;
+SELECT id, name, status FROM test_plan ORDER BY created_at DESC;
+SELECT action, actor, target, created_at FROM audit_log ORDER BY created_at DESC LIMIT 20;
+```
+
+### 9.4 备份与恢复
+
+```bash
+make db-backup                       # 输出到 backups/backup-时间.sql
+make db-backup my.sql
+
+# 恢复（会覆盖同名库中的对象，先停主服务更稳妥）
+docker exec -i testhub-mysql mysql -uroot -ptesthub < backups/my.sql
+```
+
+### 9.5 注意
+
+- `3306` 目前映射到 `0.0.0.0`，同一局域网可访问；生产必须改密、限制来源、加 TLS，不要直接暴露公网。
+- 数据在 Docker named volume 中，删除 volume（`docker compose -f deploy/docker-compose.infra.yml down -v`）会清空全部数据。
+- 其他中间件：Redis `127.0.0.1:6379`；MinIO API `9000`、控制台 `http://127.0.0.1:9001`（`testhub/testhub123`）；Kafka `127.0.0.1:9092`。
