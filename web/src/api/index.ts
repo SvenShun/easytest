@@ -3,6 +3,7 @@ export { systemApi } from './system';
 export { requirementsApi } from './requirements';
 export { scriptsApi } from './scripts';
 export { casesApi } from './cases';
+export { apiCasesApi } from './apicases';
 export type { CaseListParams } from './cases';
 export { aiApi } from './ai';
 export { plansApi } from './plans';

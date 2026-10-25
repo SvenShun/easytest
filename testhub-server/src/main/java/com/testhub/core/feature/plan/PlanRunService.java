@@ -5,6 +5,9 @@ import com.testhub.common.security.CurrentUser;
 import com.testhub.common.util.Ids;
 import com.testhub.common.web.ApiException;
 import com.testhub.common.web.PageResponse;
+import com.testhub.core.feature.apicase.ApiCase;
+import com.testhub.core.feature.apicase.ApiCaseRepository;
+import com.testhub.core.feature.apicase.ApiCaseService;
 import com.testhub.core.feature.casemgmt.ClientCase;
 import com.testhub.core.feature.casemgmt.ClientCaseRepository;
 import com.testhub.core.feature.metersphere.MeterSphereResultSink;
@@ -45,12 +48,17 @@ public class PlanRunService {
     private final UiExecutionClient uiExecutionClient;
     private final AuditService auditService;
     private final MeterSphereResultSink meterSphereResultSink;
+    private final ApiExecutionClient apiExecutionClient;
+    private final ApiCaseRepository apiCaseRepository;
+    private final ApiCaseService apiCaseService;
 
     public PlanRunService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                           PlanRunRepository runRepository, PlanRunItemRepository itemRepository,
                           ClientCaseRepository caseRepository, ScriptService scriptService,
                           UiExecutionClient uiExecutionClient, AuditService auditService,
-                          MeterSphereResultSink meterSphereResultSink) {
+                          MeterSphereResultSink meterSphereResultSink,
+                          ApiExecutionClient apiExecutionClient, ApiCaseRepository apiCaseRepository,
+                          ApiCaseService apiCaseService) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -60,6 +68,9 @@ public class PlanRunService {
         this.uiExecutionClient = uiExecutionClient;
         this.auditService = auditService;
         this.meterSphereResultSink = meterSphereResultSink;
+        this.apiExecutionClient = apiExecutionClient;
+        this.apiCaseRepository = apiCaseRepository;
+        this.apiCaseService = apiCaseService;
     }
 
     public TriggerResponse trigger(String planId, TriggerRequest request) {
@@ -69,17 +80,9 @@ public class PlanRunService {
         if (mounts.isEmpty()) {
             throw noExecutableCase("测试计划未挂载任何用例");
         }
-        List<ClientCase> cases = new ArrayList<>();
-        long approved = 0;
-        for (PlanCase mount : mounts) {
-            ClientCase clientCase = caseRepository.findById(mount.getCaseId()).orElse(null);
-            cases.add(clientCase);
-            if (clientCase != null && clientCase.getReviewStatus() == ReviewStatus.APPROVED) {
-                approved++;
-            }
-        }
-        if (approved == 0) {
-            throw noExecutableCase("测试计划没有已通过评审的用例");
+        long executable = mounts.stream().filter(mount -> isExecutable(mount)).count();
+        if (executable == 0) {
+            throw noExecutableCase("测试计划没有可执行的用例（UI 需已评审，API 需启用）");
         }
 
         TriggerRequest options = request == null
@@ -96,10 +99,40 @@ public class PlanRunService {
 
         List<TriggerItemView> views = new ArrayList<>();
         int index = 0;
-        for (int i = 0; i < mounts.size(); i++) {
-            PlanCase mount = mounts.get(i);
-            ClientCase clientCase = cases.get(i);
+        for (PlanCase mount : mounts) {
             Instant itemTime = startedAt.plusMillis(index++);
+            if (mount.getCaseType() == CaseType.API) {
+                ApiCase apiCase = apiCaseRepository.findById(mount.getCaseId()).orElse(null);
+                PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), mount.getCaseId(),
+                        apiCase == null ? "(已删除接口用例)" : apiCase.getName(),
+                        ExecutorType.API, RunItemStatus.PENDING, itemTime);
+                if (apiCase == null || !apiCase.isEnabled()) {
+                    item.setStatus(RunItemStatus.SKIPPED);
+                    item.setError(apiCase == null ? "接口用例已不存在，已跳过" : "接口用例已禁用，已跳过");
+                    item.setUpdatedAt(Instant.now());
+                    itemRepository.save(item);
+                    views.add(triggerView(item));
+                    continue;
+                }
+                itemRepository.save(item);
+                try {
+                    int apiTimeout = Math.max(1, Math.min(timeoutSec, apiCase.getTimeoutSec()));
+                    ApiExecutionClient.TaskCreated created = apiExecutionClient.createTask(
+                            apiPayload(planId, run.getId(), apiCase, apiTimeout, actor));
+                    item.setTaskId(created.taskId());
+                    RunItemStatus status = RunItemStatus.parse(created.status());
+                    item.setStatus(status == null ? RunItemStatus.PENDING : status);
+                } catch (Exception e) {
+                    item.setStatus(RunItemStatus.FAILED);
+                    item.setError(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                }
+                item.setUpdatedAt(Instant.now());
+                itemRepository.save(item);
+                views.add(triggerView(item));
+                continue;
+            }
+
+            ClientCase clientCase = caseRepository.findById(mount.getCaseId()).orElse(null);
             if (clientCase == null) {
                 PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), mount.getCaseId(),
                         "(已删除用例)", mount.getExecutorTypeOverride(), RunItemStatus.SKIPPED, itemTime);
@@ -230,7 +263,7 @@ public class PlanRunService {
         }
     }
 
-    /** Best-effort reconciliation against ui-execution; unreachable service is ignored. */
+    /** Best-effort reconciliation against both execution services; unreachable services are ignored. */
     public void reconcile(PlanRun run) {
         List<PlanRunItem> items = itemRepository.findByRunIdOrderByCreatedAtAscIdAsc(run.getId());
         boolean hasPending = items.stream()
@@ -238,27 +271,51 @@ public class PlanRunService {
         if (!hasPending) {
             return;
         }
-        List<UiExecutionClient.TaskSnapshot> snapshots;
+        Map<String, Snapshot> byTask = new LinkedHashMap<>();
+        boolean hasUi = items.stream().anyMatch(item -> !item.getStatus().isTerminal()
+                && !isBlank(item.getTaskId()) && item.getExecutorType() != ExecutorType.API);
+        boolean hasApi = items.stream().anyMatch(item -> !item.getStatus().isTerminal()
+                && !isBlank(item.getTaskId()) && item.getExecutorType() == ExecutorType.API);
         try {
-            snapshots = uiExecutionClient.listTasksByPlanRun(run.getId());
-        } catch (Exception e) {
-            log.warn("ui-execution 对账失败（忽略）: {}", e.getMessage());
-            return;
-        }
-        if (snapshots == null || snapshots.isEmpty()) {
-            return;
-        }
-        Map<String, UiExecutionClient.TaskSnapshot> byTask = new LinkedHashMap<>();
-        for (UiExecutionClient.TaskSnapshot snapshot : snapshots) {
-            if (snapshot != null && !isBlank(snapshot.taskId())) {
-                byTask.put(snapshot.taskId(), snapshot);
+            if (!hasUi) {
+                throw new IllegalStateException("no UI item");
             }
+            for (UiExecutionClient.TaskSnapshot snapshot : uiExecutionClient.listTasksByPlanRun(run.getId())) {
+                if (snapshot != null && !isBlank(snapshot.taskId())) {
+                    byTask.put(snapshot.taskId(), new Snapshot(snapshot.taskId(), snapshot.status(),
+                            snapshot.executorType(), snapshot.deviceId(), snapshot.failureReason(),
+                            snapshot.failureReportUrl(), snapshot.summary()));
+                }
+            }
+        } catch (Exception e) {
+            if (hasUi) {
+                log.warn("ui-execution 对账失败（忽略）: {}", e.getMessage());
+            }
+        }
+        try {
+            if (!hasApi) {
+                throw new IllegalStateException("no API item");
+            }
+            for (ApiExecutionClient.TaskSnapshot snapshot : apiExecutionClient.listTasksByPlanRun(run.getId())) {
+                if (snapshot != null && !isBlank(snapshot.taskId())) {
+                    byTask.put(snapshot.taskId(), new Snapshot(snapshot.taskId(), snapshot.status(),
+                            "API", null, snapshot.failureReason(), snapshot.failureReportUrl(),
+                            snapshot.summary()));
+                }
+            }
+        } catch (Exception e) {
+            if (hasApi) {
+                log.warn("api-execution 对账失败（忽略）: {}", e.getMessage());
+            }
+        }
+        if (byTask.isEmpty()) {
+            return;
         }
         for (PlanRunItem item : items) {
             if (isBlank(item.getTaskId()) || item.getStatus().isTerminal()) {
                 continue;
             }
-            UiExecutionClient.TaskSnapshot snapshot = byTask.get(item.getTaskId());
+            Snapshot snapshot = byTask.get(item.getTaskId());
             if (snapshot == null) {
                 continue;
             }
@@ -286,6 +343,10 @@ public class PlanRunService {
             item.setUpdatedAt(Instant.now());
             itemRepository.save(item);
         }
+    }
+
+    private record Snapshot(String taskId, String status, String executorType, String deviceId,
+                            String failureReason, String failureReportUrl, String summary) {
     }
 
     /** Recomputes counters and derives the run status from its items. */
@@ -358,6 +419,39 @@ public class PlanRunService {
     private TriggerItemView triggerView(PlanRunItem item) {
         return new TriggerItemView(item.getCaseId(), item.getCaseTitle(), item.getTaskId(), item.getStatus(),
                 item.getExecutorType(), item.getError());
+    }
+
+    private boolean isExecutable(PlanCase mount) {
+        if (mount.getCaseType() == CaseType.API) {
+            return apiCaseRepository.findById(mount.getCaseId())
+                    .map(ApiCase::isEnabled)
+                    .orElse(false);
+        }
+        return caseRepository.findById(mount.getCaseId())
+                .map(clientCase -> clientCase.getReviewStatus() == ReviewStatus.APPROVED)
+                .orElse(false);
+    }
+
+    private Map<String, Object> apiPayload(String planId, String runId, ApiCase apiCase, int timeoutSec,
+                                            String actor) {
+        var view = apiCaseService.view(apiCase);
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("method", view.method());
+        request.put("baseUrl", view.baseUrl());
+        request.put("path", view.path());
+        request.put("headers", view.headers());
+        request.put("query", view.query());
+        request.put("body", view.body());
+        request.put("timeoutSec", timeoutSec);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("planId", planId);
+        payload.put("planRunId", runId);
+        payload.put("caseId", apiCase.getId());
+        payload.put("caseName", apiCase.getName());
+        payload.put("request", request);
+        payload.put("assertions", view.assertions());
+        payload.put("createdBy", actor);
+        return payload;
     }
 
     private Map<String, Object> taskPayload(String planId, String runId, ClientCase clientCase,

@@ -20,6 +20,9 @@ public class CoreProperties {
     /** Base URL of the ui-execution service. */
     private String uiExecutionBaseUrl = "http://127.0.0.1:8081";
 
+    /** Comma-separated base URLs of api-execution workers (round-robin). */
+    private String apiExecutionBaseUrls = "http://127.0.0.1:8084";
+
     /** Lifetime of a script bundle download ticket. */
     private Duration ticketTtl = Duration.ofMinutes(15);
 
@@ -40,6 +43,14 @@ public class CoreProperties {
 
     public void setInternalBaseUrl(String internalBaseUrl) {
         this.internalBaseUrl = internalBaseUrl;
+    }
+
+    public String getApiExecutionBaseUrls() {
+        return apiExecutionBaseUrls;
+    }
+
+    public void setApiExecutionBaseUrls(String apiExecutionBaseUrls) {
+        this.apiExecutionBaseUrls = apiExecutionBaseUrls;
     }
 
     public String getUiExecutionBaseUrl() {

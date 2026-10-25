@@ -55,7 +55,7 @@ PART 1 RESULT: 21 checks passed, 0 failed
 补充验证：前端构建产物包含"需求管理 / 新建用户 / 重置密码"，静态资源均返回 200；
 主服务模式下设备池、执行任务与计划触发入口被隐藏。
 
-自动化回归：**159 个测试全绿**（`make check`），其中 testhub-server 35 个。
+自动化回归：**189 个测试全绿**（`make check`），其中 testhub-server 39 个。
 
 ## 5. 明确不在本次验收范围
 

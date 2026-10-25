@@ -5,6 +5,7 @@ export type IconName =
   | 'cases'
   | 'ai'
   | 'plans'
+  | 'api'
   | 'tasks'
   | 'devices'
   | 'settings'
@@ -75,6 +76,13 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <path d="M11 3.5 12.7 8l4.5 1.7-4.5 1.7L11 16l-1.7-4.6L4.8 9.7 9.3 8z" />
       <path d="M18 14.5l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z" />
+    </>
+  ),
+  api: (
+    <>
+      <path d="M8 7 3 12l5 5" />
+      <path d="M16 7l5 5-5 5" />
+      <path d="M13 4 11 20" />
     </>
   ),
   plans: (

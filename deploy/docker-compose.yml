@@ -59,6 +59,7 @@ services:
       TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
       TESTHUB_PUBLIC_BASE_URL: http://127.0.0.1:8080
       TESTHUB_UI_EXECUTION_BASE_URL: http://ui-execution:8081
+      TESTHUB_API_EXECUTION_URLS: http://api-execution:8084
       TESTHUB_INTERNAL_BASE_URL: http://core:8080
       TESTHUB_ARTIFACT_DIR: /data/artifacts
       TESTHUB_ARTIFACT_STORE: minio
@@ -90,6 +91,28 @@ services:
       - kafka-data:/tmp/kraft-logs
     ports:
       - "9092:9092"
+
+  api-execution:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.apiexec
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/testhub_apiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
+      TESTHUB_JWT_SECRET: ${TESTHUB_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
+      TESTHUB_SERVICE_TOKEN: ${TESTHUB_SERVICE_TOKEN:-change-me-service-token}
+      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
+      TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
+      TESTHUB_CORE_URL: http://core:8080
+      TESTHUB_APIEXEC_PUBLIC_URL: http://127.0.0.1:8084
+      TESTHUB_APIEXEC_WORKERS: 4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
 
   ui-execution:
     build:

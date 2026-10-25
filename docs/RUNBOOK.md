@@ -9,7 +9,7 @@ make e2e     # 端到端验收
 make down    # 停止服务
 ```
 
-服务地址：core `:8080`、ui-execution `:8081`、device-agent `:8090`、ai-runtime `:8095`、web `:5173`。
+服务地址：core `:8080`、ui-execution `:8081`、api-execution `:8084`、device-agent `:8090`、ai-runtime `:8095`、web `:5173`。
 
 > Maven Central 在本机不可达，`scripts/mvn.sh` 固定使用工作区本地仓库 `.m2/repository` 与 `~/.m2/settings.xml` 中的阿里云镜像。
 > 不要把 `.m2/` 提交到版本库（已 gitignore）。
@@ -220,6 +220,7 @@ make up
 |---|---|
 | `testhub_core` | 主服务：用户、需求、用例、脚本、计划、AI、配置、审计 |
 | `testhub_uiexec` | ui-execution：设备、Agent、任务、步骤、队列、失败报告、Skills 指针 |
+| `testhub_apiexec` | api-execution：接口任务、请求/响应、断言结果、报告 |
 | `metersphere` | MeterSphere 源码实例（含内嵌 ui-execution 的 `ui_execution_*` 表） |
 
 主服务核心表：`app_user`、`req_item`、`client_case`、`case_review`、`script_project`、
@@ -268,4 +269,5 @@ docker exec -i testhub-mysql mysql -uroot -ptesthub < backups/my.sql
 
 - `3306` 目前映射到 `0.0.0.0`，同一局域网可访问；生产必须改密、限制来源、加 TLS，不要直接暴露公网。
 - 数据在 Docker named volume 中，删除 volume（`docker compose -f deploy/docker-compose.infra.yml down -v`）会清空全部数据。
+- 接口执行：`./scripts/dev-up.sh` 会启动 api-execution；主服务用 `TESTHUB_API_EXECUTION_URLS`（逗号分隔）配置多个实例。
 - 其他中间件：Redis `127.0.0.1:6379`；MinIO API `9000`、控制台 `http://127.0.0.1:9001`（`testhub/testhub123`）；Kafka `127.0.0.1:9092`。

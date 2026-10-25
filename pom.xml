@@ -23,6 +23,7 @@
         <module>testhub-server</module>
         <module>ui-execution</module>
         <module>device-agent</module>
+        <module>api-execution</module>
     </modules>
 
     <properties>

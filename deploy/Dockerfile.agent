@@ -6,6 +6,7 @@ COPY common/pom.xml common/pom.xml
 COPY testhub-server/pom.xml testhub-server/pom.xml
 COPY ui-execution/pom.xml ui-execution/pom.xml
 COPY device-agent/pom.xml device-agent/pom.xml
+COPY api-execution/pom.xml api-execution/pom.xml
 RUN mvn -B -q -pl device-agent -am -DskipTests dependency:go-offline
 COPY device-agent device-agent
 RUN mvn -B -q -pl device-agent -am -DskipTests package

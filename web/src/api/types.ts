@@ -196,6 +196,36 @@ export interface Plan {
   lastStatus?: string;
 }
 
+export interface ApiCase {
+  id: string;
+  name: string;
+  method: string;
+  baseUrl?: string | null;
+  path: string;
+  headers?: Record<string, string>;
+  query?: Record<string, string>;
+  body?: string | null;
+  assertions?: Array<Record<string, unknown>>;
+  timeoutSec: number;
+  enabled: boolean;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ApiCaseInput {
+  name: string;
+  method: string;
+  baseUrl?: string;
+  path: string;
+  headers?: Record<string, string>;
+  query?: Record<string, string>;
+  body?: string;
+  assertions?: Array<Record<string, unknown>>;
+  timeoutSec?: number;
+  enabled?: boolean;
+}
+
 export interface PlanCase {
   caseId: string;
   title: string;
@@ -205,6 +235,9 @@ export interface PlanCase {
   executorTypeOverride?: ExecutorType | null;
   defaultExecutor?: ExecutorType | null;
   availableExecutors?: ExecutorType[];
+  caseType?: 'UI' | 'API';
+  method?: string | null;
+  path?: string | null;
 }
 
 export interface PlanRun {

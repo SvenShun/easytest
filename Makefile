@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
 
-.PHONY: help setup build test e2e main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
+.PHONY: help setup build test e2e part2 main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
 
 help:
 	@echo "TestHub V1"
@@ -12,7 +12,7 @@ help:
 	@echo "  make main-down stop the Part 1 deployment"
 	@echo "  make db      open a MySQL shell (testhub_core)"
 	@echo "  make db-backup dump core/uiexec databases to backups/"
-	@echo "  make up      start core, ui-execution, device-agent, ai-runtime (H2/memory)"
+	@echo "  make up      start core, ui-execution, api-execution, device-agent, ai-runtime"
 	@echo "  make up-mw   start with Docker MySQL/Redis/MinIO (run make infra first)"
 	@echo "  make infra   start middleware containers (mysql/redis/minio/kafka)"
 	@echo "  make ms-build build upstream MeterSphere backend (JDK 21)"
@@ -20,6 +20,7 @@ help:
 	@echo "  make ms-install-module  install embedded ui-execution module into upstream"
 	@echo "  make web     start web console (5173)"
 	@echo "  make e2e     run the end-to-end acceptance script"
+	@echo "  make part2   run the Part 2 API-execution acceptance script"
 	@echo "  make down    stop local services"
 	@echo "  make clean   remove build artifacts and runtime data"
 
@@ -78,6 +79,9 @@ web:
 
 e2e:
 	./scripts/e2e.sh
+
+part2:
+	python3 scripts/part2_smoke.py
 
 down:
 	./scripts/dev-down.sh

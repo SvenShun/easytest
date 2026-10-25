@@ -3,7 +3,7 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-for pair in "core:8080:/actuator/health" "ui-execution:8081:/actuator/health" \
+for pair in "core:8080:/actuator/health" "ui-execution:8081:/actuator/health" "api-execution:8084:/actuator/health" \
             "device-agent:8090:/agent/health" "ai-runtime:8095:/runtime/health" \
             "web:5173:/"; do
   name="${pair%%:*}"; rest="${pair#*:}"; port="${rest%%:*}"; path="${rest#*:}"

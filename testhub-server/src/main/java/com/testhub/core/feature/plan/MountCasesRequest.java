@@ -2,6 +2,6 @@ package com.testhub.core.feature.plan;
 
 import java.util.List;
 
-/** Mount payload; the executor override applies to every listed case. */
-public record MountCasesRequest(List<String> caseIds, String executorTypeOverride) {
+/** Mount payload; UI cases and API cases can be mounted in one call. */
+public record MountCasesRequest(List<String> caseIds, List<String> apiCaseIds, String executorTypeOverride) {
 }

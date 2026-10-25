@@ -15,5 +15,7 @@ public interface PlanCaseRepository extends JpaRepository<PlanCase, String> {
 
     boolean existsByCaseId(String caseId);
 
+    boolean existsByPlanIdAndCaseTypeAndCaseId(String planId, CaseType caseType, String caseId);
+
     void deleteByPlanId(String planId);
 }

@@ -4830,3 +4830,14 @@ a.btn:hover {
   gap: 8px;
   flex-wrap: wrap;
 }
+
+.add-case-section-title {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2, #5b6472);
+}
+.add-case-list-api {
+  max-height: 220px;
+  overflow: auto;
+}

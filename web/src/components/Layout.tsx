@@ -36,6 +36,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/requirements', label: '需求管理', icon: 'cases', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
       { path: '/cases', label: '用例管理', icon: 'cases', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
+      { path: '/api-cases', label: '接口用例', icon: 'api', roles: ['ADMIN', 'TESTER'] },
       { path: '/plans', label: '测试计划', icon: 'plans', roles: ['ADMIN', 'TESTER'] },
       { path: '/ai', label: 'AI 分析', icon: 'ai', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
     ],
@@ -64,6 +65,8 @@ export function routeTitle(route: RouteState): string {
       return '需求管理';
     case 'cases':
       return '用例管理';
+    case 'api-cases':
+      return '接口用例';
     case 'ai':
       return 'AI 分析';
     case 'plans':

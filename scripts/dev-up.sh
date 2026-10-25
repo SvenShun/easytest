@@ -27,6 +27,7 @@ export TESTHUB_ARTIFACT_DIR="$ROOT/data/artifacts"
 INFRA="${TESTHUB_INFRA:-local}"
 CORE_DB_URL="jdbc:h2:file:$ROOT/data/db/core;MODE=MySQL;AUTO_SERVER=TRUE"
 UEXEC_DB_URL="jdbc:h2:file:$ROOT/data/db/uiexec;MODE=MySQL;AUTO_SERVER=TRUE"
+APIEXEC_DB_URL="jdbc:h2:file:$ROOT/data/db/apiexec;MODE=MySQL;AUTO_SERVER=TRUE"
 QUEUE_STORE="${TESTHUB_QUEUE_STORE:-memory}"
 ARTIFACT_STORE="${TESTHUB_ARTIFACT_STORE:-local}"
 
@@ -48,6 +49,7 @@ if [ "$INFRA" = "docker" ]; then
   export TESTHUB_EVENT_BUS="${TESTHUB_EVENT_BUS:-kafka}"
   CORE_DB_URL="jdbc:mysql://127.0.0.1:3306/testhub_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
   UEXEC_DB_URL="jdbc:mysql://127.0.0.1:3306/testhub_uiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
+  APIEXEC_DB_URL="jdbc:mysql://127.0.0.1:3306/testhub_apiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8"
   QUEUE_STORE="${TESTHUB_QUEUE_STORE:-redis}"
   ARTIFACT_STORE="${TESTHUB_ARTIFACT_STORE:-minio}"
 fi
@@ -68,6 +70,8 @@ start core env \
   TESTHUB_PUBLIC_BASE_URL="http://127.0.0.1:8080" \
   TESTHUB_INTERNAL_BASE_URL="http://127.0.0.1:8080" \
   TESTHUB_UI_EXECUTION_BASE_URL="http://127.0.0.1:8081" \
+  TESTHUB_API_EXECUTION_URLS="http://127.0.0.1:8084" \
+  TESTHUB_WEB_STATIC_DIR="$ROOT/web/dist" \
   TESTHUB_ARTIFACT_DIR="$ROOT/data/core-artifacts" \
   TESTHUB_ARTIFACT_STORE="$ARTIFACT_STORE" \
   TESTHUB_MINIO_BUCKET=testhub-core \
@@ -82,6 +86,14 @@ start uiexec env \
   TESTHUB_UIEXEC_CALLBACK_URL="http://127.0.0.1:8081" \
   TESTHUB_MINIO_BUCKET=testhub-ui \
   ./scripts/mvn.sh -q -pl ui-execution spring-boot:run
+
+start apiexec env \
+  SPRING_DATASOURCE_URL="$APIEXEC_DB_URL" \
+  TESTHUB_CORE_URL="http://127.0.0.1:8080" \
+  TESTHUB_APIEXEC_PUBLIC_URL="http://127.0.0.1:8084" \
+  TESTHUB_APIEXEC_CALLBACK_URL="http://127.0.0.1:8080" \
+  TESTHUB_APIEXEC_WORKERS=4 \
+  ./scripts/mvn.sh -q -pl api-execution spring-boot:run
 
 start agent env \
   TESTHUB_AGENT_MODE=simulated \
@@ -111,16 +123,18 @@ wait_for() {
 
 wait_for core    http://127.0.0.1:8080/actuator/health
 wait_for uiexec  http://127.0.0.1:8081/actuator/health
+wait_for apiexec http://127.0.0.1:8084/actuator/health
 wait_for agent   http://127.0.0.1:8090/agent/health
 wait_for runtime http://127.0.0.1:8095/runtime/health 60 || true
 
 echo
 echo "TestHub is up ($INFRA):"
 echo "  core         http://127.0.0.1:8080"
-echo "  ui-execution http://127.0.0.1:8081"
+echo "  ui-execution http://127.0.0.1:8081
+  api-execution http://127.0.0.1:8084"
 echo "  device-agent http://127.0.0.1:8090"
 echo "  ai-runtime   http://127.0.0.1:8095"
-echo "  console      cd web && npm run dev  (http://127.0.0.1:5173)"
+echo "  console      http://127.0.0.1:8080 (built web/dist) · dev server: cd web && npm run dev (5173)"
 if [ "$INFRA" = "docker" ]; then
   echo "  mysql/redis/minio/kafka: Docker · object-store: ${ARTIFACT_STORE} · queue: ${QUEUE_STORE} · event-bus: ${TESTHUB_EVENT_BUS:-local}"
 fi

@@ -5,6 +5,8 @@ import com.testhub.common.security.CurrentUser;
 import com.testhub.common.util.Ids;
 import com.testhub.common.web.ApiException;
 import com.testhub.common.web.PageResponse;
+import com.testhub.core.feature.apicase.ApiCase;
+import com.testhub.core.feature.apicase.ApiCaseRepository;
 import com.testhub.core.feature.casemgmt.CapabilityView;
 import com.testhub.core.feature.casemgmt.CaseService;
 import com.testhub.core.feature.casemgmt.ClientCase;
@@ -39,16 +41,19 @@ public class PlanService {
     private final ClientCaseRepository caseRepository;
     private final ScriptService scriptService;
     private final CaseService caseService;
+    private final ApiCaseRepository apiCaseRepository;
 
     public PlanService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                        PlanRunRepository runRepository, ClientCaseRepository caseRepository,
-                       ScriptService scriptService, CaseService caseService) {
+                       ScriptService scriptService, CaseService caseService,
+                       ApiCaseRepository apiCaseRepository) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
         this.caseRepository = caseRepository;
         this.scriptService = scriptService;
         this.caseService = caseService;
+        this.apiCaseRepository = apiCaseRepository;
     }
 
     public PageResponse<PlanView> list(String keyword, Integer page, Integer size) {
@@ -107,14 +112,15 @@ public class PlanService {
     @Transactional
     public List<PlanCaseView> mount(String planId, MountCasesRequest request) {
         TestPlan plan = require(planId);
-        if (request == null || request.caseIds() == null || request.caseIds().isEmpty()) {
-            throw ApiException.badRequest("caseIds 不能为空");
+        List<String> uiCaseIds = request == null || request.caseIds() == null ? List.of() : request.caseIds();
+        List<String> apiCaseIds = request == null || request.apiCaseIds() == null ? List.of() : request.apiCaseIds();
+        if (uiCaseIds.isEmpty() && apiCaseIds.isEmpty()) {
+            throw ApiException.badRequest("caseIds 与 apiCaseIds 至少提供一个");
         }
         ExecutorType override = ExecutorType.parseOverride(request.executorTypeOverride());
-        Set<String> uniqueIds = new LinkedHashSet<>(request.caseIds());
         Instant now = Instant.now();
         int index = 0;
-        for (String caseId : uniqueIds) {
+        for (String caseId : new LinkedHashSet<>(uiCaseIds)) {
             ClientCase clientCase = caseRepository.findById(caseId)
                     .orElseThrow(() -> ApiException.notFound("用例不存在: " + caseId));
             if (clientCase.getReviewStatus() != ReviewStatus.APPROVED) {
@@ -123,9 +129,28 @@ public class PlanService {
             }
             PlanCase mounted = planCaseRepository.findByPlanIdAndCaseId(planId, caseId).orElse(null);
             if (mounted == null) {
-                mounted = new PlanCase(Ids.newId("plan-case"), planId, caseId, override, now.plusMillis(index++));
+                mounted = new PlanCase(Ids.newId("plan-case"), planId, caseId, CaseType.UI, override,
+                        now.plusMillis(index++));
             } else {
+                mounted.setCaseType(CaseType.UI);
                 mounted.setExecutorTypeOverride(override);
+            }
+            planCaseRepository.save(mounted);
+        }
+        for (String apiCaseId : new LinkedHashSet<>(apiCaseIds)) {
+            ApiCase apiCase = apiCaseRepository.findById(apiCaseId)
+                    .orElseThrow(() -> ApiException.notFound("接口用例不存在: " + apiCaseId));
+            if (!apiCase.isEnabled()) {
+                throw new ApiException(HttpStatus.CONFLICT, "CASE_DISABLED",
+                        "接口用例已禁用，无法挂载: " + apiCase.getName());
+            }
+            PlanCase mounted = planCaseRepository.findByPlanIdAndCaseId(planId, apiCaseId).orElse(null);
+            if (mounted == null) {
+                mounted = new PlanCase(Ids.newId("plan-case"), planId, apiCaseId, CaseType.API, null,
+                        now.plusMillis(index++));
+            } else {
+                mounted.setCaseType(CaseType.API);
+                mounted.setExecutorTypeOverride(null);
             }
             planCaseRepository.save(mounted);
         }
@@ -147,6 +172,16 @@ public class PlanService {
     public List<PlanCaseView> planCases(String planId) {
         List<PlanCaseView> views = new ArrayList<>();
         for (PlanCase mounted : planCaseRepository.findByPlanIdOrderByCreatedAtAscIdAsc(planId)) {
+            if (mounted.getCaseType() == CaseType.API) {
+                ApiCase apiCase = apiCaseRepository.findById(mounted.getCaseId()).orElse(null);
+                if (apiCase == null) {
+                    continue;
+                }
+                views.add(new PlanCaseView(apiCase.getId(), apiCase.getName(), null, false, null,
+                        ExecutorType.API, ExecutorType.API, List.of(ExecutorType.API),
+                        CaseType.API, apiCase.getMethod(), apiCase.getPath()));
+                continue;
+            }
             ClientCase clientCase = caseRepository.findById(mounted.getCaseId()).orElse(null);
             if (clientCase == null) {
                 continue;
@@ -156,7 +191,7 @@ public class PlanService {
             views.add(new PlanCaseView(clientCase.getId(), clientCase.getTitle(), clientCase.getReviewStatus(),
                     script != null, script == null ? null : script.getScriptType(),
                     mounted.getExecutorTypeOverride(), capability.defaultExecutor(),
-                    capability.availableExecutors()));
+                    capability.availableExecutors(), CaseType.UI, null, null));
         }
         return views;
     }

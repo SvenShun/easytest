@@ -7,7 +7,8 @@ import java.util.Locale;
 /** Execution engines selectable per plan case. */
 public enum ExecutorType {
     SCRIPT,
-    AI_RUNTIME;
+    AI_RUNTIME,
+    API;
 
     /** Parses an optional override; blank means "no override". */
     public static ExecutorType parseOverride(String value) {
@@ -17,7 +18,7 @@ public enum ExecutorType {
         try {
             return valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw ApiException.badRequest("executorTypeOverride 仅支持 SCRIPT / AI_RUNTIME");
+            throw ApiException.badRequest("executorTypeOverride 仅支持 SCRIPT / AI_RUNTIME / API");
         }
     }
 

@@ -1,0 +1,52 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: api-execution
+  datasource:
+    # H2 file DB by default; the mysql profile switches to MySQL below.
+    url: jdbc:h2:file:./data/db/apiexec;MODE=MySQL;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+testhub:
+  apiexec:
+    # TESTHUB_APIEXEC_CALLBACK_URL is accepted as a compatibility alias (dev-up.sh).
+    core-base-url: ${TESTHUB_CORE_URL:${TESTHUB_APIEXEC_CALLBACK_URL:http://127.0.0.1:8080}}
+    public-base-url: ${TESTHUB_APIEXEC_PUBLIC_URL:http://127.0.0.1:8084}
+    # Optional callback-token override; blank reuses testhub.security.service-token.
+    service-token: ${TESTHUB_APIEXEC_SERVICE_TOKEN:}
+    workers: ${TESTHUB_APIEXEC_WORKERS:4}
+    default-timeout-sec: ${TESTHUB_APIEXEC_DEFAULT_TIMEOUT_SEC:30}
+    callback-enabled: ${TESTHUB_APIEXEC_CALLBACK_ENABLED:true}
+  security:
+    jwt-secret: ${TESTHUB_JWT_SECRET:testhub-dev-jwt-secret-change-me-0123456789abcdef}
+    service-token: ${TESTHUB_SERVICE_TOKEN:${TESTHUB_APIEXEC_SERVICE_TOKEN:testhub-dev-service-token}}
+    agent-token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
+    encryption-key: ${TESTHUB_ENCRYPTION_KEY:testhub-dev-encryption-key-change-me}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

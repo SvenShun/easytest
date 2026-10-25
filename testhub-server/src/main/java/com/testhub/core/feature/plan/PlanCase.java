@@ -26,6 +26,10 @@ public class PlanCase {
     private String caseId;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "case_type", length = 16)
+    private CaseType caseType = CaseType.UI;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "executor_type_override", length = 16)
     private ExecutorType executorTypeOverride;
 
@@ -45,9 +49,15 @@ public class PlanCase {
 
     public PlanCase(String id, String planId, String caseId, ExecutorType executorTypeOverride,
                     Instant createdAt) {
+        this(id, planId, caseId, CaseType.UI, executorTypeOverride, createdAt);
+    }
+
+    public PlanCase(String id, String planId, String caseId, CaseType caseType,
+                    ExecutorType executorTypeOverride, Instant createdAt) {
         this.id = id;
         this.planId = planId;
         this.caseId = caseId;
+        this.caseType = caseType;
         this.executorTypeOverride = executorTypeOverride;
         this.createdAt = createdAt;
     }
@@ -62,6 +72,14 @@ public class PlanCase {
 
     public String getCaseId() {
         return caseId;
+    }
+
+    public CaseType getCaseType() {
+        return caseType == null ? CaseType.UI : caseType;
+    }
+
+    public void setCaseType(CaseType caseType) {
+        this.caseType = caseType;
     }
 
     public ExecutorType getExecutorTypeOverride() {

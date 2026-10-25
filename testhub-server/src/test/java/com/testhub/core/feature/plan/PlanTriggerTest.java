@@ -39,6 +39,9 @@ class PlanTriggerTest extends ApiTestSupport {
     @MockBean
     private UiExecutionClient uiExecutionClient;
 
+    @MockBean
+    private ApiExecutionClient apiExecutionClient;
+
     @Autowired
     private ScriptProjectRepository scriptRepository;
 

@@ -40,6 +40,7 @@ testhub:
     public-base-url: ${TESTHUB_PUBLIC_BASE_URL:http://127.0.0.1:8080}
     internal-base-url: ${TESTHUB_INTERNAL_BASE_URL:}
     ui-execution-base-url: ${TESTHUB_UI_EXECUTION_BASE_URL:http://127.0.0.1:8081}
+    api-execution-base-urls: ${TESTHUB_API_EXECUTION_URLS:http://127.0.0.1:8084}
     ticket-ttl: 15m
     credential-ttl: 15m
   metersphere:

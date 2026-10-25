@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { casesApi, plansApi, uiexecApi } from '../api';
+import { apiCasesApi, casesApi, plansApi, uiexecApi } from '../api';
 import { MAIN_ONLY } from '../config';
 import type {
   CaseDetail,
   Device,
   ExecutorType,
+  ApiCase,
   PlanCase,
   PlanDetail,
   RunSummary,
@@ -47,6 +48,7 @@ import { toastError, toastSuccess } from '../components/Toast';
 const RUN_POLL_MS = 5000;
 
 function executorOf(planCase: PlanCase): ExecutorType {
+  if (planCase.caseType === 'API') return 'API';
   if (planCase.executorTypeOverride) return planCase.executorTypeOverride;
   if (planCase.defaultExecutor) return planCase.defaultExecutor;
   return planCase.hasScript ? 'SCRIPT' : 'AI_RUNTIME';
@@ -95,6 +97,10 @@ export function PlanDetailPage() {
   const [approvedError, setApprovedError] = useState('');
   const [caseSearch, setCaseSearch] = useState('');
   const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set());
+  const [apiCases, setApiCases] = useState<ApiCase[]>([]);
+  const [apiCasesLoading, setApiCasesLoading] = useState(false);
+  const [apiCasesError, setApiCasesError] = useState('');
+  const [selectedApiCases, setSelectedApiCases] = useState<Set<string>>(new Set());
   const [addMode, setAddMode] = useState<AddCaseMode>('default');
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
@@ -195,6 +201,7 @@ export function PlanDetailPage() {
   const openAddCases = async () => {
     setAddOpen(true);
     setSelectedCases(new Set());
+    setSelectedApiCases(new Set());
     setCaseSearch('');
     setAddMode('default');
     setAddError('');
@@ -208,6 +215,16 @@ export function PlanDetailPage() {
     } finally {
       setApprovedLoading(false);
     }
+    setApiCasesLoading(true);
+    setApiCasesError('');
+    try {
+      const data = await apiCasesApi.list('', 1, 100);
+      setApiCases(data.items);
+    } catch (err) {
+      setApiCasesError(safeErrorMessage(err));
+    } finally {
+      setApiCasesLoading(false);
+    }
   };
 
   const toggleCase = (id: string) => {
@@ -219,17 +236,28 @@ export function PlanDetailPage() {
     });
   };
 
+  const toggleApiCase = (id: string) => {
+    setSelectedApiCases((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const saveAddCases = async () => {
     if (!planId) return;
-    if (selectedCases.size === 0) {
-      setAddError('请至少选择一条已通过评审的用例');
+    const total = selectedCases.size + selectedApiCases.size;
+    if (total === 0) {
+      setAddError('请至少选择一条用例');
       return;
     }
     setAddSaving(true);
     setAddError('');
     try {
-      await plansApi.addCases(planId, Array.from(selectedCases), addMode === 'default' ? null : addMode);
-      toastSuccess(`已添加 ${selectedCases.size} 条用例`);
+      await plansApi.addCases(planId, Array.from(selectedCases),
+        addMode === 'default' ? null : addMode, Array.from(selectedApiCases));
+      toastSuccess(`已添加 ${total} 条用例`);
       setAddOpen(false);
       await load(true);
     } catch (err) {
@@ -310,6 +338,19 @@ export function PlanDetailPage() {
   };
 
   const alreadyInPlan = useMemo(() => new Set(planCases.map((item) => item.caseId)), [planCases]);
+  const filteredApiCases = useMemo(() => {
+    const text = caseSearch.trim().toLowerCase();
+    return apiCases
+      .filter((item) => item.enabled && !alreadyInPlan.has(item.id))
+      .filter(
+        (item) =>
+          !text ||
+          item.name.toLowerCase().includes(text) ||
+          item.path.toLowerCase().includes(text) ||
+          item.id.toLowerCase().includes(text),
+      );
+  }, [apiCases, alreadyInPlan, caseSearch]);
+
   const filteredApproved = useMemo(() => {
     const text = caseSearch.trim().toLowerCase();
     return approvedCases
@@ -422,7 +463,7 @@ export function PlanDetailPage() {
       <Card>
         <CardHead
           title="计划用例"
-          description="仅已通过评审的用例可以被挂载；触发时按执行器路由规则创建任务"
+          description="UI 用例需已评审；接口用例需启用；触发时按类型路由到 ui-execution / api-execution"
           icon="cases"
           actions={
             <Button size="sm" variant="primary" icon="plus" onClick={() => void openAddCases()}>
@@ -436,6 +477,7 @@ export function PlanDetailPage() {
               <thead>
                 <tr>
                   <th>用例</th>
+                  <th>类型</th>
                   <th>评审状态</th>
                   <th>关联脚本</th>
                   <th>默认执行器</th>
@@ -449,7 +491,7 @@ export function PlanDetailPage() {
               <tbody>
                 {planCases.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <EmptyState
                         icon="plans"
                         title="计划还没有用例"
@@ -463,23 +505,35 @@ export function PlanDetailPage() {
                     </td>
                   </tr>
                 ) : (
-                  planCases.map((item) => (
+                  planCases.map((item) => {
+                    const isApi = item.caseType === 'API';
+                    return (
                     <tr key={item.caseId}>
                       <td>
                         <button
                           type="button"
                           className="cell-link"
-                          onClick={() => navigate(buildPath('/cases', { highlight: item.caseId }))}
+                          onClick={() => navigate(buildPath(isApi ? '/api-cases' : '/cases', { highlight: item.caseId }))}
                         >
                           {item.title}
                         </button>
                         <div className="cell-sub mono">{item.caseId}</div>
                       </td>
                       <td>
-                        <StatusPill meta={metaOf(REVIEW_STATUS_META, item.reviewStatus)} />
+                        <Pill tone={isApi ? 'purple' : 'blue'}>{isApi ? '接口' : 'UI'}</Pill>
+                        {isApi && item.method ? <div className="cell-sub mono">{item.method} {item.path}</div> : null}
                       </td>
                       <td>
-                        {item.hasScript ? (
+                        {isApi ? (
+                          <span className="text-muted">—</span>
+                        ) : (
+                          <StatusPill meta={metaOf(REVIEW_STATUS_META, item.reviewStatus)} />
+                        )}
+                      </td>
+                      <td>
+                        {isApi ? (
+                          <span className="text-muted">—</span>
+                        ) : item.hasScript ? (
                           <Pill tone="blue">{item.scriptType || '有脚本'}</Pill>
                         ) : (
                           <span className="text-muted">无</span>
@@ -489,17 +543,21 @@ export function PlanDetailPage() {
                         <StatusPill meta={metaOf(EXECUTOR_META, executorOf(item))} dot={false} />
                       </td>
                       <td>
-                        <div className="override-cell" title="V1 后端暂不提供单独修改覆盖执行器的接口">
-                          <Select
-                            value={item.executorTypeOverride || ''}
-                            disabled
-                            aria-label="本次覆盖执行器（只读）"
-                          >
-                            <option value="">跟随默认</option>
-                            <option value="SCRIPT">传统脚本</option>
-                            <option value="AI_RUNTIME">AI Runtime</option>
-                          </Select>
-                        </div>
+                        {isApi ? (
+                          <span className="text-muted">固定 API</span>
+                        ) : (
+                          <div className="override-cell" title="V1 后端暂不提供单独修改覆盖执行器的接口">
+                            <Select
+                              value={item.executorTypeOverride || ''}
+                              disabled
+                              aria-label="本次覆盖执行器（只读）"
+                            >
+                              <option value="">跟随默认</option>
+                              <option value="SCRIPT">传统脚本</option>
+                              <option value="AI_RUNTIME">AI Runtime</option>
+                            </Select>
+                          </div>
+                        )}
                       </td>
                       <td className="td-right">
                         <IconButton
@@ -510,15 +568,16 @@ export function PlanDetailPage() {
                         />
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
           <div className="table-note">
             <Icon name="info" size={14} />
-            V1 后端未提供单独更新覆盖执行器的接口：覆盖值在「添加用例」时可统一指定；若为「跟随默认」，触发时按
-            有脚本 → SCRIPT、无脚本 → AI_RUNTIME 路由。
+            V1 后端未提供单独更新覆盖执行器的接口：覆盖值在「添加用例」时可统一指定；若为「跟随默认」，UI 用例按
+            有脚本 → SCRIPT、无脚本 → AI_RUNTIME 路由，接口用例固定走 api-execution。
           </div>
         </div>
       </Card>
@@ -653,7 +712,7 @@ export function PlanDetailPage() {
       <Modal
         open={addOpen}
         title="添加用例到计划"
-        description={`只会列出已通过评审且尚未加入计划的用例（当前计划 ${planCases.length} 条）`}
+        description={`UI 用例需已通过评审；接口用例需启用；均只列出尚未加入计划的（当前计划 ${planCases.length} 条）`}
         onClose={() => {
           if (!addSaving) setAddOpen(false);
         }}
@@ -661,7 +720,9 @@ export function PlanDetailPage() {
         closeOnOverlay={!addSaving}
         footer={
           <>
-            <span className="modal-foot-note">已选择 {selectedCases.size} 条</span>
+            <span className="modal-foot-note">
+              已选择 {selectedCases.size + selectedApiCases.size} 条（UI {selectedCases.size} · 接口 {selectedApiCases.size}）
+            </span>
             <Button variant="secondary" onClick={() => setAddOpen(false)} disabled={addSaving}>
               取消
             </Button>
@@ -723,7 +784,42 @@ export function PlanDetailPage() {
               })
             )}
           </div>
-          <div className="field-hint">执行器覆盖会对本次所选用例统一生效；V1 不支持逐条单独修改。</div>
+          <div className="add-case-section-title">接口用例（由 api-execution 独立执行）</div>
+          <div className="add-case-list add-case-list-api">
+            {apiCasesLoading ? (
+              <LoadingPanel text="正在加载接口用例…" />
+            ) : apiCasesError ? (
+              <ErrorPanel message={apiCasesError} compact onRetry={() => void openAddCases()} />
+            ) : filteredApiCases.length === 0 ? (
+              <EmptyState
+                compact
+                icon="api"
+                title={apiCases.length === 0 ? '没有接口用例' : '没有可添加的接口用例'}
+                description={
+                  apiCases.length === 0
+                    ? '请先在「接口用例」页面创建'
+                    : '已启用的接口用例都已加入计划，或不符合搜索条件'
+                }
+              />
+            ) : (
+              filteredApiCases.map((item) => {
+                const checked = selectedApiCases.has(item.id);
+                return (
+                  <label key={item.id} className={cx('add-case-row', checked && 'is-checked')}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleApiCase(item.id)} />
+                    <span className="add-case-main">
+                      <span className="add-case-title">{item.name}</span>
+                      <span className="add-case-sub mono">
+                        {item.method} {item.baseUrl || ''}{item.path} · 断言 {(item.assertions || []).length} 条
+                      </span>
+                    </span>
+                    <Pill tone="blue">接口</Pill>
+                  </label>
+                );
+              })
+            )}
+          </div>
+          <div className="field-hint">执行器覆盖只对 UI 用例生效；接口用例固定由 api-execution 执行。</div>
         </div>
       </Modal>
 

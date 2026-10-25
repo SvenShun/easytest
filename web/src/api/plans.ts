@@ -21,10 +21,11 @@ export const plansApi = {
     request<Plan>('core', `/api/v1/plans/${encodeURIComponent(id)}`, { method: 'PUT', body: input }),
   remove: (id: string) =>
     request<void>('core', `/api/v1/plans/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  addCases: (id: string, caseIds: string[], executorTypeOverride?: string | null) =>
+  addCases: (id: string, caseIds: string[], executorTypeOverride?: string | null,
+             apiCaseIds: string[] = []) =>
     request<unknown>('core', `/api/v1/plans/${encodeURIComponent(id)}/cases`, {
       method: 'POST',
-      body: { caseIds, executorTypeOverride: executorTypeOverride ?? null },
+      body: { caseIds, apiCaseIds, executorTypeOverride: executorTypeOverride ?? null },
     }),
   removeCase: (id: string, caseId: string) =>
     request<void>('core', `/api/v1/plans/${encodeURIComponent(id)}/cases/${encodeURIComponent(caseId)}`, {
