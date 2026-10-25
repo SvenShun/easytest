@@ -34,6 +34,10 @@ public class TestPlan {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    /** MeterSphere test plan id used for execution-result write-back (optional). */
+    @Column(name = "metersphere_test_plan_id", length = 64)
+    private String metersphereTestPlanId;
+
     protected TestPlan() {
     }
 
@@ -90,5 +94,13 @@ public class TestPlan {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getMetersphereTestPlanId() {
+        return metersphereTestPlanId;
+    }
+
+    public void setMetersphereTestPlanId(String metersphereTestPlanId) {
+        this.metersphereTestPlanId = metersphereTestPlanId;
     }
 }

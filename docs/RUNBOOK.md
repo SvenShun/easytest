@@ -50,6 +50,7 @@ make ms-down
 ```
 
 - 账号 `admin/metersphere`；默认项目 `100001100001`。
+- 计划结果回写：`TESTHUB_METERSPHERE_WRITEBACK=true` + 映射接口（见 METERSPHERE-INTEGRATION §4.1）。
 - MeterSphere 会话默认 12h，过期后重新执行 `make ms-token` 并重启 ui-execution。
 - 数据库必须使用 `utf8mb4_general_ci`；日志已用 `deploy/metersphere/logback-spring.xml` 覆盖。
 - 详见 `docs/METERSPHERE-INTEGRATION.md`。

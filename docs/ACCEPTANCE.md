@@ -6,18 +6,18 @@
 | 版本 | V1（首个可运行版本） |
 | 验收环境 | macOS（Apple Silicon），Java 17.0.2，Maven 3.9.9，Node 22.20.0，Python 3.9.15，无 Docker daemon、无真机、无大模型 Key |
 | 运行模式 | H2 文件库 + 内存 FIFO 队列 + 本地产物 + `mock` 模型 + 模拟设备（完全离线） |
-| 结论 | **通过**：全量 151 个自动化测试通过，端到端验收 47 项检查全部通过 |
+| 结论 | **通过**：全量 154 个自动化测试通过，端到端验收 47 项检查全部通过 |
 
 ## 1. 构建与自动化测试
 
 | 模块 | 测试数 | 结果 | 命令 |
 |---|---|---|---|
 | common | 4 | 通过 | `./scripts/mvn.sh -pl common test` |
-| testhub-server | 27 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
+| testhub-server | 30 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
 | ui-execution | 36 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
 | device-agent | 36 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
 | ai-runtime (Python) | 48 | 通过 | `cd agents/ai-runtime && .venv/bin/pytest -q` |
-| **合计** | **151** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
+| **合计** | **154** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
 | web | — | `tsc --noEmit` + Vite build 成功 | `cd web && npm run build` |
 
 覆盖重点：执行器路由、FIFO 队列位置、任务状态机、失败分类、评审流转、执行能力计算、
@@ -101,13 +101,14 @@ Kafka 事件示例（截断）：
 | 用例源适配 | 真实用例 `1707709216279502848` 被 ui-execution 读取，BDD 映射正确 |
 | AI 执行 | `task_c40a656d96a34726a330` SUCCESS，5 步轨迹（登录 → 输入 → 输入 → 登录 → done） |
 | 失败回写 | `task_311b90a11dac4b3eb25e` FAILED，MeterSphere 评论 `1707710899906691072` 写入分类/摘要/报告 URL |
+| 计划结果回写 | 成功：`run_bd27529cc54048ae89ca` → MS plan-case `1707773434630599999` = **SUCCESS**；失败：`task_8929962a82c7404ca949` → MS plan-case `17077734346124044` = **ERROR** |
 | 回归 | 恢复 `case-source=testhub` 后 E2E 47/47 |
 
 构建/运行中解决的真实问题：JDK 21 要求、`frontend/dist` 缺失导致 antrun 失败、
 MySQL 库 collation 必须 `utf8mb4_general_ci`、上游 logback 硬编码 `/opt/metersphere` 日志路径、
 MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请求头。
 
-未完成：计划/结果映射（`/test-plan/functional/case/run`）、会话自动续期、源码级模块内嵌。
+未完成：计划-用例关联的 API 自动化（当前用 SQL fixture）、会话自动续期、源码级模块内嵌。
 
 ## 3. 验收中发现并修复的问题
 
@@ -132,8 +133,8 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 - Docker Compose：已提供，本次未在容器环境实测。
 - 接口测试（JMeter）：不在 V1 范围，仅报告模型预留 `executorType=API`。
 - Kafka 仅作为**任务生命周期事件流**（dispatch/result）接入，任务下发本身仍走 HTTP；把下发也迁到 Kafka 是后续工作。
-- MeterSphere：已真实构建、启动并完成用例源 + 失败评论回写联调；计划/结果回写与源码级模块内嵌未完成，
-  见 `docs/METERSPHERE-INTEGRATION.md`。
+- MeterSphere：已真实构建、启动，并完成用例源、失败评论回写、计划结果回写联调；
+  计划-用例关联自动化与源码级模块内嵌未完成，见 `docs/METERSPHERE-INTEGRATION.md`。
 - Sonic：已从提供的源码构建并引入 **driver-core（Apache-2.0）** 作为 `mode=sonic` 真机驱动；
   无真机/无 UIA2 服务，真机运行未验证，详见 `docs/SONIC-INTEGRATION.md`。
 - 多实例/集群、Flyway、SSE 压测、轨迹生命周期归档未覆盖。
@@ -144,7 +145,7 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 make setup
 make up
 make e2e          # 期望：RESULT: 47 checks passed, 0 failed
-make check        # Java 103 + Python 48 测试 + Web 构建
+make check        # Java 106 + Python 48 测试 + Web 构建
 make down
 
 # 真实中间件模式（MySQL/Redis/MinIO/Kafka）

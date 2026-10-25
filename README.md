@@ -129,10 +129,17 @@ scripts/          构建/启动/验收脚本
 ## V1 已知边界
 
 接口测试执行（JMeter）、投屏/scrcpy、Kafka 异步下发、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
-MeterSphere v3 已按你提供的源码**本地构建并运行**，ui-execution 已真实验证“用例源 + 失败评论回写”；
+MeterSphere v3 已按你提供的源码**本地构建并运行**，已真实验证“用例源 + 失败评论回写 + 计划结果回写”；
 Sonic 的 **driver-core（Apache-2.0）** 已接入为 `mode=sonic` 真机驱动。
-计划/结果回写、源码级模块内嵌与真机运行仍未完成，见 [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md)
+计划-用例关联自动化、源码级模块内嵌与真机运行仍未完成，见 [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md)
 与 [docs/SONIC-INTEGRATION.md](docs/SONIC-INTEGRATION.md)。
 MySQL / Redis / MinIO / Kafka 已完成真实验收（Kafka 仅承载任务事件，下发仍走 HTTP），详见 V1-SCOPE §3.1。
 
 具体演进路径见 `docs/V1-SCOPE.md` §3。
+
+
+## License
+
+TestHub is released under the **GNU Affero General Public License v3.0** (see [LICENSE](LICENSE)).
+Third-party components and their obligations are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+and [docs/LEGAL.md](docs/LEGAL.md).

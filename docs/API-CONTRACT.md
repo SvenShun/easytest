@@ -132,6 +132,24 @@
 - 计划无已通过用例 → 409 `NO_EXECUTABLE_CASE`。
 
 `GET /api/v1/plans/{id}/runs?page=&size=` → 分页 `[{id,planId,status,triggeredBy,startedAt,finishedAt,total,success,failed,timeout,cancelled,running,pending}]`
+
+**MeterSphere 结果回写映射**（可选，TESTER/ADMIN）：
+
+`PUT /api/v1/plans/{id}/metersphere` `{testPlanId}` → `PlanMappingView`
+`PUT /api/v1/plans/{id}/cases/{caseId}/metersphere` `{metersphereCaseId, metersphereTestPlanCaseId}` → `PlanMappingView`
+`GET /api/v1/plans/{id}/metersphere` → `{planId, metersphereTestPlanId, cases:[{caseId, metersphereCaseId, metersphereTestPlanCaseId}]}`
+
+配置 `TESTHUB_METERSPHERE_WRITEBACK=true` 后，`POST /internal/v1/plan-runs/items/result` 处理完成时，
+按映射调用 MeterSphere `POST /test-plan/functional/case/run`：
+
+| TestHub item 状态 | MeterSphere `lastExecResult` |
+|---|---|
+| SUCCESS | SUCCESS |
+| FAILED | ERROR |
+| TIMEOUT / CANCELLED / SKIPPED | BLOCKED |
+| 其他 | PENDING |
+
+写回为 best-effort：MeterSphere 不可达只记录 WARN，不影响 TestHub 结果。请求需带 `X-AUTH-TOKEN`、`CSRF-TOKEN`、`PROJECT`。
 `GET /api/v1/plan-runs/{runId}` → `{run, items:[{caseId,caseTitle,taskId,executorType,status,failureReason,failureReportUrl,summary,deviceId,updatedAt}]}`
 `GET /api/v1/plan-runs/{runId}/report`
 ```json

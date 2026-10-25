@@ -3,6 +3,10 @@ package com.testhub.core.feature.plan;
 import com.testhub.common.security.RequireRole;
 import com.testhub.common.security.Role;
 import com.testhub.common.web.PageResponse;
+import com.testhub.core.feature.metersphere.MeterSphereMappingDtos.CaseMappingRequest;
+import com.testhub.core.feature.metersphere.MeterSphereMappingDtos.PlanMappingRequest;
+import com.testhub.core.feature.metersphere.MeterSphereMappingDtos.PlanMappingView;
+import com.testhub.core.feature.metersphere.PlanMeterSphereService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,10 +27,13 @@ public class PlanController {
 
     private final PlanService planService;
     private final PlanRunService planRunService;
+    private final PlanMeterSphereService meterSphereService;
 
-    public PlanController(PlanService planService, PlanRunService planRunService) {
+    public PlanController(PlanService planService, PlanRunService planRunService,
+                          PlanMeterSphereService meterSphereService) {
         this.planService = planService;
         this.planRunService = planRunService;
+        this.meterSphereService = meterSphereService;
     }
 
     @RequireRole({Role.ADMIN, Role.TESTER})
@@ -70,6 +77,25 @@ public class PlanController {
     public ResponseEntity<Void> unmount(@PathVariable String id, @PathVariable String caseId) {
         planService.unmount(id, caseId);
         return ResponseEntity.noContent().build();
+    }
+
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    @PutMapping("/{id}/metersphere")
+    public PlanMappingView linkMeterSpherePlan(@PathVariable String id,
+                                               @RequestBody PlanMappingRequest request) {
+        return meterSphereService.linkPlan(id, request);
+    }
+
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    @PutMapping("/{id}/cases/{caseId}/metersphere")
+    public PlanMappingView linkMeterSphereCase(@PathVariable String id, @PathVariable String caseId,
+                                               @RequestBody CaseMappingRequest request) {
+        return meterSphereService.linkCase(id, caseId, request);
+    }
+
+    @GetMapping("/{id}/metersphere")
+    public PlanMappingView meterSphereMapping(@PathVariable String id) {
+        return meterSphereService.view(id);
     }
 
     @RequireRole({Role.ADMIN, Role.TESTER})

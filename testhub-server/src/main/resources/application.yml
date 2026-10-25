@@ -42,6 +42,13 @@ testhub:
     ui-execution-base-url: ${TESTHUB_UI_EXECUTION_BASE_URL:http://127.0.0.1:8081}
     ticket-ttl: 15m
     credential-ttl: 15m
+  metersphere:
+    # Plan-result write-back (POST /test-plan/functional/case/run)
+    enabled: ${TESTHUB_METERSPHERE_WRITEBACK:false}
+    base-url: ${TESTHUB_METERSHPHERE_BASE_URL:http://127.0.0.1:8082}
+    project-id: ${TESTHUB_METERSHPHERE_PROJECT_ID:}
+    token: ${TESTHUB_METERSHPHERE_TOKEN:}
+    csrf-token: ${TESTHUB_METERSHPHERE_CSRF_TOKEN:}
   artifact:
     store: ${TESTHUB_ARTIFACT_STORE:local}
     local-dir: ${TESTHUB_ARTIFACT_DIR:./data/core-artifacts}

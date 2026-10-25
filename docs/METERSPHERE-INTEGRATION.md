@@ -13,7 +13,7 @@
 | 真实运行 | 完成 | MeterSphere 运行在 `:8082`（默认 8081 与 ui-execution 冲突，已改端口） |
 | 用例源适配 | **已真实验证** | ui-execution 从 MeterSphere 读取功能用例，映射为 BDD 并驱动 AI Runtime 执行 |
 | 失败回写 | **已真实验证** | 失败时以“用例评论”写回 MeterSphere，追加式，不覆盖人工备注 |
-| 计划/结果回写 | 未实现 | 尚未建立 TestHub plan ↔ MeterSphere test plan/case 的 ID 映射，也未调用 `/test-plan/functional/case/run` |
+| 计划/结果回写 | **已真实验证** | TestHub 计划运行结果通过映射写回 MeterSphere 测试计划（SUCCESS→SUCCESS、FAILED→ERROR） |
 | 源码级内嵌 | 未实现 | 目前是 API 级适配；把 ui-execution 做成 MeterSphere Maven 模块仍需合并构建与依赖治理 |
 
 **结论**：MeterSphere 已真实构建、启动并完成“用例源 + 失败回写”的端到端联调；距离文档中“紧耦合融合/源码内嵌”仍有计划映射和模块内嵌两步。
@@ -108,6 +108,48 @@ PROJECT:      100001100001
 | 关闭 Runtime 制造失败 | `task_311b90a11dac4b3eb25e` **FAILED / EXECUTOR_UNAVAILABLE** |
 | 失败回写 MeterSphere | 评论 id `1707710899906691072`，内容含失败分类、摘要、失败报告 URL、任务 ID |
 | 恢复默认模式回归 | `make e2e` 47/47 通过（TestHub 用例源不受影响） |
+
+## 4.1 计划结果回写（已实现并验证）
+
+映射 API（TestHub 侧）：
+
+```http
+PUT /api/v1/plans/{planId}/metersphere
+{"testPlanId":"1707773434630520832"}
+
+PUT /api/v1/plans/{planId}/cases/{caseId}/metersphere
+{"metersphereCaseId":"1707709216279502848","metersphereTestPlanCaseId":"1707773434630599999"}
+```
+
+服务端在 `POST /internal/v1/plan-runs/items/result` 处理后，按映射调用
+`POST /test-plan/functional/case/run`：
+
+| TestHub item | MeterSphere |
+|---|---|
+| SUCCESS | SUCCESS |
+| FAILED | ERROR |
+| TIMEOUT / CANCELLED / SKIPPED | BLOCKED |
+
+配置：
+
+```bash
+TESTHUB_METERSPHERE_WRITEBACK=true
+TESTHUB_METERSHPHERE_BASE_URL=http://127.0.0.1:8082
+TESTHUB_METERSHPHERE_PROJECT_ID=100001100001
+TESTHUB_METERSHPHERE_TOKEN=...      # make ms-token
+TESTHUB_METERSHPHERE_CSRF_TOKEN=...
+```
+
+**实测结果**：
+
+| 场景 | TestHub | MeterSphere |
+|---|---|---|
+| 成功 | 计划运行 `run_bd27529cc54048ae89ca` → SUCCESS | plan-case `1707773434630599999` → `SUCCESS`，执行历史落库 |
+| 失败（脚本失败） | 任务 `task_8929962a82c7404ca949` → FAILED / SCRIPT_FAILED | plan-case `17077734346124044` → `ERROR`，执行历史落库 |
+
+> 关联 fixture：MeterSphere v3 的计划-用例关联走 Minder 接口，参数较多；本次联调用 SQL 插入
+> `test_plan_functional_case` 行建立关联（真实 API 用于读取计划用例和写回结果）。
+> 生产化应改用其 Minder/关联接口或由 MeterSphere UI 完成关联，再通过映射 API 登记 ID。
 
 ## 5. 使用方式
 

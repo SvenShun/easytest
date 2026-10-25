@@ -32,6 +32,14 @@ public class PlanCase {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    /** MeterSphere functional case id (optional; used only for result write-back). */
+    @Column(name = "metersphere_case_id", length = 64)
+    private String metersphereCaseId;
+
+    /** MeterSphere test-plan functional case row id, required to post an execution result. */
+    @Column(name = "metersphere_test_plan_case_id", length = 64)
+    private String metersphereTestPlanCaseId;
+
     protected PlanCase() {
     }
 
@@ -66,5 +74,21 @@ public class PlanCase {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public String getMetersphereCaseId() {
+        return metersphereCaseId;
+    }
+
+    public void setMetersphereCaseId(String metersphereCaseId) {
+        this.metersphereCaseId = metersphereCaseId;
+    }
+
+    public String getMetersphereTestPlanCaseId() {
+        return metersphereTestPlanCaseId;
+    }
+
+    public void setMetersphereTestPlanCaseId(String metersphereTestPlanCaseId) {
+        this.metersphereTestPlanCaseId = metersphereTestPlanCaseId;
     }
 }

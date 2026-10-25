@@ -7,6 +7,7 @@ import com.testhub.common.web.ApiException;
 import com.testhub.common.web.PageResponse;
 import com.testhub.core.feature.casemgmt.ClientCase;
 import com.testhub.core.feature.casemgmt.ClientCaseRepository;
+import com.testhub.core.feature.metersphere.MeterSphereResultSink;
 import com.testhub.core.feature.casemgmt.ReviewStatus;
 import com.testhub.core.feature.script.ScriptProject;
 import com.testhub.core.feature.script.ScriptService;
@@ -43,11 +44,13 @@ public class PlanRunService {
     private final ScriptService scriptService;
     private final UiExecutionClient uiExecutionClient;
     private final AuditService auditService;
+    private final MeterSphereResultSink meterSphereResultSink;
 
     public PlanRunService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                           PlanRunRepository runRepository, PlanRunItemRepository itemRepository,
                           ClientCaseRepository caseRepository, ScriptService scriptService,
-                          UiExecutionClient uiExecutionClient, AuditService auditService) {
+                          UiExecutionClient uiExecutionClient, AuditService auditService,
+                          MeterSphereResultSink meterSphereResultSink) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -56,6 +59,7 @@ public class PlanRunService {
         this.scriptService = scriptService;
         this.uiExecutionClient = uiExecutionClient;
         this.auditService = auditService;
+        this.meterSphereResultSink = meterSphereResultSink;
     }
 
     public TriggerResponse trigger(String planId, TriggerRequest request) {
@@ -210,7 +214,20 @@ public class PlanRunService {
         }
         item.setUpdatedAt(Instant.now());
         itemRepository.save(item);
+        writeMeterSphereResult(run, item);
         recompute(run);
+    }
+
+    /** Best-effort write-back into MeterSphere; never breaks the TestHub callback. */
+    private void writeMeterSphereResult(PlanRun run, PlanRunItem item) {
+        try {
+            TestPlan plan = planRepository.findById(run.getPlanId()).orElse(null);
+            PlanCase planCase = planCaseRepository.findByPlanIdAndCaseId(run.getPlanId(), item.getCaseId())
+                    .orElse(null);
+            meterSphereResultSink.write(plan, planCase, run, item);
+        } catch (RuntimeException e) {
+            log.warn("MeterSphere 结果回写异常（忽略）: {}", e.getMessage());
+        }
     }
 
     /** Best-effort reconciliation against ui-execution; unreachable service is ignored. */

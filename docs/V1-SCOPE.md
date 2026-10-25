@@ -52,8 +52,9 @@ V1 面向单机 Docker Compose / 本地开发环境，硬性要求：**没有大
 ## 3.1 交付边界更正（重要）
 
 1. **未引入 MeterSphere / Sonic 源码**：本仓库是按其能力模型实现的等价新服务，不是对两个项目的 fork 或紧耦合改造；`device-agent` 也不是 Sonic-Agent 改造版。
-   已实现可选的 **MeterSphere v3 API 适配层**（`testhub.uiexec.case-source=metersphere`：读取功能用例、写回失败评论），
-   但未运行 MeterSphere，也未接入其计划/结果回写，详见 `docs/METERSPHERE-INTEGRATION.md`。
+   已实现可选的 **MeterSphere v3 适配层**：读取功能用例（ui-execution）、写回失败评论、
+   计划结果写回 MeterSphere 测试计划（testhub-server），并已用真实构建的 MeterSphere 实例验证；
+   详见 `docs/METERSPHERE-INTEGRATION.md`。
 2. **数据库**：使用 JPA 持久化；默认 H2 文件库，MySQL profile 已在真实 MySQL 8.0 上完成端到端验收（见 ACCEPTANCE §2.1）。
 3. **中间件**：Redis FIFO 队列、MinIO 产物、Kafka 事件流均已在真实中间件上完成端到端验收；Kafka 目前承载任务事件，不承载任务下发。
 4. 原文档中的「紧耦合融合」在 V1 中体现为**接口与数据模型对齐**，不体现为代码级复用。
