@@ -42,6 +42,7 @@ docker exec testhub-kafka /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap
 
 ```bash
 cp -R /Users/wen/Workspace/TestPlatform/metersphere/metersphere-3.x upstream/metersphere
+make ms-install-module            # 注入 ui-execution 模块与补丁
 make ms-build                     # JDK 21 + 工作区 Maven 仓库
 make ms-up                        # :8082 / 管理 :7171，日志 logs/metersphere.log
 eval "$(make -s ms-token)"        # X-AUTH-TOKEN / CSRF-TOKEN / PROJECT

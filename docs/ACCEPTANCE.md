@@ -110,6 +110,19 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 
 未完成：计划-用例关联的 API 自动化（当前用 SQL fixture）、会话自动续期、源码级模块内嵌。
 
+## 2.3 MeterSphere 源码级内嵌（ui-execution 模块）
+
+| 项 | 结果 |
+|---|---|
+| 形态 | MeterSphere `backend/services/ui-execution` 新模块，随 MS 一起构建、同进程运行 |
+| 复用 | Shiro 会话/权限、`FunctionalCaseService`、`TestPlanFunctionalCaseService.run`、MS 数据库 |
+| 持久化 | Flyway `3.7.0.1 - ui execution`，`ui_execution_task` / `ui_execution_step` |
+| 下发 | 复用 TestHub device-agent 协议（AI_RUNTIME） |
+| 实测 | MS 原生接口创建任务 → 5 步轨迹 → 任务 SUCCESS → 计划用例 `lastExecResult=SUCCESS` |
+| 证据 | 任务 `1707862409173041152`，计划用例 `1707773434630599999`（lastExecTime 更新） |
+
+未迁移：FIFO 队列、看门狗、失败轨迹报告、脚本执行器、截图/报告产物、MeterSphere 前端入口。
+
 ## 3. 验收中发现并修复的问题
 
 | 问题 | 修复 |
@@ -118,6 +131,7 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 | 快速任务使 FIFO 队列在断言前已排空，队列可观测性不足 | 验收脚本把 6 秒慢速脚本用例放在计划首位，稳定观测到 3 个排队任务及其位置顺序。 |
 | MySQL utf8mb4 行上限导致 `ue_task` 建表失败 | 四个长文本字段改为 `TEXT`；在真实 MySQL 8.0 上复验通过。 |
 | S3 产物 URL 指向本地 `/artifacts` 静态目录 | 改为 `/artifacts/**` 控制器按 ArtifactStore 流式读取，本地/MinIO 共用同一 URL；已用 MinIO 复验截图与报告可读。 |
+| 内嵌模块向 device-agent 下发时被当成 XML 解析 | `DeviceAgentClient` 显式用 Jackson 序列化并设置 `Content-Type: application/json`。 |
 | Web 将 SUCCESS 任务的 `failureSummary` 误显示为失败卡 | Web 按状态/失败原因/报告链接判断失败卡片显示（由 Web 工作流修复）。 |
 
 ## 4. 手工验证
@@ -133,8 +147,8 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 - Docker Compose：已提供，本次未在容器环境实测。
 - 接口测试（JMeter）：不在 V1 范围，仅报告模型预留 `executorType=API`。
 - Kafka 仅作为**任务生命周期事件流**（dispatch/result）接入，任务下发本身仍走 HTTP；把下发也迁到 Kafka 是后续工作。
-- MeterSphere：已真实构建、启动，并完成用例源、失败评论回写、计划结果回写联调；
-  计划-用例关联自动化与源码级模块内嵌未完成，见 `docs/METERSPHERE-INTEGRATION.md`。
+- MeterSphere：已真实构建、启动，完成用例源、失败评论回写、计划结果回写；
+  源码级内嵌完成首个垂直切片（见 §2.3），队列/报告/脚本执行器/前端尚未迁入。
 - Sonic：已从提供的源码构建并引入 **driver-core（Apache-2.0）** 作为 `mode=sonic` 真机驱动；
   无真机/无 UIA2 服务，真机运行未验证，详见 `docs/SONIC-INTEGRATION.md`。
 - 多实例/集群、Flyway、SSE 压测、轨迹生命周期归档未覆盖。

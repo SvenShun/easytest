@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
 
-.PHONY: help setup build test e2e up up-mw down infra-down ms-build ms-up ms-down ms-token web fmt clean
+.PHONY: help setup build test e2e up up-mw down infra-down ms-build ms-up ms-down ms-token ms-install-module web fmt clean
 
 help:
 	@echo "TestHub V1"
@@ -13,6 +13,7 @@ help:
 	@echo "  make infra   start middleware containers (mysql/redis/minio/kafka)"
 	@echo "  make ms-build build upstream MeterSphere backend (JDK 21)"
 	@echo "  make ms-up   run MeterSphere on :8082 (HTTP API)"
+	@echo "  make ms-install-module  install embedded ui-execution module into upstream"
 	@echo "  make web     start web console (5173)"
 	@echo "  make e2e     run the end-to-end acceptance script"
 	@echo "  make down    stop local services"
@@ -52,6 +53,9 @@ ms-down:
 
 ms-token:
 	./scripts/metersphere-token.sh
+
+ms-install-module:
+	./scripts/install-metersphere-module.sh
 
 web:
 	cd web && npm run dev

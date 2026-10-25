@@ -62,7 +62,7 @@ TESTHUB_INFRA=docker ./scripts/dev-up.sh
 make e2e
 
 # MeterSphere（真实源码，需 JDK 21）
-make ms-build && make ms-up        # http://127.0.0.1:8082, admin/metersphere
+make ms-install-module && make ms-build && make ms-up   # http://127.0.0.1:8082, admin/metersphere
 eval "$(make -s ms-token)"         # 导出 MeterSphere 会话变量
 TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 ```
@@ -108,6 +108,7 @@ tail -f logs/core.log
 - [docs/API-CONTRACT.md](docs/API-CONTRACT.md) — 全部接口/DTO/状态机/回调协议
 - [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md) — MeterSphere v3 适配、源码位置、限制
 - [docs/SONIC-INTEGRATION.md](docs/SONIC-INTEGRATION.md) — Sonic driver-core 真机驱动与许可证说明
+- [docs/METERSPHERE-EMBEDDING.md](docs/METERSPHERE-EMBEDDING.md) — 源码级内嵌模块、安装与验证
 - [docs/RUNBOOK.md](docs/RUNBOOK.md) — 部署、环境变量、切换到 MySQL/Redis/MinIO、排障
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — E2E 验收结果与证据
 
@@ -129,7 +130,8 @@ scripts/          构建/启动/验收脚本
 ## V1 已知边界
 
 接口测试执行（JMeter）、投屏/scrcpy、Kafka 异步下发、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
-MeterSphere v3 已按你提供的源码**本地构建并运行**，已真实验证“用例源 + 失败评论回写 + 计划结果回写”；
+MeterSphere v3 已按你提供的源码**本地构建并运行**，已真实验证“用例源 + 失败评论回写 + 计划结果回写”，
+并完成 **ui-execution 源码级内嵌切片**（MS 同进程、复用其会话/用例/计划服务）；
 Sonic 的 **driver-core（Apache-2.0）** 已接入为 `mode=sonic` 真机驱动。
 计划-用例关联自动化、源码级模块内嵌与真机运行仍未完成，见 [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md)
 与 [docs/SONIC-INTEGRATION.md](docs/SONIC-INTEGRATION.md)。

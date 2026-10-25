@@ -34,3 +34,4 @@ upstream/
 .DS_Store
 .env
 .tools/
+**/.flattened-pom.xml
