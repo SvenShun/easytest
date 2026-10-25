@@ -42,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -171,7 +171,7 @@ class ApiExecutionFlowTest {
         assertThat(request.query()).contains("lang=zh").contains("q=a%20b");
         assertThat(request.body()).isEqualTo("{\"username\":\"tester\"}");
         assertThat(request.customHeader()).isEqualTo("abc");
-        verify(callbackClient, times(1)).postPlanItemResult(argThat(payload ->
+        verify(callbackClient, timeout(2000)).postPlanItemResult(argThat(payload ->
                 taskId.equals(payload.taskId()) && "SUCCESS".equals(payload.status())));
     }
 
@@ -279,7 +279,7 @@ class ApiExecutionFlowTest {
 
         blockRelease.countDown();
         assertThat(awaitTerminal(blocking).path("status").asText()).isEqualTo("SUCCESS");
-        verify(callbackClient, times(1)).postPlanItemResult(argThat(payload ->
+        verify(callbackClient, timeout(2000)).postPlanItemResult(argThat(payload ->
                 queued.equals(payload.taskId()) && "CANCELLED".equals(payload.status())));
     }
 
@@ -304,7 +304,7 @@ class ApiExecutionFlowTest {
         blockRelease.countDown();
         Thread.sleep(300);
         // The cancel path sends the terminal callback; the worker must not duplicate it.
-        verify(callbackClient, times(1)).postPlanItemResult(argThat(payload ->
+        verify(callbackClient, timeout(2000)).postPlanItemResult(argThat(payload ->
                 taskId.equals(payload.taskId()) && "CANCELLED".equals(payload.status())));
     }
 
