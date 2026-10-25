@@ -52,6 +52,11 @@ cd web && npm run dev        # http://127.0.0.1:5173
 
 # 4. 跑端到端验收（另开一个终端）
 make e2e
+
+# 只部署第一部分（主服务：用户/用例/计划等，不含执行）
+make main-up        # http://127.0.0.1:5173
+python3 scripts/part1_smoke.py
+make main-down
 ```
 
 需要真实中间件（MySQL 8 / Redis 7 / MinIO）时：

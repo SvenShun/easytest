@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../auth';
+import { MAIN_ONLY } from '../config';
 import { ROLE_META, metaOf } from '../constants';
 import type { Role } from '../api/types';
 import { cx, formatDateTime, userDisplayName } from '../utils';
@@ -33,6 +34,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: '测试资产',
     items: [
+      { path: '/requirements', label: '需求管理', icon: 'cases', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
       { path: '/cases', label: '用例管理', icon: 'cases', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
       { path: '/plans', label: '测试计划', icon: 'plans', roles: ['ADMIN', 'TESTER'] },
       { path: '/ai', label: 'AI 分析', icon: 'ai', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
@@ -58,6 +60,8 @@ export function routeTitle(route: RouteState): string {
       return '设备池';
     case 'tasks':
       return route.segments[1] ? '任务详情' : '执行任务';
+    case 'requirements':
+      return '需求管理';
     case 'cases':
       return '用例管理';
     case 'ai':
@@ -82,7 +86,10 @@ function Sidebar({ currentPath }: { currentPath: string }) {
     () =>
       NAV_GROUPS.map((group) => ({
         ...group,
-        items: group.items.filter((item) => (role ? item.roles.includes(role) : false)),
+        items: group.items.filter((item) => {
+          if (role ? !item.roles.includes(role) : true) return false;
+          return !(MAIN_ONLY && ['/dashboard', '/devices', '/tasks'].includes(item.path));
+        }),
       })).filter((group) => group.items.length > 0),
     [role],
   );

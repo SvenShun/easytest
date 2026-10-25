@@ -6,18 +6,18 @@
 | 版本 | V1（首个可运行版本） |
 | 验收环境 | macOS（Apple Silicon），Java 17.0.2，Maven 3.9.9，Node 22.20.0，Python 3.9.15，无 Docker daemon、无真机、无大模型 Key |
 | 运行模式 | H2 文件库 + 内存 FIFO 队列 + 本地产物 + `mock` 模型 + 模拟设备（完全离线） |
-| 结论 | **通过**：全量 155 个自动化测试通过，端到端验收 47 项检查全部通过 |
+| 结论 | **通过**：全量 159 个自动化测试通过，端到端验收 47 项检查全部通过 |
 
 ## 1. 构建与自动化测试
 
 | 模块 | 测试数 | 结果 | 命令 |
 |---|---|---|---|
 | common | 4 | 通过 | `./scripts/mvn.sh -pl common test` |
-| testhub-server | 31 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
+| testhub-server | 35 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
 | ui-execution | 36 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
 | device-agent | 36 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
 | ai-runtime (Python) | 48 | 通过 | `cd agents/ai-runtime && .venv/bin/pytest -q` |
-| **合计** | **155** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
+| **合计** | **159** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
 | web | — | `tsc --noEmit` + Vite build 成功 | `cd web && npm run build` |
 
 覆盖重点：执行器路由、FIFO 队列位置、任务状态机、失败分类、评审流转、执行能力计算、
@@ -163,7 +163,7 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 make setup
 make up
 make e2e          # 期望：RESULT: 47 checks passed, 0 failed
-make check        # Java 107 + Python 48 测试 + Web 构建
+make check        # Java 111 + Python 48 测试 + Web 构建
 make down
 
 # 真实中间件模式（MySQL/Redis/MinIO/Kafka）

@@ -4823,3 +4823,10 @@ a.btn:hover {
     scroll-behavior: auto !important;
   }
 }
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}

@@ -14,6 +14,18 @@ make down    # 停止服务
 > Maven Central 在本机不可达，`scripts/mvn.sh` 固定使用工作区本地仓库 `.m2/repository` 与 `~/.m2/settings.xml` 中的阿里云镜像。
 > 不要把 `.m2/` 提交到版本库（已 gitignore）。
 
+## 1.0 主服务部署（第一部分验收）
+
+```bash
+make main-up                       # 构建 core jar + 主服务模式前端，启动 MySQL/MinIO + core + 静态站点
+python3 scripts/part1_smoke.py     # 21 项主服务验收
+make main-down                     # 只停 core 与静态站点，保留中间件
+```
+
+- 页面：http://127.0.0.1:5173 ；API：http://127.0.0.1:8080。
+- 主服务模式隐藏总览/设备池/执行任务，并隐藏计划"触发"入口（执行属于第二、三部分）。
+- 前置：Docker 中 MySQL/MinIO（`make infra`），脚本会自动检查并启动。
+
 ## 1.1 真实中间件模式（推荐用于联调）
 
 ```bash

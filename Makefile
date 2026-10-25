@@ -1,13 +1,15 @@
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
 
-.PHONY: help setup build test e2e up up-mw down infra-down ms-build ms-up ms-down ms-token ms-install-module web fmt clean
+.PHONY: help setup build test e2e main-up main-down up up-mw down infra-down ms-build ms-up ms-down ms-token ms-install-module web fmt clean
 
 help:
 	@echo "TestHub V1"
 	@echo "  make setup   install maven/python/web dependencies"
 	@echo "  make build   build all Java services + web bundle"
 	@echo "  make test    run Java tests + Python tests"
+	@echo "  make main-up deploy Part 1 main service (MySQL + core + web console)"
+	@echo "  make main-down stop the Part 1 deployment"
 	@echo "  make up      start core, ui-execution, device-agent, ai-runtime (H2/memory)"
 	@echo "  make up-mw   start with Docker MySQL/Redis/MinIO (run make infra first)"
 	@echo "  make infra   start middleware containers (mysql/redis/minio/kafka)"
@@ -29,6 +31,12 @@ build:
 test:
 	./scripts/mvn.sh -q test
 	cd agents/ai-runtime && .venv/bin/pytest -q
+
+main-up:
+	./scripts/main-up.sh
+
+main-down:
+	./scripts/main-down.sh
 
 up:
 	./scripts/dev-up.sh

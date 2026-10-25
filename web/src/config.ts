@@ -85,3 +85,6 @@ export function subscribeConfig(listener: () => void): () => void {
 export function useAppConfig(): AppConfig {
   return useSyncExternalStore(subscribeConfig, getConfig, getConfig);
 }
+
+/** 主服务验收模式：隐藏设备池/执行任务/总览等依赖执行服务的页面与触发入口 */
+export const MAIN_ONLY = import.meta.env.VITE_MAIN_ONLY === 'true';

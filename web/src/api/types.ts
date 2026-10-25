@@ -50,6 +50,20 @@ export interface User {
   createdAt?: string;
 }
 
+export interface UserCreateInput {
+  username: string;
+  password: string;
+  displayName?: string;
+  role?: Role;
+  enabled?: boolean;
+}
+
+export interface UserUpdateInput {
+  displayName?: string;
+  role?: Role;
+  enabled?: boolean;
+}
+
 export interface LoginResponse {
   token: string;
   expiresInSec?: number;

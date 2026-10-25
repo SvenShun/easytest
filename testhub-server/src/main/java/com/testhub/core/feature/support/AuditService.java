@@ -15,6 +15,9 @@ public class AuditService {
     public static final String CASE_REVIEW = "CASE_REVIEW";
     public static final String PLAN_TRIGGER = "PLAN_TRIGGER";
     public static final String SCRIPT_UPLOAD = "SCRIPT_UPLOAD";
+    public static final String USER_CREATE = "USER_CREATE";
+    public static final String USER_UPDATE = "USER_UPDATE";
+    public static final String USER_RESET_PASSWORD = "USER_RESET_PASSWORD";
 
     private final AuditLogRepository repository;
 

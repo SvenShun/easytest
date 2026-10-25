@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { systemApi, uiexecApi } from '../api';
 import { ApiError } from '../api/client';
-import type { AuditLog, ModelConfig, SkillsPointer, User } from '../api/types';
+import type { AuditLog, ModelConfig, Role, SkillsPointer, User } from '../api/types';
 import { isAdmin, useAuth } from '../auth';
 import {
   MODEL_PROVIDERS,
@@ -34,6 +34,7 @@ import { Modal, PromptDialog } from '../components/Modal';
 import { toastError, toastSuccess } from '../components/Toast';
 
 const AUDIT_PAGE_SIZE = 15;
+const ROLE_OPTIONS: Role[] = ['ADMIN', 'TESTER', 'BUSINESS', 'OPS'];
 
 const MODEL_TYPES = [
   {
@@ -92,6 +93,19 @@ export function SettingsPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
   const [usersTotal, setUsersTotal] = useState(0);
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userForm, setUserForm] = useState({
+    username: '',
+    password: '',
+    displayName: '',
+    role: 'TESTER' as Role,
+    enabled: true,
+  });
+  const [userSaving, setUserSaving] = useState(false);
+  const [userError, setUserError] = useState('');
+  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   useEffect(() => {
     setCoreUrl(appConfig.coreUrl);
@@ -172,6 +186,87 @@ export function SettingsPage() {
     }
   }, []);
 
+  const openUserModal = (target?: User) => {
+    setEditingUser(target || null);
+    setUserError('');
+    setUserForm({
+      username: target?.username || '',
+      password: '',
+      displayName: target?.displayName || target?.name || '',
+      role: (target?.role as Role) || 'TESTER',
+      enabled: target?.enabled !== false,
+    });
+    setUserModalOpen(true);
+  };
+
+  const saveUser = async () => {
+    setUserError('');
+    if (!editingUser && !userForm.username.trim()) {
+      setUserError('请填写用户名');
+      return;
+    }
+    if (!editingUser && userForm.password.length < 6) {
+      setUserError('密码至少 6 位');
+      return;
+    }
+    if (editingUser && userForm.password && userForm.password.length < 6) {
+      setUserError('新密码至少 6 位');
+      return;
+    }
+    setUserSaving(true);
+    try {
+      if (editingUser) {
+        await systemApi.updateUser(editingUser.id || editingUser.username, {
+          displayName: userForm.displayName.trim(),
+          role: userForm.role,
+          enabled: userForm.enabled,
+        });
+        if (userForm.password) {
+          await systemApi.resetUserPassword(editingUser.id || editingUser.username, userForm.password);
+        }
+        toastSuccess('用户已更新');
+      } else {
+        await systemApi.createUser({
+          username: userForm.username.trim(),
+          password: userForm.password,
+          displayName: userForm.displayName.trim(),
+          role: userForm.role,
+          enabled: userForm.enabled,
+        });
+        toastSuccess('用户已创建');
+      }
+      setUserModalOpen(false);
+      await loadUsers();
+    } catch (err) {
+      setUserError(safeErrorMessage(err));
+    } finally {
+      setUserSaving(false);
+    }
+  };
+
+  const toggleUser = async (target: User) => {
+    try {
+      await systemApi.updateUser(target.id || target.username, { enabled: target.enabled === false });
+      toastSuccess(target.enabled === false ? '用户已启用' : '用户已禁用');
+      await loadUsers();
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    }
+  };
+
+  const resetPassword = async (value: string) => {
+    if (!resetUser) return;
+    setResettingPassword(true);
+    try {
+      await systemApi.resetUserPassword(resetUser.id || resetUser.username, value);
+      toastSuccess(`已重置 ${resetUser.username} 的密码`);
+      setResetUser(null);
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    } finally {
+      setResettingPassword(false);
+    }
+  };
   useEffect(() => {
     if (tab === 'models') void loadConfigs();
     if (tab === 'skills') void loadPointer();
@@ -619,11 +714,16 @@ export function SettingsPage() {
             <div className="audit-toolbar">
               <div>
                 <div className="audit-title">用户列表</div>
-                <div className="audit-sub">V1 用户由种子数据与系统管理创建，此处只读展示</div>
+                <div className="audit-sub">创建用户、分配角色、启用/禁用与重置密码（仅管理员）</div>
               </div>
-              <Button variant="secondary" icon="refresh" loading={usersLoading} onClick={() => void loadUsers()}>
-                刷新
-              </Button>
+              <div className="toolbar-actions">
+                <Button variant="secondary" icon="refresh" loading={usersLoading} onClick={() => void loadUsers()}>
+                  刷新
+                </Button>
+                <Button variant="primary" icon="plus" onClick={() => openUserModal()}>
+                  新建用户
+                </Button>
+              </div>
             </div>
             <div className="table-wrap">
               <table className="table">
@@ -633,21 +733,23 @@ export function SettingsPage() {
                     <th>显示名</th>
                     <th>角色</th>
                     <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {usersLoading && users.length === 0 ? (
-                    <SkeletonRows rows={4} cols={4} />
+                    <SkeletonRows rows={4} cols={6} />
                   ) : usersError ? (
                     <tr>
-                      <td colSpan={4}>
+                      <td colSpan={6}>
                         <ErrorPanel message={usersError} compact onRetry={() => void loadUsers()} />
                       </td>
                     </tr>
                   ) : users.length === 0 ? (
                     <tr>
-                      <td colSpan={4}>
-                        <EmptyState compact icon="user" title="暂无用户" description="请检查后端种子数据是否初始化" />
+                      <td colSpan={6}>
+                        <EmptyState compact icon="user" title="暂无用户" description="点击右上角新建用户" />
                       </td>
                     </tr>
                   ) : (
@@ -665,6 +767,25 @@ export function SettingsPage() {
                             <Pill tone={disabled ? 'red' : 'green'} dot>
                               {disabled ? '禁用' : '正常'}
                             </Pill>
+                          </td>
+                          <td>{item.createdAt ? formatDateTime(item.createdAt) : '—'}</td>
+                          <td>
+                            <div className="row-actions">
+                              <Button size="sm" variant="ghost" onClick={() => openUserModal(item)}>
+                                编辑
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setResetUser(item)}>
+                                重置密码
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => void toggleUser(item)}
+                                disabled={user?.username === item.username}
+                              >
+                                {disabled ? '启用' : '禁用'}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -801,6 +922,100 @@ export function SettingsPage() {
           </Callout>
         </div>
       </Modal>
+
+      <Modal
+        open={userModalOpen}
+        title={editingUser ? '编辑用户' : '新建用户'}
+        description={editingUser ? '用户名不可修改；留空密码表示不重置。' : '创建后即可用该账号登录平台。'}
+        onClose={() => {
+          if (!userSaving) setUserModalOpen(false);
+        }}
+        size="md"
+        closeOnOverlay={!userSaving}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setUserModalOpen(false)} disabled={userSaving}>
+              取消
+            </Button>
+            <Button variant="primary" loading={userSaving} onClick={() => void saveUser()}>
+              {editingUser ? '保存' : '创建'}
+            </Button>
+          </>
+        }
+      >
+        <div className="form-stack">
+          {userError ? <Callout tone="error" title="操作失败">{userError}</Callout> : null}
+          <Field label="用户名" htmlFor="user-username" required>
+            <Input
+              id="user-username"
+              value={userForm.username}
+              disabled={!!editingUser}
+              placeholder="例如 tester2"
+              onChange={(event) => setUserForm((prev) => ({ ...prev, username: event.target.value }))}
+            />
+          </Field>
+          <Field
+            label={editingUser ? '重置密码（可选）' : '密码'}
+            htmlFor="user-password"
+            required={!editingUser}
+            hint="至少 6 位"
+          >
+            <Input
+              id="user-password"
+              type="password"
+              autoComplete="new-password"
+              value={userForm.password}
+              onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
+            />
+          </Field>
+          <Field label="显示名" htmlFor="user-display-name">
+            <Input
+              id="user-display-name"
+              value={userForm.displayName}
+              onChange={(event) => setUserForm((prev) => ({ ...prev, displayName: event.target.value }))}
+            />
+          </Field>
+          <div className="form-grid-2">
+            <Field label="角色" htmlFor="user-role" required>
+              <Select
+                id="user-role"
+                value={userForm.role}
+                onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value as Role }))}
+              >
+                {ROLE_OPTIONS.map((role) => (
+                  <option key={role} value={role}>
+                    {metaOf(ROLE_META, role).label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="状态" htmlFor="user-enabled">
+              <Select
+                id="user-enabled"
+                value={userForm.enabled ? '1' : '0'}
+                onChange={(event) => setUserForm((prev) => ({ ...prev, enabled: event.target.value === '1' }))}
+              >
+                <option value="1">正常</option>
+                <option value="0">禁用</option>
+              </Select>
+            </Field>
+          </div>
+          <Callout tone="info">系统会阻止禁用或降级最后一个管理员。</Callout>
+        </div>
+      </Modal>
+
+      <PromptDialog
+        open={!!resetUser}
+        title="重置密码"
+        message={`为 ${resetUser?.username || ''} 设置新密码，保存后旧密码立即失效。`}
+        label="新密码"
+        placeholder="至少 6 位"
+        confirmText="重置"
+        tone="danger"
+        loading={resettingPassword}
+        onConfirm={(value) => void resetPassword(value)}
+        onClose={() => setResetUser(null)}
+      />
 
       <PromptDialog
         open={rollbackOpen}

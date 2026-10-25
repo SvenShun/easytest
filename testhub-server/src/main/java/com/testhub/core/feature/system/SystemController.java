@@ -8,10 +8,15 @@ import com.testhub.core.feature.auth.UserView;
 import com.testhub.core.feature.support.AuditLogRepository;
 import com.testhub.core.feature.support.AuditLogView;
 import com.testhub.core.feature.support.PageSupport;
+import com.testhub.core.feature.system.UserAdminDtos.CreateUserRequest;
+import com.testhub.core.feature.system.UserAdminDtos.ResetPasswordRequest;
+import com.testhub.core.feature.system.UserAdminDtos.UpdateUserRequest;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,12 +32,14 @@ public class SystemController {
     private final AppUserRepository userRepository;
     private final ModelConfigService modelConfigService;
     private final AuditLogRepository auditLogRepository;
+    private final UserAdminService userAdminService;
 
     public SystemController(AppUserRepository userRepository, ModelConfigService modelConfigService,
-                            AuditLogRepository auditLogRepository) {
+                            AuditLogRepository auditLogRepository, UserAdminService userAdminService) {
         this.userRepository = userRepository;
         this.modelConfigService = modelConfigService;
         this.auditLogRepository = auditLogRepository;
+        this.userAdminService = userAdminService;
     }
 
     @GetMapping("/users")
@@ -41,6 +48,21 @@ public class SystemController {
         PageRequest pageRequest = PageRequest.of(PageSupport.pageIndex(page), PageSupport.pageSize(size),
                 Sort.by(Sort.Direction.ASC, "createdAt"));
         return PageSupport.of(userRepository.findAll(pageRequest), UserView::of);
+    }
+
+    @PostMapping("/users")
+    public UserView createUser(@Valid @RequestBody CreateUserRequest request) {
+        return userAdminService.create(request);
+    }
+
+    @PutMapping("/users/{id}")
+    public UserView updateUser(@PathVariable String id, @Valid @RequestBody UpdateUserRequest request) {
+        return userAdminService.update(id, request);
+    }
+
+    @PostMapping("/users/{id}/reset-password")
+    public UserView resetPassword(@PathVariable String id, @Valid @RequestBody ResetPasswordRequest request) {
+        return userAdminService.resetPassword(id, request);
     }
 
     @GetMapping("/model-configs")

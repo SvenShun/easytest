@@ -79,4 +79,20 @@ public class AppUser {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 }

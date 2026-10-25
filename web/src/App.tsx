@@ -7,9 +7,11 @@ import type { RouteState } from './router';
 import { AppShell, ForbiddenPage, NotFoundPage, routeTitle } from './components/Layout';
 import { ToastHost } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { MAIN_ONLY } from './config';
 import { LoginPage } from './pages/Login';
 import { DashboardPage } from './pages/Dashboard';
 import { CasesPage } from './pages/Cases';
+import { RequirementsPage } from './pages/Requirements';
 import { AiPage } from './pages/Ai';
 import { PlansPage } from './pages/Plans';
 import { PlanDetailPage } from './pages/PlanDetail';
@@ -28,6 +30,7 @@ const ROUTE_ROLES: Record<string, Role[]> = {
   devices: ALL_ROLES,
   tasks: ALL_ROLES,
   cases: CROSS,
+  requirements: CROSS,
   ai: CROSS,
   plans: TESTERS,
   runs: TESTERS,
@@ -44,6 +47,8 @@ function renderPage(route: RouteState): ReactNode {
       return <DevicesPage />;
     case 'tasks':
       return second ? <TaskDetailPage /> : <TasksPage />;
+    case 'requirements':
+      return second ? <NotFoundPage routePath={route.path} /> : <RequirementsPage />;
     case 'cases':
       return second ? <NotFoundPage routePath={route.path} /> : <CasesPage />;
     case 'ai':
@@ -65,13 +70,20 @@ function AppRoutes() {
   const [refreshKey, setRefreshKey] = useState(0);
   const first = route.segments[0] || 'dashboard';
   const isLogin = first === 'login';
-  const knownRoute = ['dashboard', 'devices', 'tasks', 'cases', 'ai', 'plans', 'runs', 'settings', 'login'];
+  const knownRoute = ['dashboard', 'devices', 'tasks', 'requirements', 'cases', 'ai', 'plans', 'runs', 'settings', 'login'];
   const pageExists = !route.segments.length || knownRoute.includes(first);
 
   useEffect(() => {
     if (!authenticated && !isLogin) navigate('/login', { replace: true });
-    if (authenticated && isLogin) navigate('/dashboard', { replace: true });
+    if (authenticated && isLogin) navigate(MAIN_ONLY ? '/cases' : '/dashboard', { replace: true });
   }, [authenticated, isLogin]);
+
+  useEffect(() => {
+    if (!MAIN_ONLY) return;
+    if (!route.segments.length || ['dashboard', 'devices', 'tasks'].includes(first)) {
+      navigate('/cases', { replace: true });
+    }
+  }, [route.path, route.segments.length, first]);
 
   useEffect(() => {
     document.title = `${routeTitle(route)} · TestHub`;

@@ -1,5 +1,5 @@
 import { asPage, queryString, request } from './client';
-import type { AuditLog, ModelConfig, ModelConfigInput, User } from './types';
+import type { AuditLog, ModelConfig, ModelConfigInput, User, UserCreateInput, UserUpdateInput } from './types';
 
 export const systemApi = {
   modelConfigs: () =>
@@ -17,4 +17,13 @@ export const systemApi = {
     request<unknown>('core', `/api/v1/system/users${queryString({ page, size })}`).then((data) =>
       asPage<User>(data, page, size),
     ),
+  createUser: (input: UserCreateInput) =>
+    request<User>('core', '/api/v1/system/users', { method: 'POST', body: input }),
+  updateUser: (id: string, input: UserUpdateInput) =>
+    request<User>('core', `/api/v1/system/users/${encodeURIComponent(id)}`, { method: 'PUT', body: input }),
+  resetUserPassword: (id: string, password: string) =>
+    request<User>('core', `/api/v1/system/users/${encodeURIComponent(id)}/reset-password`, {
+      method: 'POST',
+      body: { password },
+    }),
 };

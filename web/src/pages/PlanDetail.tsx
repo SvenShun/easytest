@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { casesApi, plansApi, uiexecApi } from '../api';
+import { MAIN_ONLY } from '../config';
 import type {
   CaseDetail,
   Device,
@@ -379,9 +380,11 @@ export function PlanDetailPage() {
             <Button variant="secondary" icon="edit" onClick={openEdit}>
               编辑
             </Button>
-            <Button variant="primary" icon="play" onClick={() => void openTrigger()}>
-              触发计划
-            </Button>
+            {!MAIN_ONLY ? (
+              <Button variant="primary" icon="play" onClick={() => void openTrigger()}>
+                触发计划
+              </Button>
+            ) : null}
           </div>
         }
       />
