@@ -54,7 +54,7 @@ cd web && npm run dev        # http://127.0.0.1:5173
 make e2e
 
 # 只部署第一部分（主服务：用户/用例/计划等，不含执行）
-make main-up        # http://127.0.0.1:5173
+make main-up        # http://127.0.0.1:8080
 python3 scripts/part1_smoke.py
 make main-down
 ```

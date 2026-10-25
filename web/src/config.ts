@@ -10,9 +10,38 @@ const UEXEC_KEY = 'testhub.config.uexecUrl';
 
 const env = import.meta.env as Record<string, string | undefined>;
 
+function pageHost(): string {
+  return window.location.hostname || '127.0.0.1';
+}
+
+function isLoopback(hostname: string): boolean {
+  return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1' || hostname === '[::1]';
+}
+
+/** 主服务/编排服务的默认地址：跟随当前页面主机名，支持局域网与其他设备访问。 */
+function defaultBaseUrl(port: number): string {
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  return `${protocol}//${pageHost()}:${port}`;
+}
+
+/** 旧版本保存过 127.0.0.1 时，若当前页面不是本机，则改写成页面所在主机。 */
+function adaptSavedUrl(raw: string): string {
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (isLoopback(url.hostname) && !isLoopback(pageHost())) {
+      url.hostname = pageHost();
+      return url.toString().replace(/\/+$/, '');
+    }
+  } catch {
+    // ignore invalid saved value
+  }
+  return raw;
+}
+
 export const DEFAULT_CONFIG: AppConfig = {
-  coreUrl: normalizeUrl(env.VITE_CORE_URL) || 'http://127.0.0.1:8080',
-  uexecUrl: normalizeUrl(env.VITE_UEXEC_URL) || 'http://127.0.0.1:8081',
+  coreUrl: normalizeUrl(env.VITE_CORE_URL) || defaultBaseUrl(8080),
+  uexecUrl: normalizeUrl(env.VITE_UEXEC_URL) || defaultBaseUrl(8081),
 };
 
 function normalizeUrl(raw: string | undefined | null): string {
@@ -33,8 +62,8 @@ function readStorage(key: string): string {
 
 function loadConfig(): AppConfig {
   return {
-    coreUrl: readStorage(CORE_KEY) || DEFAULT_CONFIG.coreUrl,
-    uexecUrl: readStorage(UEXEC_KEY) || DEFAULT_CONFIG.uexecUrl,
+    coreUrl: adaptSavedUrl(readStorage(CORE_KEY)) || DEFAULT_CONFIG.coreUrl,
+    uexecUrl: adaptSavedUrl(readStorage(UEXEC_KEY)) || DEFAULT_CONFIG.uexecUrl,
   };
 }
 

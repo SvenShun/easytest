@@ -22,7 +22,7 @@ python3 scripts/part1_smoke.py     # 21 项主服务验收
 make main-down                     # 只停 core 与静态站点，保留中间件
 ```
 
-- 页面：http://127.0.0.1:5173 ；API：http://127.0.0.1:8080。
+- 页面：http://127.0.0.1:8080 ；API：http://127.0.0.1:8080。
 - 主服务模式隐藏总览/设备池/执行任务，并隐藏计划"触发"入口（执行属于第二、三部分）。
 - 前置：Docker 中 MySQL/MinIO（`make infra`），脚本会自动检查并启动。
 

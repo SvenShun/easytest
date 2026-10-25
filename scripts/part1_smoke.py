@@ -12,7 +12,7 @@ import urllib.request
 import uuid
 
 CORE = "http://127.0.0.1:8080"
-WEB = "http://127.0.0.1:5173"
+WEB = "http://127.0.0.1:8080"
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "examples" / "scripts" / "login-pass.zip"
 PASSED, FAILED = [], []

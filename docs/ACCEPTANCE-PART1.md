@@ -26,7 +26,7 @@
 ```bash
 make infra        # 首次：MySQL / Redis / MinIO / Kafka（主服务只用 MySQL + MinIO）
 make main-up
-# 打开 http://127.0.0.1:5173
+# 打开 http://127.0.0.1:8080
 ```
 
 账号：`admin/admin123`（管理员）、`tester/test123`（测试工程师）、
@@ -72,7 +72,22 @@ PART 1 RESULT: 21 checks passed, 0 failed
 5. `main-up` 用 Python 静态服务器演示；生产应使用 Nginx/容器托管前端。
 6. 主服务模式下计划详情不显示"触发计划"，但报告/运行记录页面仍保留给后续阶段。
 
-## 7. 验收证据
+## 7. 常见问题（本次修复）
+
+**页面报“无法连接服务 http://127.0.0.1:8080”**
+
+原因是页面由 `:5173` 静态服务提供，而前端默认 API 固定为 `127.0.0.1:8080`：
+
+- 同一台机器上用 `127.0.0.1` 打开通常正常；
+- 用局域网 IP（如 `http://192.168.x.x:5173`）或从手机/其他电脑打开时，`127.0.0.1` 指向客户端自身，必然连接失败。
+
+修复后：
+
+1. 主服务模式下页面与 API 同源：直接打开 `http://<主机IP>:8080`，前端默认 API 跟随页面主机名；
+2. 已保存的旧 `127.0.0.1` 配置在非本机页面访问时会自动改写为页面主机；
+3. 若仍异常：清空浏览器 localStorage 中的 `testhub.config.coreUrl`，或在登录页/设置页把 Core 地址改为 `http://<主机IP>:8080`。
+
+## 8. 验收证据
 
 - 自动检查脚本：`scripts/part1_smoke.py`（输出 `data/part1-report.json`）
 - 主服务部署脚本：`scripts/main-up.sh` / `scripts/main-down.sh`

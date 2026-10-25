@@ -8,9 +8,6 @@ cd "$ROOT"
 if lsof -nP -iTCP:8080 -sTCP:LISTEN >/dev/null 2>&1; then
   echo "Port 8080 is busy; run scripts/dev-down.sh first." >&2; exit 1
 fi
-if lsof -nP -iTCP:5173 -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "Port 5173 is busy; stop the existing web server first." >&2; exit 1
-fi
 
 if ! docker info --format '{{.ServerVersion}}' >/dev/null 2>&1; then
   echo "Docker is required for MySQL/MinIO (make infra)." >&2; exit 1
@@ -43,12 +40,9 @@ TESTHUB_MINIO_ENDPOINT="http://127.0.0.1:9000" \
 TESTHUB_MINIO_ACCESS_KEY="testhub" \
 TESTHUB_MINIO_SECRET_KEY="testhub123" \
 TESTHUB_MINIO_BUCKET="testhub-core" \
+TESTHUB_WEB_STATIC_DIR="$ROOT/web/dist" \
 nohup java -jar "$JAR" > logs/main-core.log 2>&1 &
 echo $! > data/pids/main-core.pid
-
-echo "==> serving web console on :5173"
-nohup python3 -m http.server 5173 --directory web/dist > logs/main-web.log 2>&1 &
-echo $! > data/pids/main-web.pid
 
 echo -n "waiting for core"
 for _ in $(seq 1 90); do
@@ -58,13 +52,13 @@ done
 if ! curl -fsS http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then
   echo; echo "core failed to start; see logs/main-core.log" >&2; tail -20 logs/main-core.log >&2; exit 1
 fi
-if ! curl -fsS --max-time 2 http://127.0.0.1:5173/ >/dev/null 2>&1; then
-  echo "web console failed to start; see logs/main-web.log" >&2; exit 1
+if ! curl -fsS --max-time 3 http://127.0.0.1:8080/ | grep -q '<div id="root">'; then
+  echo "web console is not served by core; check TESTHUB_WEB_STATIC_DIR / logs/main-core.log" >&2; exit 1
 fi
 
 echo
-echo "Main service is up:"
-echo "  console  http://127.0.0.1:5173"
-echo "  API      http://127.0.0.1:8080"
+echo "Main service is up (page and API share one origin):"
+echo "  console  http://127.0.0.1:8080"
+echo "  LAN      http://<this-host-ip>:8080"
 echo "  accounts admin/admin123 · tester/test123 · business/biz123 · ops/ops123"
 echo "  execution pages are hidden in main-service mode"
