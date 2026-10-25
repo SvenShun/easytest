@@ -52,6 +52,7 @@ testhub:
     metersphere:
       base-url: ${TESTHUB_METERSHPHERE_BASE_URL:http://127.0.0.1:8081}
       token: ${TESTHUB_METERSHPHERE_TOKEN:}
+      csrf-token: ${TESTHUB_METERSHPHERE_CSRF_TOKEN:}
       project-id: ${TESTHUB_METERSHPHERE_PROJECT_ID:}
       require-review: ${TESTHUB_METERSHPHERE_REQUIRE_REVIEW:false}
       approved-review-statuses: ${TESTHUB_METERSHPHERE_APPROVED_STATUSES:COMPLETED}

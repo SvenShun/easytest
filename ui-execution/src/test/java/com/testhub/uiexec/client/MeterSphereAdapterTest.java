@@ -36,13 +36,15 @@ class MeterSphereAdapterTest {
     void startServer() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/functional/case/detail/c1", exchange -> respond(exchange, 200, """
-                {"id":"c1","projectId":"p1","name":"用户使用正确凭据登录",
+                {"code":100200,"message":null,"data":{
+                 "id":"c1","projectId":"p1","name":"用户使用正确凭据登录",
                  "prerequisite":"已打开 App 且未登录","textDescription":"输入 tester/secret 并点击登录",
-                 "steps":"[]","expectedResult":"进入首页并显示 登录成功","reviewStatus":"COMPLETED"}
+                 "steps":"[]","expectedResult":"进入首页并显示 登录成功","reviewStatus":"COMPLETED"}}
                 """));
         server.createContext("/functional/case/detail/pending", exchange -> respond(exchange, 200, """
-                {"id":"pending","projectId":"p1","name":"待评审用例","prerequisite":"",
-                 "textDescription":"执行操作","expectedResult":"结果","reviewStatus":"PREPARED"}
+                {"code":100200,"message":null,"data":{
+                 "id":"pending","projectId":"p1","name":"待评审用例","prerequisite":"",
+                 "textDescription":"执行操作","expectedResult":"结果","reviewStatus":"PREPARED"}}
                 """));
         server.createContext("/functional/case/comment/save", exchange -> {
             lastCommentBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
@@ -113,6 +115,8 @@ class MeterSphereAdapterTest {
         UiExecProperties properties = new UiExecProperties();
         properties.getMetersphere().setBaseUrl("http://127.0.0.1:" + server.getAddress().getPort());
         properties.getMetersphere().setToken("test-token");
+        properties.getMetersphere().setCsrfToken("csrf-token");
+        properties.getMetersphere().setProjectId("p1");
         properties.getMetersphere().setRequireReview(requireReview);
         return properties;
     }

@@ -29,7 +29,7 @@ public class DeviceManager {
     public DeviceManager(AgentProperties properties, ScreenRenderer renderer) {
         String configuredMode = properties.getMode();
         String mode = configuredMode == null ? "simulated" : configuredMode.trim().toLowerCase(Locale.ROOT);
-        if (!"adb".equals(mode) && !"auto".equals(mode)) {
+        if (!"adb".equals(mode) && !"auto".equals(mode) && !"sonic".equals(mode)) {
             mode = "simulated";
         }
         this.mode = mode;
@@ -40,6 +40,30 @@ public class DeviceManager {
                 devices.put(descriptor.serial(), new AdbDeviceDriver(descriptor, "adb"));
             }
             log.info("adb mode discovered {} device(s)", discovered.size());
+        }
+
+        if ("sonic".equals(mode)) {
+            // Real devices driven through Sonic's UIA2 client (Apache-2.0
+            // sonic-driver-core). Requires the UIA2 endpoint per device.
+            for (AgentProperties.SonicDevice configured : properties.getSonic().getDevices()) {
+                if (configured.getSerial() == null || configured.getSerial().isBlank()
+                        || configured.getUiaUrl() == null || configured.getUiaUrl().isBlank()) {
+                    log.warn("skipping sonic device with missing serial/uiaUrl");
+                    continue;
+                }
+                DeviceDescriptor descriptor = new DeviceDescriptor(configured.getSerial(),
+                        configured.getName() == null ? configured.getSerial() : configured.getName(),
+                        configured.getModel() == null ? "android" : configured.getModel(),
+                        "android", configured.getTags(), true);
+                try {
+                    devices.put(descriptor.serial(),
+                            new SonicAndroidDeviceDriver(descriptor, configured.getUiaUrl(),
+                                    properties.getSonic().getAdb()));
+                } catch (RuntimeException e) {
+                    log.warn("sonic device {} unavailable: {}", descriptor.serial(), e.getMessage());
+                }
+            }
+            log.info("sonic mode configured {} device(s)", devices.size());
         }
 
         if ("simulated".equals(mode) || ("auto".equals(mode) && devices.isEmpty())) {

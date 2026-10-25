@@ -138,6 +138,7 @@ public class UiExecProperties {
     public static class MeterSphere {
         private String baseUrl = "http://127.0.0.1:8081";
         private String token = "";
+        private String csrfToken = "";
         private String projectId = "";
         private boolean requireReview = false;
         private String approvedReviewStatuses = "COMPLETED";
@@ -156,6 +157,14 @@ public class UiExecProperties {
 
         public void setToken(String token) {
             this.token = token;
+        }
+
+        public String getCsrfToken() {
+            return csrfToken;
+        }
+
+        public void setCsrfToken(String csrfToken) {
+            this.csrfToken = csrfToken;
         }
 
         public String getProjectId() {

@@ -38,6 +38,22 @@ docker exec testhub-kafka /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap
 > 该网络无法访问 Docker Hub 与 dl.min.io，`deploy/docker-compose.infra.yml` 使用 AWS ECR Public 的
 > MySQL/Redis 官方镜像与 Chainguard 的上游 MinIO 二进制镜像。Kafka 镜像未能在可接受时间内拉取，暂不可用。
 
+## 1.2 MeterSphere（源码构建，阶段 C）
+
+```bash
+cp -R /Users/wen/Workspace/TestPlatform/metersphere/metersphere-3.x upstream/metersphere
+make ms-build                     # JDK 21 + 工作区 Maven 仓库
+make ms-up                        # :8082 / 管理 :7171，日志 logs/metersphere.log
+eval "$(make -s ms-token)"        # X-AUTH-TOKEN / CSRF-TOKEN / PROJECT
+TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
+make ms-down
+```
+
+- 账号 `admin/metersphere`；默认项目 `100001100001`。
+- MeterSphere 会话默认 12h，过期后重新执行 `make ms-token` 并重启 ui-execution。
+- 数据库必须使用 `utf8mb4_general_ci`；日志已用 `deploy/metersphere/logback-spring.xml` 覆盖。
+- 详见 `docs/METERSPHERE-INTEGRATION.md`。
+
 ## 2. 默认存储与运行模式
 
 | 能力 | 默认（dev） | 切换方式 |

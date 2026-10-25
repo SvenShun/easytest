@@ -1,6 +1,8 @@
 package com.testhub.agent.config;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.nio.file.Paths;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -23,7 +25,7 @@ public class AgentProperties {
     private String token = "testhub-dev-agent-token";
     /** ai-runtime base URL. */
     private String runtimeUrl = "http://127.0.0.1:8095";
-    /** simulated | adb | auto. */
+    /** simulated | adb | sonic | auto. */
     private String mode = "simulated";
     /** Directory for task workspaces and the Skills cache. */
     private String dataDir = "./data/agent";
@@ -31,6 +33,12 @@ public class AgentProperties {
     private int heartbeatIntervalSec = 20;
     /** Internal switch used by tests to disable registration/heartbeat. */
     private boolean registrationEnabled = true;
+    /** Sonic (UIA2) device mode settings. */
+    private final Sonic sonic = new Sonic();
+
+    public Sonic getSonic() {
+        return sonic;
+    }
 
     public String getName() {
         return name;
@@ -139,5 +147,78 @@ public class AgentProperties {
             trimmed = trimmed.substring(0, trimmed.length() - 1);
         }
         return trimmed;
+    }
+
+    /**
+     * Devices exposed through Sonic's UIA2 driver. {@code uiaUrl} points at the
+     * UIA2/WDA server that Sonic-Agent normally starts on the device host.
+     */
+    public static class Sonic {
+        private String adb = "adb";
+        private List<SonicDevice> devices = new ArrayList<>();
+
+        public String getAdb() {
+            return adb;
+        }
+
+        public void setAdb(String adb) {
+            this.adb = adb;
+        }
+
+        public List<SonicDevice> getDevices() {
+            return devices;
+        }
+
+        public void setDevices(List<SonicDevice> devices) {
+            this.devices = devices == null ? new ArrayList<>() : devices;
+        }
+    }
+
+    public static class SonicDevice {
+        private String serial;
+        private String name;
+        private String model;
+        private String uiaUrl;
+        private List<String> tags = new ArrayList<>(List.of("android", "sonic"));
+
+        public String getSerial() {
+            return serial;
+        }
+
+        public void setSerial(String serial) {
+            this.serial = serial;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getModel() {
+            return model;
+        }
+
+        public void setModel(String model) {
+            this.model = model;
+        }
+
+        public String getUiaUrl() {
+            return uiaUrl;
+        }
+
+        public void setUiaUrl(String uiaUrl) {
+            this.uiaUrl = uiaUrl;
+        }
+
+        public List<String> getTags() {
+            return tags;
+        }
+
+        public void setTags(List<String> tags) {
+            this.tags = tags == null ? new ArrayList<>() : tags;
+        }
     }
 }

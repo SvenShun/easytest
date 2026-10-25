@@ -7,6 +7,11 @@ if [ -d data/pids ]; then
   for pidfile in data/pids/*.pid; do
     [ -e "$pidfile" ] || continue
     name="$(basename "$pidfile" .pid)"
+    # Only manage TestHub's own services; MeterSphere has its own script.
+    case "$name" in
+      core|uiexec|agent|ai-runtime|web) ;;
+      *) continue ;;
+    esac
     pid="$(cat "$pidfile")"
     if kill -0 "$pid" 2>/dev/null; then
       echo "[stop] $name (pid $pid)"

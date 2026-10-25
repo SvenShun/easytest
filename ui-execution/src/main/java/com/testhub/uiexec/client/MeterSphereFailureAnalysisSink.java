@@ -35,6 +35,12 @@ public class MeterSphereFailureAnalysisSink implements FailureAnalysisSink {
         if (ms.getToken() != null && !ms.getToken().isBlank()) {
             builder.defaultHeader("X-AUTH-TOKEN", ms.getToken());
         }
+        if (ms.getCsrfToken() != null && !ms.getCsrfToken().isBlank()) {
+            builder.defaultHeader("CSRF-TOKEN", ms.getCsrfToken());
+        }
+        if (ms.getProjectId() != null && !ms.getProjectId().isBlank()) {
+            builder.defaultHeader("PROJECT", ms.getProjectId());
+        }
         this.client = builder.build();
     }
 

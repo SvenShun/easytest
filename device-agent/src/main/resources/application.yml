@@ -13,7 +13,17 @@ testhub:
     ui-execution-url: ${TESTHUB_UIEXEC_URL:http://127.0.0.1:8081}
     token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
     runtime-url: ${TESTHUB_RUNTIME_URL:http://127.0.0.1:8095}
+    # simulated | adb | sonic | auto
     mode: ${TESTHUB_AGENT_MODE:simulated}
+    # Sonic UIA2 mode: point each device at the UIA2/WDA server started by Sonic-Agent.
+    sonic:
+      adb: ${TESTHUB_SONIC_ADB:adb}
+      devices: []
+      # - serial: emulator-5554
+      #   name: Pixel 7
+      #   model: sdk_gphone64
+      #   uiaUrl: http://127.0.0.1:6790
+      #   tags: [android, sonic]
     data-dir: ${TESTHUB_AGENT_DATA_DIR:./data/agent}
     heartbeat-interval-sec: 20
 

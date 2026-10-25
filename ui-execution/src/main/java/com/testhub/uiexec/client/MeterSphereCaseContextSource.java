@@ -7,6 +7,7 @@ import com.testhub.uiexec.config.UiExecProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -50,6 +51,12 @@ public class MeterSphereCaseContextSource implements CaseContextSource {
         if (ms.getToken() != null && !ms.getToken().isBlank()) {
             builder.defaultHeader("X-AUTH-TOKEN", ms.getToken());
         }
+        if (ms.getCsrfToken() != null && !ms.getCsrfToken().isBlank()) {
+            builder.defaultHeader("CSRF-TOKEN", ms.getCsrfToken());
+        }
+        if (ms.getProjectId() != null && !ms.getProjectId().isBlank()) {
+            builder.defaultHeader("PROJECT", ms.getProjectId());
+        }
         this.client = builder.build();
     }
 
@@ -57,10 +64,12 @@ public class MeterSphereCaseContextSource implements CaseContextSource {
     public ExecutionContext fetch(String caseId) {
         MeterSphereCase msCase;
         try {
-            msCase = client.get()
+            Envelope<MeterSphereCase> envelope = client.get()
                     .uri("/functional/case/detail/{id}", caseId)
                     .retrieve()
-                    .body(MeterSphereCase.class);
+                    .body(new ParameterizedTypeReference<Envelope<MeterSphereCase>>() {
+                    });
+            msCase = envelope == null ? null : envelope.data();
         } catch (RestClientResponseException e) {
             if (e.getStatusCode().value() == 404) {
                 throw new ApiException(HttpStatus.NOT_FOUND, "METERSPHERE_CASE_NOT_FOUND",
@@ -119,6 +128,11 @@ public class MeterSphereCaseContextSource implements CaseContextSource {
             base = base.substring(0, base.length() - 1);
         }
         return base;
+    }
+
+    /** MeterSphere wraps every API response in {@code {code,message,data}}. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Envelope<T>(int code, String message, T data) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

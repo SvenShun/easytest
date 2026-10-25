@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
 
-.PHONY: help setup build test e2e up up-mw down infra-down web fmt clean
+.PHONY: help setup build test e2e up up-mw down infra-down ms-build ms-up ms-down ms-token web fmt clean
 
 help:
 	@echo "TestHub V1"
@@ -11,6 +11,8 @@ help:
 	@echo "  make up      start core, ui-execution, device-agent, ai-runtime (H2/memory)"
 	@echo "  make up-mw   start with Docker MySQL/Redis/MinIO (run make infra first)"
 	@echo "  make infra   start middleware containers (mysql/redis/minio/kafka)"
+	@echo "  make ms-build build upstream MeterSphere backend (JDK 21)"
+	@echo "  make ms-up   run MeterSphere on :8082 (HTTP API)"
 	@echo "  make web     start web console (5173)"
 	@echo "  make e2e     run the end-to-end acceptance script"
 	@echo "  make down    stop local services"
@@ -38,6 +40,18 @@ up-mw:
 
 infra-down:
 	./scripts/infra-down.sh
+
+ms-build:
+	./scripts/metersphere-build.sh
+
+ms-up:
+	./scripts/metersphere-up.sh
+
+ms-down:
+	./scripts/metersphere-down.sh
+
+ms-token:
+	./scripts/metersphere-token.sh
 
 web:
 	cd web && npm run dev
