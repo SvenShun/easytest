@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.testhub.agent.driver.ActionResult;
 import com.testhub.agent.driver.DeviceAction;
@@ -62,6 +64,28 @@ public class DeviceController {
         }
         ActionResult result = driver.get().action(action);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{serial}/install")
+    public ResponseEntity<?> install(@PathVariable String serial,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "true") boolean replace) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "apk file is empty"));
+        }
+        if (file.getSize() > 200L * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "apk larger than 200MB"));
+        }
+        try {
+            ActionResult result = driver.get().installApk(file.getBytes(), replace);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("ok", false, "message", e.getMessage()));
+        }
     }
 
     @PostMapping("/{serial}/reset")

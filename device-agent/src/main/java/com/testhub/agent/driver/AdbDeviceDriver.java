@@ -142,6 +142,35 @@ public class AdbDeviceDriver implements DeviceDriver {
     }
 
     @Override
+    public ActionResult installApk(byte[] apk, boolean replace) {
+        if (apk == null || apk.length == 0) {
+            return ActionResult.fail("empty apk", "adb");
+        }
+        java.nio.file.Path temp = null;
+        try {
+            temp = java.nio.file.Files.createTempFile("testhub-", ".apk");
+            java.nio.file.Files.write(temp, apk);
+            List<String> args = new ArrayList<>(List.of("install"));
+            if (replace) {
+                args.add("-r");
+            }
+            args.add(temp.toAbsolutePath().toString());
+            AdbResult result = run(Duration.ofSeconds(120), args.toArray(String[]::new));
+            return toResult(result, "installed apk (" + apk.length + " bytes)");
+        } catch (Exception e) {
+            return ActionResult.fail("adb install failed: " + e.getMessage(), "adb");
+        } finally {
+            if (temp != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(temp);
+                } catch (Exception ignored) {
+                    // best effort
+                }
+            }
+        }
+    }
+
+    @Override
     public ActionResult reset() {
         run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "3");
         run(DEFAULT_TIMEOUT, "shell", "am", "force-stop", "com.testhub.demo");
@@ -203,13 +232,16 @@ public class AdbDeviceDriver implements DeviceDriver {
         Document document = factory.newDocumentBuilder().parse(new java.io.ByteArrayInputStream(xml));
         Element root = document.getDocumentElement();
         String pkg = root.getAttribute("package");
+        NodeList nodes = document.getElementsByTagName("node");
         Bounds rootBounds = parseBounds(root.getAttribute("bounds"));
+        if (rootBounds == null && nodes.getLength() > 0) {
+            rootBounds = parseBounds(((Element) nodes.item(0)).getAttribute("bounds"));
+        }
         int width = rootBounds == null ? 1080 : rootBounds.width();
         int height = rootBounds == null ? 1920 : rootBounds.height();
 
         List<UiElement> elements = new ArrayList<>();
         List<String> texts = new ArrayList<>();
-        NodeList nodes = document.getElementsByTagName("node");
         int generated = 0;
         for (int i = 0; i < nodes.getLength(); i++) {
             Element node = (Element) nodes.item(i);

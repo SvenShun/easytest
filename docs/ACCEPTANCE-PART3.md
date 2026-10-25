@@ -68,11 +68,11 @@ PART 3 RESULT: 16 checks passed, 0 failed
 
 ## 4. 自动化测试
 
-**198 个全绿**（Java 150 + Python 48）：
+**200 个全绿**（Java 152 + Python 48）：
 
 - api-execution 32（含队列/恢复测试）
 - testhub-server 42（含环境解析、登录鉴权、数据驱动迭代测试）
-- ui-execution 36、device-agent 36、common 4、Python 48
+- ui-execution 36、device-agent 38、common 4、Python 48
 
 ## 5. 已知边界
 

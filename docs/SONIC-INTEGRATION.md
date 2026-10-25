@@ -68,3 +68,9 @@ V1 的实现是：**TestHub device-agent 作为执行底座，复用 Sonic drive
 设备注册/心跳、任务下发、脚本执行、AI Runtime 桥接仍由 TestHub 负责。
 若后续需要完整 Sonic-Agent 能力（scrcpy、iOS、设备管理），建议以独立进程运行 Sonic-Agent 并通过适配器接入，
 而不是直接 fork（AGPL 与版本维护成本）。
+
+
+## 补充：ADB 直连模式
+
+除 Sonic UIA2 模式外，device-agent 提供 `mode=adb`：ADB 设备发现/热插拔、截图、UI 树、动作、APK 安装。
+验收见 `docs/ACCEPTANCE-PART3-DEVICE.md`（假 adb 10 项）。

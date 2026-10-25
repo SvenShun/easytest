@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -40,6 +41,17 @@ public class AgentController {
         body.put("uiExecutionReachable", registry.isUiExecutionReachable());
         body.put("agentId", registry.getAgentId());
         return body;
+    }
+
+    @PostMapping("/devices/refresh")
+    public Map<String, Object> refreshDevices() {
+        deviceManager.refresh();
+        try {
+            registry.heartbeat();
+        } catch (RuntimeException e) {
+            // hotplug still succeeds locally even when ui-execution is unreachable
+        }
+        return devices();
     }
 
     @GetMapping("/devices")

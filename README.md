@@ -6,7 +6,7 @@
 
 > 依据 `docs/V1-SCOPE.md`（范围与偏差）与 `docs/API-CONTRACT.md`（接口契约）实现。
 
-**当前状态**：V1 + 第二部分接口自动化已完成验收 —— **198 个自动化测试全绿**，E2E 47 项、接口执行 18 项、增强能力 16 项检查全部通过
+**当前状态**：V1 + 第二部分接口自动化已完成验收 —— **200 个自动化测试全绿**，E2E 47 项、接口执行 18 项、增强能力 16 项、设备 10 项检查全部通过
 （本地模式与 MySQL/Redis/MinIO/Kafka 模式各一轮），证据见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) 与
 [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md)。
 
@@ -17,7 +17,7 @@
 | testhub-server | `testhub-server/` | 8080 | 主服务器：用例/评审、测试计划、系统设置、AI 分析 Agent（模块化单体，边界可按服务拆分） |
 | ui-execution | `ui-execution/` | 8081 | UI 执行编排：执行器路由、设备 FIFO 队列、状态机、轨迹、失败报告、Skills 指针 |
 | api-execution | `api-execution/` | 8084 | 接口执行服务（独立部署/水平扩容）：HTTP 请求、断言、超时/取消、报告、回调、Redis 共享队列 |
-| device-agent | `device-agent/` | 8090 | 设备子服务器 Agent：注册心跳、模拟设备/ADB、传统脚本执行器、AI Runtime 桥接、Skills 缓存 |
+| device-agent | `device-agent/` | 8090 | 设备子服务器 Agent：注册心跳、模拟设备/ADB（热插拔/截图/UI 树/APK 安装）、脚本执行器、AI Runtime 桥接、Skills 缓存 |
 | ai-runtime | `agents/ai-runtime/` | 8095 | 设备侧 AI 执行期决策器（Python）：截图+UI 树 → 模型决策 → 动作 → 轨迹 |
 | web | `web/` | 5173 | React 控制台 |
 | common | `common/` | — | JWT/角色/服务令牌/异常/加密等共享能力 |
@@ -58,6 +58,7 @@ cd web && npm run dev        # http://127.0.0.1:5173
 make e2e
 python3 scripts/part2_smoke.py   # 接口自动化 18 项
 make part3                       # 环境/数据驱动 14 项（共享队列另启实例后 16 项）
+make part4                       # ADB 设备驱动 10 项（假 adb）
 
 # 只部署第一部分（主服务：用户/用例/计划等，不含执行）
 make main-up        # http://127.0.0.1:8080
@@ -128,6 +129,7 @@ tail -f logs/core.log
 - [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md) — 第二部分（接口自动化）验收
 - [docs/API-EXECUTION-CONTRACT.md](docs/API-EXECUTION-CONTRACT.md) — 接口执行契约
 - [docs/ACCEPTANCE-PART3.md](docs/ACCEPTANCE-PART3.md) — 环境/鉴权、数据驱动、共享队列验收
+- [docs/ACCEPTANCE-PART3-DEVICE.md](docs/ACCEPTANCE-PART3-DEVICE.md) — ADB 设备驱动验收（假 adb/真机步骤）
 
 ## 目录结构
 
@@ -148,7 +150,7 @@ scripts/          构建/启动/验收脚本
 ## V1 已知边界
 
 接口执行 V1 + 增强已实现（HTTP + 断言 + 超时/取消 + 环境/登录鉴权 + 数据驱动 + Redis 共享队列）；前后置脚本、用例级重试、CSV 文件数据源、Token 过期自动刷新不在本版；
-投屏/scrcpy、Kafka 异步下发、集群化、Flyway、真机全量动作、Windows 设备子服务器不在 V1 范围；
+真机 ADB 驱动已实现并用假 adb 验收，物理设备待接入；投屏/scrcpy、Kafka 异步下发、集群化、Flyway、Windows 设备子服务器不在 V1 范围；
 MeterSphere v3 已按你提供的源码**本地构建并运行**，已真实验证“用例源 + 失败评论回写 + 计划结果回写”，
 并完成 **ui-execution 源码级内嵌**（MS 同进程；FIFO 队列、看门狗、失败报告、取消、计划关联、会话自动登录）；
 Sonic 的 **driver-core（Apache-2.0）** 已接入为 `mode=sonic` 真机驱动。

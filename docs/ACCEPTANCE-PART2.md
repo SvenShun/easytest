@@ -64,7 +64,7 @@ PART 2 RESULT: 18 checks passed, 0 failed
 - 混合运行：`run_26375833571f4413bcd4`（UI=SUCCESS/AI_RUNTIME，API=SUCCESS/API）
 - 失败报告：`failureReportUrl` 指向 api-execution `/report`；断言明细包含 expected/actual/passed
 
-自动化测试：**198 个全绿**（Java 150 + Python 48），其中 api-execution 32 个、testhub-server 42 个。
+自动化测试：**200 个全绿**（Java 152 + Python 48），其中 api-execution 32 个、testhub-server 42 个。
 `RestApiExecutionClientTest` 覆盖多 worker 对账 URL（修复了此前 `uriBuilder.path(绝对URL)` 导致的 `http:/...` 问题）。
 
 ## 4. 数据模型

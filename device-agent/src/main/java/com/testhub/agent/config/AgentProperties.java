@@ -33,8 +33,29 @@ public class AgentProperties {
     private int heartbeatIntervalSec = 20;
     /** Internal switch used by tests to disable registration/heartbeat. */
     private boolean registrationEnabled = true;
+    /** adb executable for adb/auto mode (absolute path or binary name). */
+    private String adb = "adb";
+    /** Hotplug refresh interval for adb/auto mode. */
+    private int deviceRefreshMs = 15000;
+
     /** Sonic (UIA2) device mode settings. */
     private final Sonic sonic = new Sonic();
+
+    public String getAdb() {
+        return adb;
+    }
+
+    public void setAdb(String adb) {
+        this.adb = adb;
+    }
+
+    public int getDeviceRefreshMs() {
+        return deviceRefreshMs;
+    }
+
+    public void setDeviceRefreshMs(int deviceRefreshMs) {
+        this.deviceRefreshMs = deviceRefreshMs;
+    }
 
     public Sonic getSonic() {
         return sonic;

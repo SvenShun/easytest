@@ -1,14 +1,16 @@
 package com.testhub.agent.driver;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.testhub.agent.config.AgentProperties;
@@ -16,35 +18,37 @@ import com.testhub.agent.config.AgentProperties;
 /**
  * Owns the device drivers available on this agent. In simulated mode two fake
  * Android devices are always available (offline demo); in adb mode real devices
- * are discovered; auto mode prefers real devices and falls back to simulated.
+ * are discovered and refreshed on a schedule (hotplug); auto mode prefers real
+ * devices and falls back to simulated.
  */
 @Component
 public class DeviceManager {
 
     private static final Logger log = LoggerFactory.getLogger(DeviceManager.class);
 
-    private final Map<String, DeviceDriver> devices = new LinkedHashMap<>();
+    private final Map<String, DeviceDriver> devices = new ConcurrentHashMap<>();
+    private final Set<String> adbSerials = ConcurrentHashMap.newKeySet();
     private final String mode;
+    private final String adb;
+    private final ScreenRenderer renderer;
 
     public DeviceManager(AgentProperties properties, ScreenRenderer renderer) {
+        this.renderer = renderer;
         String configuredMode = properties.getMode();
-        String mode = configuredMode == null ? "simulated" : configuredMode.trim().toLowerCase(Locale.ROOT);
-        if (!"adb".equals(mode) && !"auto".equals(mode) && !"sonic".equals(mode)) {
-            mode = "simulated";
+        String normalised = configuredMode == null ? "simulated"
+                : configuredMode.trim().toLowerCase(Locale.ROOT);
+        if (!"adb".equals(normalised) && !"auto".equals(normalised) && !"sonic".equals(normalised)) {
+            normalised = "simulated";
         }
-        this.mode = mode;
+        this.mode = normalised;
+        this.adb = properties.getAdb() == null || properties.getAdb().isBlank()
+                ? "adb" : properties.getAdb().trim();
 
         if ("adb".equals(mode) || "auto".equals(mode)) {
-            List<DeviceDescriptor> discovered = AdbDeviceDriver.discover("adb");
-            for (DeviceDescriptor descriptor : discovered) {
-                devices.put(descriptor.serial(), new AdbDeviceDriver(descriptor, "adb"));
-            }
-            log.info("adb mode discovered {} device(s)", discovered.size());
+            refreshAdbDevices();
         }
 
         if ("sonic".equals(mode)) {
-            // Real devices driven through Sonic's UIA2 client (Apache-2.0
-            // sonic-driver-core). Requires the UIA2 endpoint per device.
             for (AgentProperties.SonicDevice configured : properties.getSonic().getDevices()) {
                 if (configured.getSerial() == null || configured.getSerial().isBlank()
                         || configured.getUiaUrl() == null || configured.getUiaUrl().isBlank()) {
@@ -67,16 +71,55 @@ public class DeviceManager {
         }
 
         if ("simulated".equals(mode) || ("auto".equals(mode) && devices.isEmpty())) {
-            SimulatedDeviceDriver pixel7 = SimulatedDeviceDriver.pixel7(renderer);
-            SimulatedDeviceDriver xiaomi13 = SimulatedDeviceDriver.xiaomi13(renderer);
-            devices.put(pixel7.serial(), pixel7);
-            devices.put(xiaomi13.serial(), xiaomi13);
-            log.info("simulated mode enabled with devices {} and {}", pixel7.serial(), xiaomi13.serial());
+            addSimulatedDevices();
         }
 
         if (devices.isEmpty()) {
             log.warn("agent started with no devices (mode={})", mode);
         }
+    }
+
+    /** Re-discovers adb devices; safe to call from the refresh endpoint/scheduler. */
+    public synchronized void refresh() {
+        if (!"adb".equals(mode) && !"auto".equals(mode)) {
+            return;
+        }
+        refreshAdbDevices();
+        if ("auto".equals(mode) && devices.isEmpty()) {
+            addSimulatedDevices();
+        }
+    }
+
+    @Scheduled(fixedDelayString = "${testhub.agent.device-refresh-ms:15000}")
+    public void scheduledRefresh() {
+        refresh();
+    }
+
+    private void refreshAdbDevices() {
+        List<DeviceDescriptor> discovered = AdbDeviceDriver.discover(adb);
+        Set<String> current = ConcurrentHashMap.newKeySet();
+        for (DeviceDescriptor descriptor : discovered) {
+            current.add(descriptor.serial());
+            devices.computeIfAbsent(descriptor.serial(),
+                    serial -> new AdbDeviceDriver(descriptor, adb));
+        }
+        for (String serial : new ArrayList<>(adbSerials)) {
+            if (!current.contains(serial)) {
+                devices.remove(serial);
+                log.info("adb device removed: {}", serial);
+            }
+        }
+        adbSerials.clear();
+        adbSerials.addAll(current);
+        log.info("adb mode discovered {} device(s) via {}", discovered.size(), adb);
+    }
+
+    private void addSimulatedDevices() {
+        SimulatedDeviceDriver pixel7 = SimulatedDeviceDriver.pixel7(renderer);
+        SimulatedDeviceDriver xiaomi13 = SimulatedDeviceDriver.xiaomi13(renderer);
+        devices.putIfAbsent(pixel7.serial(), pixel7);
+        devices.putIfAbsent(xiaomi13.serial(), xiaomi13);
+        log.info("simulated mode enabled with devices {} and {}", pixel7.serial(), xiaomi13.serial());
     }
 
     /** Register an extra driver (used by tests). */
@@ -109,5 +152,9 @@ public class DeviceManager {
 
     public String mode() {
         return mode;
+    }
+
+    public int size() {
+        return devices.size();
     }
 }

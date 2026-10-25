@@ -6,7 +6,7 @@
 | 版本 | V1（首个可运行版本） |
 | 验收环境 | macOS（Apple Silicon），Java 17.0.2，Maven 3.9.9，Node 22.20.0，Python 3.9.15，无 Docker daemon、无真机、无大模型 Key |
 | 运行模式 | H2 文件库 + 内存 FIFO 队列 + 本地产物 + `mock` 模型 + 模拟设备（完全离线） |
-| 结论 | **通过**：全量 198 个自动化测试通过，E2E 47 项 + 接口执行 18 项 + 增强能力 16 项检查全部通过 |
+| 结论 | **通过**：全量 200 个自动化测试通过，E2E 47 + 接口 18 + 增强 16 + 设备 10 项检查全部通过 |
 
 ## 1. 构建与自动化测试
 
@@ -16,9 +16,9 @@
 | testhub-server | 42 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
 | api-execution | 32 | 通过 | `./scripts/mvn.sh -pl api-execution test` |
 | ui-execution | 36 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
-| device-agent | 36 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
+| device-agent | 38 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
 | ai-runtime (Python) | 48 | 通过 | `cd agents/ai-runtime && .venv/bin/pytest -q` |
-| **合计** | **198** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
+| **合计** | **200** | **0 失败 / 0 错误 / 0 跳过** | `make check` |
 | web | — | `tsc --noEmit` + Vite build 成功 | `cd web && npm run build` |
 
 覆盖重点：执行器路由、FIFO 队列位置、任务状态机、失败分类、评审流转、执行能力计算、
@@ -155,6 +155,17 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 
 详见 [docs/ACCEPTANCE-PART3.md](ACCEPTANCE-PART3.md)。
 
+## 2.6 第三部分设备：ADB 驱动
+
+| 项 | 结果 |
+|---|---|
+| ADB 发现/热插拔 | fake-1 发现；新增 fake-2、移除 fake-1 |
+| 截图/UI 树 | PNG、200x400、元素“登录” |
+| 动作/安装 | click → `input tap`；APK → `install -r` |
+| 验收脚本 | `make part4` 10/10（假 adb，无真机依赖） |
+
+真机步骤见 [docs/ACCEPTANCE-PART3-DEVICE.md](ACCEPTANCE-PART3-DEVICE.md)。
+
 ## 3. 验收中发现并修复的问题
 
 | 问题 | 修复 |
@@ -193,7 +204,9 @@ make setup
 make up
 make e2e          # 期望：RESULT: 47 checks passed, 0 failed
 python3 scripts/part2_smoke.py   # 期望：PART 2 RESULT: 18 checks passed, 0 failed
-make check        # Java 150 + Python 48 测试 + Web 构建
+make part3                        # 14/16 checks（环境/数据/共享队列）
+make part4                        # 10 checks（ADB 设备，假 adb）
+make check        # Java 152 + Python 48 测试 + Web 构建
 make down
 
 # 真实中间件模式（MySQL/Redis/MinIO/Kafka）

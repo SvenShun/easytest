@@ -101,7 +101,9 @@ start apiexec env \
   ./scripts/mvn.sh -q -pl api-execution spring-boot:run
 
 start agent env \
-  TESTHUB_AGENT_MODE=simulated \
+  TESTHUB_AGENT_MODE="${TESTHUB_AGENT_MODE:-simulated}" \
+  TESTHUB_AGENT_ADB="${TESTHUB_AGENT_ADB:-adb}" \
+  TESTHUB_AGENT_DEVICE_REFRESH_MS="${TESTHUB_AGENT_DEVICE_REFRESH_MS:-15000}" \
   TESTHUB_AGENT_DATA_DIR="$ROOT/data/agent" \
   ./scripts/mvn.sh -q -pl device-agent spring-boot:run
 

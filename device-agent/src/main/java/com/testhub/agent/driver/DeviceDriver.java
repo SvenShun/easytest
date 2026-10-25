@@ -20,4 +20,9 @@ public interface DeviceDriver {
 
     /** Reset the device to its initial state. */
     ActionResult reset();
+
+    /** Install an APK; drivers without install support return ok=false. */
+    default ActionResult installApk(byte[] apk, boolean replace) {
+        return ActionResult.fail("install not supported by " + descriptor().platform(), "driver");
+    }
 }
