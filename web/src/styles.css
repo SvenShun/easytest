@@ -4915,3 +4915,23 @@ a.btn:hover {
 .step-editor-head { background: rgba(148,163,184,.08); font-size: 12px; color: #64748b; }
 .step-editor-row { border-top: 1px solid rgba(148,163,184,.1); }
 .step-value-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* report page metric chips */
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.summary-row .summary-chip {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 118px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+.summary-row .summary-chip:first-child { padding-left: 14px; }
+.summary-row .summary-chip-label { font-size: 12px; }
+.summary-row .summary-chip-value { font-size: 18px; }
