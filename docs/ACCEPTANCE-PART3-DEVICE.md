@@ -91,6 +91,28 @@ curl -X POST http://127.0.0.1:8090/device/<serial>/action \
 > **MIUI/部分国产 ROM**：还需在开发者选项开启「USB 调试（安全设置）」与「USB 安装」，否则 `adb shell input` 可能返回 0
 > 但实际被 `INJECT_EVENTS` 拦截；驱动会识别该错误并返回失败，而不是误报成功。
 
+## 4.1 本机真机实测（Xiaomi Mi 10 / f04af072，无 SIM）
+
+| 项 | 结果 |
+|---|---|
+| adb 识别 | 通过（platform-tools 37.0.1，工作区 `tools/platform-tools`） |
+| 截图/UI 树 | 通过（截图 ~110KB，UI 树 ~33KB） |
+| 已安装应用重装 | 通过（ScreenRecorder APK `adb install -r` → Success） |
+| 新应用安装（UIAutomator2 server） | 失败 `INSTALL_FAILED_USER_RESTRICTED`（MIUI USB 安装开关） |
+| `adb shell input` | 失败 `INJECT_EVENTS` SecurityException |
+| monkey 脚本点击 | 失败（事件 0，SecurityException） |
+| UIAutomator runtest 点击 | 失败（同样 `INJECT_EVENTS`） |
+
+结论：**无 SIM 时 MIUI 同时锁住了“模拟输入”和“新应用安装”**；只有只读通道可用。
+需要在开发者选项开启「USB 调试（安全设置）」与「USB 安装」（MIUI 要求插入 SIM/Mi 账号），
+或改用模拟器/可解锁设备。开启后可运行：
+
+```bash
+make device-check
+# 或测试指定 APK
+python3 scripts/real-device-check.py f04af072 --apk app-debug.apk
+```
+
 ## 5. 已知边界
 
 - 物理设备尚未在本机验证；本次是假 adb 协议验收，真机步骤已文档化。

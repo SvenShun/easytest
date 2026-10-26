@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
 
-.PHONY: help setup build test e2e part2 part3 part4 apiexec-scale apiexec-scale-down main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
+.PHONY: help setup build test e2e part2 part3 part4 device-check apiexec-scale apiexec-scale-down main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
 
 help:
 	@echo "TestHub V1"
@@ -23,6 +23,7 @@ help:
 	@echo "  make part2   run the Part 2 API-execution acceptance script"
 	@echo "  make part3   run the Part 3 env/data/shared-queue acceptance script"
 	@echo "  make part4   run the device-agent ADB acceptance (fake adb)"
+	@echo "  make device-check  preflight a physical Android device (input/install gates)"
 	@echo "  make apiexec-scale  start a second api-execution on :8085 (Redis queue)"
 	@echo "  make apiexec-scale-down stop the second instance"
 	@echo "  make down    stop local services"
@@ -92,6 +93,9 @@ part3:
 
 part4:
 	python3 scripts/part4_smoke.py
+
+device-check:
+	python3 scripts/real-device-check.py
 
 apiexec-scale:
 	./scripts/apiexec-scale-up.sh
