@@ -29,6 +29,9 @@ public final class AgentDtos {
     }
 
     public record AgentView(String agentId, String name, String host, String baseUrl, String status,
-                            Instant lastHeartbeat, List<DeviceDtos.DeviceView> devices) {
+                            boolean enabled, Instant lastHeartbeat, List<DeviceDtos.DeviceView> devices) {
+    }
+
+    public record AgentUpdateRequest(String name, Boolean enabled) {
     }
 }

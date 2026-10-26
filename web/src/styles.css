@@ -4935,3 +4935,12 @@ a.btn:hover {
 .summary-row .summary-chip:first-child { padding-left: 14px; }
 .summary-row .summary-chip-label { font-size: 12px; }
 .summary-row .summary-chip-value { font-size: 18px; }
+
+.group-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.group-chip { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: #475569; }
+.group-chip span { color: #94a3b8; margin-left: 4px; }
+.group-chip.is-active { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+.group-manager-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; }
+.group-manager-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(148,163,184,.12); }
+.group-device-picker { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }

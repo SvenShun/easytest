@@ -28,6 +28,10 @@ public class AgentEntity {
     @Column(name = "last_heartbeat")
     private Instant lastHeartbeat;
 
+    /** Disabled agents stay registered but their devices are offline and not schedulable. */
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -41,6 +45,7 @@ public class AgentEntity {
         this.baseUrl = baseUrl;
         this.createdAt = createdAt;
         this.lastHeartbeat = createdAt;
+        this.enabled = true;
     }
 
     public String getId() {
@@ -70,6 +75,9 @@ public class AgentEntity {
     public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
     }
+
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
 
     public Instant getLastHeartbeat() {
         return lastHeartbeat;

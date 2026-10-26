@@ -11,6 +11,7 @@ export { plansApi } from './plans';
 export { jobsApi } from './jobs';
 export { dashboardApi } from './dashboard';
 export { uiElementsApi } from './uielements';
+export { deviceGroupsApi } from './deviceGroups';
 export { uiexecApi } from './uiexec';
 export type { TaskListParams } from './uiexec';
 export { ApiError, TOKEN_KEY, USER_KEY, clearToken, getToken, saveToken, request } from './client';

@@ -114,6 +114,7 @@ export const AGENT_STATUS_META: Record<string, StatusMeta> = {
   UP: { label: '在线', tone: 'green' },
   HEALTHY: { label: '在线', tone: 'green' },
   OFFLINE: { label: '离线', tone: 'gray' },
+  DISABLED: { label: '已停用', tone: 'red' },
   DOWN: { label: '离线', tone: 'gray' },
   UNKNOWN: { label: '未知', tone: 'gray' },
 };

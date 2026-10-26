@@ -75,6 +75,10 @@ export const uiexecApi = {
       { method: 'POST', body: form, timeoutMs: 180000 },
     );
   },
+  agentUpdate: (agentId: string, input: { name?: string; enabled?: boolean }) =>
+    request<Agent>('uexec', `/api/v1/ui-execution/agents/${encodeURIComponent(agentId)}`, {
+      method: 'PUT', body: input,
+    }),
   deviceShell: (deviceId: string, command: string, timeoutSec = 30) =>
     request<{ exitCode: number; stdout: string; stderr: string }>(
       'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/shell`,

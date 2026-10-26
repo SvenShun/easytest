@@ -6,8 +6,8 @@
 
 | Sonic 能力 | TestHub 实现 |
 |---|---|
-| 设备发现/热插拔 | device-agent ADB 轮询（5s）+ `/agent/devices/refresh` |
-| 设备池/在线状态 | Web 设备池、Agent 列表、设备占用（10 分钟租约） |
+| 设备发现/热插拔 | device-agent ADB 轮询（5s）+ `/agent/devices/refresh`；设备可分组 |
+| 设备池/在线状态 | Web 设备池、设备分组筛选、Agent 列表/重命名/停用、设备占用（10 分钟租约） |
 | 实时画面 | ws-scrcpy + WebCodecs 内嵌设备管理弹窗 |
 | 鼠标/触摸控制 | 页面覆盖层 → ADB tap/swipe；返回/Home/旋转/坐标点击/文本输入 |
 | 截图/UI 树 | 设备接口 + 页内截图；UI 树用于分辨率与断言 |

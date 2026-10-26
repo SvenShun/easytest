@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { uiexecApi } from '../api';
+import { deviceGroupsApi, uiexecApi } from '../api';
+import type { DeviceGroup } from '../api/deviceGroups';
 import type { Agent, Device, DeviceQueue } from '../api/types';
 import { AGENT_STATUS_META, DEVICE_STATUS_META, EXECUTOR_META, TASK_STATUS_META, metaOf } from '../constants';
 import { usePolling } from '../hooks';
@@ -13,6 +14,7 @@ import {
   CardHead,
   EmptyState,
   ErrorPanel,
+  Field,
   Input,
   LoadingPanel,
   PageHeading,
@@ -21,7 +23,7 @@ import {
   SkeletonRows,
   StatusPill,
 } from '../components/ui';
-import { Modal } from '../components/Modal';
+import { ConfirmDialog, Modal, PromptDialog } from '../components/Modal';
 import { toastError, toastSuccess } from '../components/Toast';
 
 const POLL_MS = 10000;
@@ -74,6 +76,20 @@ export function DevicesPage() {
   const [deviceFile, setDeviceFile] = useState<File | null>(null);
   const [fileBusy, setFileBusy] = useState(false);
   const [leaseBusy, setLeaseBusy] = useState(false);
+  const [groups, setGroups] = useState<DeviceGroup[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [groupEditing, setGroupEditing] = useState<DeviceGroup | null>(null);
+  const [groupForm, setGroupForm] = useState<{ name: string; description: string; deviceIds: string[] }>({
+    name: '', description: '', deviceIds: [],
+  });
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [groupError, setGroupError] = useState('');
+  const [groupDeleting, setGroupDeleting] = useState<DeviceGroup | null>(null);
+  const [groupDeletingBusy, setGroupDeletingBusy] = useState(false);
+  const [renameAgent, setRenameAgent] = useState<Agent | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameBusy, setRenameBusy] = useState(false);
 
   const [queueDevice, setQueueDevice] = useState<Device | null>(null);
   const [queueData, setQueueData] = useState<DeviceQueue | null>(null);
@@ -81,9 +97,19 @@ export function DevicesPage() {
   const [queueError, setQueueError] = useState('');
   const queueHandled = useRef<string | null>(null);
 
+  const loadGroups = useCallback(async () => {
+    try {
+      setGroups(await deviceGroupsApi.list());
+    } catch {
+      // groups are optional; device list still works
+    }
+  }, []);
+
   const load = useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
-    const [deviceRes, agentRes] = await Promise.allSettled([uiexecApi.devices(), uiexecApi.agents()]);
+    const [deviceRes, agentRes, groupRes] = await Promise.allSettled([
+      uiexecApi.devices(), uiexecApi.agents(), deviceGroupsApi.list(),
+    ]);
     if (deviceRes.status === 'fulfilled') {
       setDevices(deviceRes.value.items);
       setDevicesError('');
@@ -96,6 +122,9 @@ export function DevicesPage() {
     } else {
       setAgentsError(safeErrorMessage(agentRes.reason));
     }
+    if (groupRes.status === 'fulfilled') {
+      setGroups(groupRes.value);
+    }
     setDevicesLoading(false);
     setAgentsLoading(false);
     setRefreshing(false);
@@ -104,7 +133,8 @@ export function DevicesPage() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadGroups();
+  }, [load, loadGroups]);
 
   usePolling(() => void load(true), POLL_MS);
 
@@ -409,9 +439,93 @@ export function DevicesPage() {
     }
   };
 
+  const toggleAgent = async (agent: Agent) => {
+    try {
+      await uiexecApi.agentUpdate(agent.agentId, { name: agent.name, enabled: !agent.enabled });
+      toastSuccess(agent.enabled ? 'Agent 已停用，其设备不再参与调度' : 'Agent 已启用');
+      await load(true);
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    }
+  };
+
+  const submitRenameAgent = async (value: string) => {
+    if (!renameAgent || !value.trim()) return;
+    setRenameBusy(true);
+    try {
+      await uiexecApi.agentUpdate(renameAgent.agentId, { name: value.trim() });
+      toastSuccess('Agent 名称已更新');
+      setRenameAgent(null);
+      setRenameValue('');
+      await load(true);
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    } finally {
+      setRenameBusy(false);
+    }
+  };
+
+  const openGroupManager = () => {
+    setGroupOpen(true);
+    setGroupEditing(null);
+    setGroupForm({ name: '', description: '', deviceIds: [] });
+    setGroupError('');
+  };
+
+  const editGroup = (group: DeviceGroup) => {
+    setGroupEditing(group);
+    setGroupForm({ name: group.name, description: group.description || '', deviceIds: group.deviceIds });
+    setGroupError('');
+  };
+
+  const saveGroup = async () => {
+    if (!groupForm.name.trim()) {
+      setGroupError('分组名称不能为空');
+      return;
+    }
+    setGroupSaving(true);
+    setGroupError('');
+    try {
+      const input = {
+        name: groupForm.name.trim(),
+        description: groupForm.description.trim() || null,
+        deviceIds: groupForm.deviceIds,
+      };
+      if (groupEditing) await deviceGroupsApi.update(groupEditing.id, input);
+      else await deviceGroupsApi.create(input);
+      toastSuccess(groupEditing ? '分组已更新' : '分组已创建');
+      setGroupEditing(null);
+      setGroupForm({ name: '', description: '', deviceIds: [] });
+      await loadGroups();
+      await load(true);
+    } catch (err) {
+      setGroupError(safeErrorMessage(err));
+    } finally {
+      setGroupSaving(false);
+    }
+  };
+
+  const deleteGroup = async () => {
+    if (!groupDeleting) return;
+    setGroupDeletingBusy(true);
+    try {
+      await deviceGroupsApi.remove(groupDeleting.id);
+      toastSuccess('分组已删除');
+      if (selectedGroup === groupDeleting.id) setSelectedGroup('');
+      setGroupDeleting(null);
+      await loadGroups();
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    } finally {
+      setGroupDeletingBusy(false);
+    }
+  };
+
   const filteredDevices = useMemo(() => {
     const text = keyword.trim().toLowerCase();
+    const group = selectedGroup ? groups.find((item) => item.id === selectedGroup) : null;
     return devices.filter((device) => {
+      if (group && !group.deviceIds.includes(device.deviceId)) return false;
       if (statusFilter && device.status !== statusFilter) return false;
       if (!text) return true;
       const haystack = [device.serial, device.name, device.model, device.platform, ...(device.tags || [])]
@@ -420,7 +534,7 @@ export function DevicesPage() {
         .toLowerCase();
       return haystack.includes(text);
     });
-  }, [devices, statusFilter, keyword]);
+  }, [devices, statusFilter, keyword, selectedGroup, groups]);
 
   const summary = useMemo(() => {
     const total = devices.length;
@@ -472,6 +586,20 @@ export function DevicesPage() {
           <span className="summary-chip-label">离线</span>
           <span className="summary-chip-value text-muted">{summary.offline}</span>
         </div>
+      </div>
+
+      <div className="group-filter-row">
+        <button type="button" className={cx('group-chip', !selectedGroup && 'is-active')} onClick={() => setSelectedGroup('')}>
+          全部设备 <span>{devices.length}</span>
+        </button>
+        {groups.map((group) => (
+          <button key={group.id} type="button"
+                  className={cx('group-chip', selectedGroup === group.id && 'is-active')}
+                  onClick={() => setSelectedGroup(group.id)}>
+            {group.name} <span>{group.deviceCount}</span>
+          </button>
+        ))}
+        <Button size="sm" variant="ghost" onClick={openGroupManager}>分组管理</Button>
       </div>
 
       <Card>
@@ -816,20 +944,21 @@ export function DevicesPage() {
                   <th>状态</th>
                   <th>最后心跳</th>
                   <th>设备数</th>
+                  <th className="th-right">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {agentsLoading ? (
-                  <SkeletonRows rows={3} cols={6} />
+                  <SkeletonRows rows={3} cols={7} />
                 ) : agentsError ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <ErrorPanel message={agentsError} compact onRetry={() => void load()} />
                     </td>
                   </tr>
                 ) : agents.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <EmptyState
                         compact
                         icon="server"
@@ -856,6 +985,17 @@ export function DevicesPage() {
                         <td>
                           <Pill tone="blue">{agent.devices?.length ?? 0} 台</Pill>
                         </td>
+                        <td>
+                          <div className="row-actions">
+                            <Button size="sm" variant="ghost"
+                                    onClick={() => { setRenameAgent(agent); setRenameValue(agent.name); }}>
+                              重命名
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => void toggleAgent(agent)}>
+                              {agent.enabled === false ? '启用' : '停用'}
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })
@@ -865,6 +1005,91 @@ export function DevicesPage() {
           </div>
         </div>
       </Card>
+
+      <PromptDialog
+        open={!!renameAgent}
+        title="重命名 Agent"
+        message={renameAgent ? `Agent ${renameAgent.agentId}` : null}
+        label="名称"
+        placeholder="如：实验室小米机架"
+        required
+        confirmText="保存"
+        loading={renameBusy}
+        onConfirm={(value) => void submitRenameAgent(value)}
+        onClose={() => { setRenameAgent(null); setRenameValue(''); }}
+      />
+
+      <Modal
+        open={groupOpen}
+        title="设备分组"
+        description="分组用于快速筛选设备；一个设备可以属于多个分组。"
+        onClose={() => { if (!groupSaving) setGroupOpen(false); }}
+        size="md"
+        closeOnOverlay={!groupSaving}
+        footer={<Button variant="secondary" onClick={() => setGroupOpen(false)} disabled={groupSaving}>关闭</Button>}
+      >
+        <div className="form-stack">
+          {groupError ? <ErrorPanel message={groupError} onRetry={() => setGroupError('')} /> : null}
+          <div className="group-manager-list">
+            {groups.length === 0 ? <span className="text-muted">暂无分组</span> : groups.map((group) => (
+              <div key={group.id} className="group-manager-row">
+                <span>{group.name}</span>
+                <span className="text-muted">{group.deviceCount} 台</span>
+                <div className="row-actions">
+                  <Button size="sm" variant="ghost" onClick={() => editGroup(group)}>编辑</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setGroupDeleting(group)}>删除</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="divider" />
+          <Field label={groupEditing ? `编辑分组：${groupEditing.name}` : '新建分组'} htmlFor="group-name">
+            <Input id="group-name" value={groupForm.name} placeholder="如：小米真机"
+                   onChange={(event) => setGroupForm((prev) => ({ ...prev, name: event.target.value }))} />
+          </Field>
+          <Field label="描述" htmlFor="group-desc">
+            <Input id="group-desc" value={groupForm.description}
+                   onChange={(event) => setGroupForm((prev) => ({ ...prev, description: event.target.value }))} />
+          </Field>
+          <Field label="包含设备" htmlFor="group-devices">
+            <div className="group-device-picker">
+              {devices.map((device) => (
+                <label key={device.deviceId} className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={groupForm.deviceIds.includes(device.deviceId)}
+                    onChange={(event) => setGroupForm((prev) => ({
+                      ...prev,
+                      deviceIds: event.target.checked
+                        ? [...prev.deviceIds, device.deviceId]
+                        : prev.deviceIds.filter((id) => id !== device.deviceId),
+                    }))}
+                  />
+                  <span className="mono">{device.serial}</span>
+                  <span className="text-muted">{device.name || device.model}</span>
+                </label>
+              ))}
+            </div>
+          </Field>
+          <div className="row-actions">
+            <Button variant="primary" loading={groupSaving} onClick={() => void saveGroup()}>
+              {groupEditing ? '保存分组' : '创建分组'}
+            </Button>
+            {groupEditing ? <Button variant="ghost" onClick={() => { setGroupEditing(null); setGroupForm({ name: '', description: '', deviceIds: [] }); }}>取消编辑</Button> : null}
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!groupDeleting}
+        title="删除设备分组"
+        message={`确认删除“${groupDeleting?.name || ''}”？设备本身不会被删除。`}
+        confirmText="删除"
+        tone="danger"
+        loading={groupDeletingBusy}
+        onConfirm={() => void deleteGroup()}
+        onClose={() => setGroupDeleting(null)}
+      />
 
       <Modal
         open={Boolean(queueDevice)}

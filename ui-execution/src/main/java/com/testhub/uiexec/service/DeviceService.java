@@ -110,6 +110,23 @@ public class DeviceService {
         return agents.findAll();
     }
 
+    public synchronized AgentEntity updateAgent(String agentId, String name, Boolean enabled) {
+        AgentEntity agent = requireAgent(agentId);
+        if (name != null && !name.isBlank()) {
+            String trimmed = name.trim();
+            agents.findByName(trimmed).ifPresent(other -> {
+                if (!other.getId().equals(agentId)) {
+                    throw ApiException.conflict("Agent 名称已存在: " + trimmed);
+                }
+            });
+            agent.setName(trimmed);
+        }
+        if (enabled != null) {
+            agent.setEnabled(enabled);
+        }
+        return agents.save(agent);
+    }
+
     public AgentEntity requireAgent(String agentId) {
         return agents.findById(agentId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "AGENT_NOT_FOUND", "Agent 不存在"));
@@ -120,11 +137,14 @@ public class DeviceService {
     }
 
     public String agentStatus(AgentEntity agent) {
+        if (agent != null && !agent.isEnabled()) {
+            return "DISABLED";
+        }
         return isAgentOnline(agent) ? "ONLINE" : "OFFLINE";
     }
 
     public boolean isAgentOnline(AgentEntity agent) {
-        if (agent == null || agent.getLastHeartbeat() == null) {
+        if (agent == null || !agent.isEnabled() || agent.getLastHeartbeat() == null) {
             return false;
         }
         return agent.getLastHeartbeat().isAfter(Instant.now().minusSeconds(properties.getAgentOfflineSeconds()));
@@ -204,6 +224,12 @@ public class DeviceService {
     public DeviceStatus statusOf(DeviceEntity device) {
         if (device == null) {
             return DeviceStatus.OFFLINE;
+        }
+        if (device.getAgentId() != null) {
+            AgentEntity owner = agents.findById(device.getAgentId()).orElse(null);
+            if (owner != null && !owner.isEnabled()) {
+                return DeviceStatus.OFFLINE;
+            }
         }
         boolean heartbeatStale = device.getLastSeenAt() == null
                 || device.getLastSeenAt().isBefore(Instant.now().minusSeconds(properties.getAgentOfflineSeconds()));

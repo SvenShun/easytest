@@ -528,6 +528,7 @@ export interface Agent {
   host?: string;
   baseUrl?: string;
   status?: string;
+  enabled?: boolean;
   lastHeartbeat?: string;
   devices?: Device[];
 }
