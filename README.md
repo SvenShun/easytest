@@ -136,6 +136,7 @@ tail -f logs/core.log
 - [docs/SCRCPY-WEB.md](docs/SCRCPY-WEB.md) — 页面内 scrcpy 实时画面与鼠标控制
 - [docs/DEVICE-MANAGEMENT.md](docs/DEVICE-MANAGEMENT.md) — 真机管理/远程操作/应用/文件/Shell/性能
 - [docs/SONIC-PORT-INVENTORY.md](docs/SONIC-PORT-INVENTORY.md) — Sonic 源码功能清单与移植差距
+- [docs/SONIC-PORTING-STATUS.md](docs/SONIC-PORTING-STATUS.md) — Sonic 能力移植进度
 
 ## 目录结构
 
