@@ -101,6 +101,11 @@ public class DeviceService {
         }
     }
 
+    public AgentEntity requireAgent(DeviceEntity device) {
+        return agents.findById(device.getAgentId())
+                .orElseThrow(() -> ApiException.notFound("设备所属 Agent 不存在: " + device.getAgentId()));
+    }
+
     public List<AgentEntity> listAgents() {
         return agents.findAll();
     }

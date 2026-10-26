@@ -30,6 +30,7 @@ public class DeviceManager {
     private final Set<String> adbSerials = ConcurrentHashMap.newKeySet();
     private final String mode;
     private final String adb;
+    private final String appPackage;
     private final ScreenRenderer renderer;
 
     public DeviceManager(AgentProperties properties, ScreenRenderer renderer) {
@@ -43,6 +44,7 @@ public class DeviceManager {
         this.mode = normalised;
         this.adb = properties.getAdb() == null || properties.getAdb().isBlank()
                 ? "adb" : properties.getAdb().trim();
+        this.appPackage = properties.getAppPackage() == null ? "" : properties.getAppPackage().trim();
 
         if ("adb".equals(mode) || "auto".equals(mode)) {
             refreshAdbDevices();
@@ -101,7 +103,7 @@ public class DeviceManager {
         for (DeviceDescriptor descriptor : discovered) {
             current.add(descriptor.serial());
             devices.computeIfAbsent(descriptor.serial(),
-                    serial -> new AdbDeviceDriver(descriptor, adb));
+                    serial -> new AdbDeviceDriver(descriptor, adb, appPackage));
         }
         for (String serial : new ArrayList<>(adbSerials)) {
             if (!current.contains(serial)) {

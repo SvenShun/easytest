@@ -33,10 +33,16 @@ public class AdbDeviceDriver implements DeviceDriver {
 
     private final DeviceDescriptor descriptor;
     private final String adb;
+    private final String appPackage;
 
     public AdbDeviceDriver(DeviceDescriptor descriptor, String adb) {
+        this(descriptor, adb, "");
+    }
+
+    public AdbDeviceDriver(DeviceDescriptor descriptor, String adb, String appPackage) {
         this.descriptor = descriptor;
         this.adb = adb == null || adb.isBlank() ? "adb" : adb;
+        this.appPackage = appPackage == null ? "" : appPackage.trim();
     }
 
     @Override
@@ -46,12 +52,21 @@ public class AdbDeviceDriver implements DeviceDriver {
 
     @Override
     public byte[] screenshot() {
-        AdbResult result = run(DEFAULT_TIMEOUT, "exec-out", "screencap", "-p");
-        if (result.exitCode() != 0 || result.stdout().length == 0) {
-            throw new IllegalStateException("adb screencap failed (device may be locked/secure): "
-                    + result.errorText());
+        AdbResult result = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            result = run(DEFAULT_TIMEOUT, "exec-out", "screencap", "-p");
+            if (result.exitCode() == 0 && result.stdout().length > 0) {
+                return result.stdout();
+            }
+            try {
+                Thread.sleep(300L * attempt);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
-        return result.stdout();
+        throw new IllegalStateException("adb screencap failed after retries (device may be locked/secure): "
+                + (result == null ? "" : result.errorText()));
     }
 
     @Override
@@ -79,7 +94,7 @@ public class AdbDeviceDriver implements DeviceDriver {
         String action = request.getAction().trim().toLowerCase(Locale.ROOT);
         try {
             switch (action) {
-                case "click", "tap" -> {
+                case "click" -> {
                     UiElement element = findElement(request.getTarget());
                     if (element == null) {
                         return ActionResult.fail("element not found: " + describe(request.getTarget()), "adb");
@@ -99,7 +114,27 @@ public class AdbDeviceDriver implements DeviceDriver {
                             String.valueOf(bounds.centerX()), String.valueOf(bounds.centerY()));
                     String value = request.getText() == null ? "" : request.getText();
                     AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "text", escapeText(value));
+                    try {
+                        Thread.sleep(250);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    // MIUI returns an empty screencap while the soft keyboard is visible.
+                    run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "4");
                     return toResult(result, "input " + element.text());
+                }
+                case "text" -> {
+                    String value = request.getText() == null ? "" : request.getText();
+                    AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "text", escapeText(value));
+                    run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "4");
+                    return toResult(result, "typed into focused field");
+                }
+                case "tap" -> {
+                    DeviceAction.Point point = request.getFrom() == null
+                            ? new DeviceAction.Point(540, 1200) : request.getFrom();
+                    AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "tap",
+                            String.valueOf(point.getX()), String.valueOf(point.getY()));
+                    return toResult(result, "tapped " + point.getX() + "," + point.getY());
                 }
                 case "swipe" -> {
                     DeviceAction.Point from = request.getFrom() == null
@@ -174,8 +209,18 @@ public class AdbDeviceDriver implements DeviceDriver {
     @Override
     public ActionResult reset() {
         run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "3");
-        run(DEFAULT_TIMEOUT, "shell", "am", "force-stop", "com.testhub.demo");
-        return ActionResult.ok("reset", "home");
+        if (appPackage.isBlank()) {
+            return ActionResult.ok("reset", "home");
+        }
+        run(DEFAULT_TIMEOUT, "shell", "am", "force-stop", appPackage);
+        AdbResult launched = run(DEFAULT_TIMEOUT, "shell", "monkey", "-p", appPackage,
+                "-c", "android.intent.category.LAUNCHER", "1");
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return toResult(launched, "reset and launched " + appPackage);
     }
 
     // ------------------------------------------------------------------

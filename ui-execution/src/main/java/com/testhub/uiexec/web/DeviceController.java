@@ -1,5 +1,9 @@
 package com.testhub.uiexec.web;
 
+import com.testhub.common.security.RequireRole;
+import com.testhub.common.security.Role;
+import com.testhub.uiexec.client.AgentClient;
+import com.testhub.uiexec.domain.AgentEntity;
 import com.testhub.uiexec.domain.DeviceEntity;
 import com.testhub.uiexec.domain.DeviceStatus;
 import com.testhub.uiexec.domain.TaskEntity;
@@ -10,11 +14,19 @@ import com.testhub.uiexec.web.dto.DeviceDtos.DeviceListResponse;
 import com.testhub.uiexec.web.dto.DeviceDtos.DeviceView;
 import com.testhub.uiexec.web.dto.DeviceDtos.QueueTaskView;
 import com.testhub.uiexec.web.dto.DeviceDtos.QueueView;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.Map;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,11 +40,14 @@ public class DeviceController {
     private final DeviceService deviceService;
     private final TaskRepository taskRepository;
     private final DeviceQueueStore queue;
+    private final AgentClient agentClient;
 
-    public DeviceController(DeviceService deviceService, TaskRepository taskRepository, DeviceQueueStore queue) {
+    public DeviceController(DeviceService deviceService, TaskRepository taskRepository, DeviceQueueStore queue,
+                            AgentClient agentClient) {
         this.deviceService = deviceService;
         this.taskRepository = taskRepository;
         this.queue = queue;
+        this.agentClient = agentClient;
     }
 
     @GetMapping
@@ -70,6 +85,39 @@ public class DeviceController {
                     task.getExecutorType(), task.getCreatedAt()));
         }
         return new QueueView(device.getId(), device.getSerial(), items.size(), items);
+    }
+
+    @GetMapping("/{deviceId}/screenshot")
+    public ResponseEntity<byte[]> screenshot(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(agentClient.screenshot(agent.getBaseUrl(), device.getSerial()));
+    }
+
+    @PostMapping("/{deviceId}/install")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object install(@PathVariable String deviceId,
+                          @RequestParam("file") MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw com.testhub.common.web.ApiException.badRequest("APK 文件为空");
+        }
+        if (file.getSize() > 200L * 1024 * 1024) {
+            throw com.testhub.common.web.ApiException.badRequest("APK 超过 200MB");
+        }
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.install(agent.getBaseUrl(), device.getSerial(), file.getBytes(),
+                file.getOriginalFilename());
+    }
+
+    @PostMapping("/{deviceId}/action")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object action(@PathVariable String deviceId, @RequestBody Map<String, Object> action) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.action(agent.getBaseUrl(), device.getSerial(), action);
     }
 
     private boolean matchesKeyword(DeviceEntity device, DeviceView view, String needle) {

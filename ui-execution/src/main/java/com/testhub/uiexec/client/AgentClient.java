@@ -3,11 +3,16 @@ package com.testhub.uiexec.client;
 import com.testhub.common.security.AuthFilter;
 import com.testhub.common.security.SecurityProperties;
 import com.testhub.uiexec.client.dto.DispatchPayload;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+
+import java.util.Map;
 
 /**
  * Client for the device agent ({@code POST /agent/tasks}, {@code DELETE
@@ -53,6 +58,53 @@ public class AgentClient {
                     .toBodilessEntity();
         } catch (RestClientException e) {
             throw new AgentUnavailableException("取消任务失败: " + e.getMessage(), e);
+        }
+    }
+
+    public byte[] screenshot(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).get()
+                    .uri("/device/{serial}/screenshot", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(byte[].class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("获取设备截图失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object action(String agentBaseUrl, String serial, Map<String, Object> action) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri("/device/{serial}/action", serial)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .body(action)
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("设备动作失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object install(String agentBaseUrl, String serial, byte[] apk, String filename) {
+        MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        parts.add("file", new ByteArrayResource(apk) {
+            @Override
+            public String getFilename() {
+                return filename == null || filename.isBlank() ? "app.apk" : filename;
+            }
+        });
+        try {
+            return client(agentBaseUrl).post()
+                    .uri("/device/{serial}/install?replace=true", serial)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .body(parts)
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("安装 APK 失败: " + e.getMessage(), e);
         }
     }
 

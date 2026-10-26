@@ -57,6 +57,23 @@ export const uiexecApi = {
     ),
   deviceQueue: (deviceId: string) =>
     request<DeviceQueue>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/queue`),
+  deviceScreenshot: (deviceId: string) =>
+    request('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/screenshot`, { raw: true }),
+  deviceInstall: (deviceId: string, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<{ ok?: boolean; message?: string }>(
+      'uexec',
+      `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/install`,
+      { method: 'POST', body: form, timeoutMs: 180000 },
+    );
+  },
+  deviceAction: (deviceId: string, action: Record<string, unknown>) =>
+    request<{ ok?: boolean; message?: string }>(
+      'uexec',
+      `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/action`,
+      { method: 'POST', body: action },
+    ),
   skillsPointer: () => request<SkillsPointer>('uexec', '/api/v1/ui-execution/skills/pointer'),
   updateSkillsPointer: (input: { gitUrl: string; branch: string }) =>
     request<SkillsPointer>('uexec', '/api/v1/ui-execution/skills/pointer', {

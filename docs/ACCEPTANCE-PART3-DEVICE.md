@@ -115,7 +115,7 @@ python3 scripts/real-device-check.py f04af072 --apk app-debug.apk
 
 ## 5. 已知边界
 
-- 物理设备尚未在本机验证；本次是假 adb 协议验收，真机步骤已文档化。
+- 物理设备已实测（Mi 10 / Android 12）；不同 ROM 的权限开关不同，见 §4.1。
 - 没有 scrcpy 投屏/实时视频；截图是单帧。
 - 只支持 Android；iOS/WDA 未实现。
 - `input text` 仅做空格转义，复杂 Unicode/中文输入可能受 ADB 限制，后续可接 ADBKeyboard。

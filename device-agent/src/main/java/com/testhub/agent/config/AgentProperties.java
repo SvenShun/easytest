@@ -37,6 +37,8 @@ public class AgentProperties {
     private String adb = "adb";
     /** Hotplug refresh interval for adb/auto mode. */
     private int deviceRefreshMs = 15000;
+    /** Optional app package launched after a device reset (real-device demos/tests). */
+    private String appPackage = "";
 
     /** Sonic (UIA2) device mode settings. */
     private final Sonic sonic = new Sonic();
@@ -47,6 +49,14 @@ public class AgentProperties {
 
     public void setAdb(String adb) {
         this.adb = adb;
+    }
+
+    public String getAppPackage() {
+        return appPackage;
+    }
+
+    public void setAppPackage(String appPackage) {
+        this.appPackage = appPackage;
     }
 
     public int getDeviceRefreshMs() {

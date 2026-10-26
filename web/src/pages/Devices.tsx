@@ -21,6 +21,7 @@ import {
   StatusPill,
 } from '../components/ui';
 import { Modal } from '../components/Modal';
+import { toastError, toastSuccess } from '../components/Toast';
 
 const POLL_MS = 10000;
 
@@ -46,6 +47,19 @@ export function DevicesPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [keyword, setKeyword] = useState('');
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const [manageDevice, setManageDevice] = useState<Device | null>(null);
+  const [manageShot, setManageShot] = useState('');
+  const [manageError, setManageError] = useState('');
+  const [manageLoading, setManageLoading] = useState(false);
+  const [apkFile, setApkFile] = useState<File | null>(null);
+  const [installBusy, setInstallBusy] = useState(false);
+  const [appPackage, setAppPackage] = useState('com.testhub.demo');
+  const [actionBusy, setActionBusy] = useState(false);
+  const [tapX, setTapX] = useState('540');
+  const [tapY, setTapY] = useState('1200');
+  const [inputTarget, setInputTarget] = useState('用户名');
+  const [inputValue, setInputValue] = useState('tester');
 
   const [queueDevice, setQueueDevice] = useState<Device | null>(null);
   const [queueData, setQueueData] = useState<DeviceQueue | null>(null);
@@ -115,6 +129,102 @@ export function DevicesPage() {
     setQueueError('');
     queueHandled.current = null;
     if (route.query.get('queue')) navigate('/devices', { replace: true });
+  };
+
+  const loadShot = async (device: Device) => {
+    setManageLoading(true);
+    setManageError('');
+    try {
+      const response = await uiexecApi.deviceScreenshot(device.deviceId);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setManageShot((previous) => {
+        if (previous) URL.revokeObjectURL(previous);
+        return url;
+      });
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setManageLoading(false);
+    }
+  };
+
+  const openManage = (device: Device) => {
+    setManageDevice(device);
+    setApkFile(null);
+    setManageError('');
+    void loadShot(device);
+  };
+
+  const closeManage = () => {
+    setManageDevice(null);
+    setManageShot((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return '';
+    });
+    setApkFile(null);
+    setManageError('');
+  };
+
+  const installApk = async () => {
+    if (!manageDevice || !apkFile) {
+      setManageError('请选择 APK 文件');
+      return;
+    }
+    setInstallBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceInstall(manageDevice.deviceId, apkFile);
+      if (result && result.ok === false) {
+        throw new Error(result.message || '安装失败');
+      }
+      toastSuccess('APK 已安装');
+      setApkFile(null);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setInstallBusy(false);
+    }
+  };
+
+  const deviceAction = async (action: Record<string, unknown>, success: string) => {
+    if (!manageDevice) return;
+    setActionBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceAction(manageDevice.deviceId, action);
+      if (result && result.ok === false) {
+        throw new Error(result.message || '操作失败');
+      }
+      toastSuccess(success);
+      await loadShot(manageDevice);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const launchApp = async () => {
+    if (!manageDevice || !appPackage.trim()) {
+      setManageError('请输入应用包名');
+      return;
+    }
+    setActionBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceAction(manageDevice.deviceId,
+        { action: 'launch', app: appPackage.trim() });
+      if (result && result.ok === false) {
+        throw new Error(result.message || '启动失败');
+      }
+      toastSuccess(`已启动 ${appPackage.trim()}`);
+      await loadShot(manageDevice);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const refreshQueue = async () => {
@@ -332,9 +442,14 @@ export function DevicesPage() {
                           无运行任务
                         </span>
                       )}
-                      <Button size="sm" variant="secondary" icon="queue" onClick={() => void openQueue(device)}>
-                        查看队列
-                      </Button>
+                      <div className="row-actions">
+                        <Button size="sm" variant="ghost" icon="server" onClick={() => openManage(device)}>
+                          管理
+                        </Button>
+                        <Button size="sm" variant="secondary" icon="queue" onClick={() => void openQueue(device)}>
+                          查看队列
+                        </Button>
+                      </div>
                     </div>
                   </article>
                 );
@@ -343,6 +458,101 @@ export function DevicesPage() {
           )}
         </div>
       </Card>
+
+      <Modal
+        open={!!manageDevice}
+        title="真机管理"
+        description={manageDevice ? `${manageDevice.serial} · ${manageDevice.name || manageDevice.model || ''}` : ''}
+        onClose={closeManage}
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeManage}>关闭</Button>
+            <Button variant="secondary" icon="refresh" loading={manageLoading} onClick={() => manageDevice && void loadShot(manageDevice)}>
+              刷新截图
+            </Button>
+          </>
+        }
+      >
+        <div className="form-stack">
+          {manageError ? <ErrorPanel message={manageError} compact /> : null}
+          <div style={{ background: '#0b1220', borderRadius: 10, padding: 8, minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {manageLoading && !manageShot ? (
+              <span className="text-muted">正在获取截图…</span>
+            ) : manageShot ? (
+              <img src={manageShot} alt="device screenshot" style={{ maxWidth: '100%', maxHeight: 420, borderRadius: 6 }} />
+            ) : (
+              <span className="text-muted">暂无截图（设备可能离线或锁屏）</span>
+            )}
+          </div>
+          <div className="form-grid-2">
+            <div className="form-stack">
+              <span className="meta-label">快捷操作</span>
+              <div className="row-actions">
+                <Button size="sm" variant="secondary" loading={actionBusy}
+                        onClick={() => void deviceAction({ action: 'back' }, '已返回')}>
+                  返回
+                </Button>
+                <Button size="sm" variant="secondary" loading={actionBusy}
+                        onClick={() => void deviceAction({ action: 'home' }, '已回到桌面')}>
+                  Home
+                </Button>
+              </div>
+              <div className="form-grid-2">
+                <Input value={tapX} onChange={(event) => setTapX(event.target.value)} placeholder="x" />
+                <Input value={tapY} onChange={(event) => setTapY(event.target.value)} placeholder="y" />
+              </div>
+              <Button size="sm" variant="secondary" loading={actionBusy}
+                      onClick={() => void deviceAction(
+                        { action: 'tap', from: { x: Number(tapX), y: Number(tapY) } },
+                        `已点击 ${tapX},${tapY}`)}>
+                点击坐标
+              </Button>
+              <div className="form-grid-2">
+                <Input value={inputTarget} onChange={(event) => setInputTarget(event.target.value)}
+                       placeholder="目标文本" />
+                <Input value={inputValue} onChange={(event) => setInputValue(event.target.value)}
+                       placeholder="输入内容" />
+              </div>
+              <Button size="sm" variant="secondary" loading={actionBusy}
+                      onClick={() => void deviceAction(
+                        { action: 'input', target: { text: inputTarget }, text: inputValue },
+                        '输入已发送')}>
+                输入文本
+              </Button>
+              <Button size="sm" variant="ghost" loading={actionBusy}
+                      onClick={() => void deviceAction(
+                        { action: 'text', text: inputValue },
+                        '文本已发送到焦点')}>
+                发送到当前焦点
+              </Button>
+            </div>
+            <div className="form-stack">
+              <span className="meta-label">安装 APK</span>
+              <input
+                type="file"
+                accept=".apk,application/vnd.android.package-archive"
+                onChange={(event) => setApkFile(event.target.files?.[0] || null)}
+              />
+              <Button variant="secondary" loading={installBusy} onClick={() => void installApk()}>
+                安装{apkFile ? ` ${apkFile.name}` : ''}
+              </Button>
+            </div>
+            <div className="form-stack">
+              <span className="meta-label">启动应用</span>
+              <Input
+                value={appPackage}
+                placeholder="com.testhub.demo"
+                onChange={(event) => setAppPackage(event.target.value)}
+              />
+              <Button variant="secondary" loading={actionBusy} onClick={() => void launchApp()}>
+                启动应用
+              </Button>
+            </div>
+          </div>
+          <div className="field-hint">安装与启动走设备所属 Agent（需开启 USB 安装 / 安全设置）。</div>
+        </div>
+      </Modal>
 
       <Card>
         <CardHead

@@ -36,3 +36,6 @@ upstream/
 .tools/
 **/.flattened-pom.xml
 backups/
+
+# local Android platform-tools (downloaded for device verification)
+tools/
