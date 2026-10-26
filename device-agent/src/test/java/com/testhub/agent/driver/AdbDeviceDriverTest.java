@@ -30,6 +30,11 @@ class AdbDeviceDriverTest {
         assertThat(clicked.ok()).isTrue();
         assertThat(Files.readString(FakeAdb.log(dir))).contains("shell input tap 60 50");
 
+        Files.createFile(dir.resolve("blocked"));
+        ActionResult blocked = driver.action(DeviceAction.back());
+        assertThat(blocked.ok()).isFalse();
+        assertThat(blocked.message()).contains("USB");
+
         ActionResult installed = driver.installApk(new byte[]{1, 2, 3}, true);
         assertThat(installed.ok()).isTrue();
         assertThat(Files.readString(FakeAdb.log(dir))).contains("install -r");

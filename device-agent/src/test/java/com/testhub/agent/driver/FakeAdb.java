@@ -40,8 +40,11 @@ final class FakeAdb {
                   "install -r") exit 0 ;;
                   "install "*) exit 0 ;;
                 esac
+                if [ -f %s ]; then
+                  echo "java.lang.SecurityException: Injecting to another application requires INJECT_EVENTS permission" >&2
+                fi
                 exit 0
-                """.formatted(log, devices, xml);
+                """.formatted(log, devices, xml, dir.resolve("blocked"));
         Files.writeString(script, content);
         Files.setPosixFilePermissions(script, Set.of(
                 PosixFilePermission.OWNER_READ,

@@ -87,6 +87,9 @@ curl -X POST http://127.0.0.1:8090/device/<serial>/action \
 ```
 
 > 真机需解锁屏幕、允许 USB 调试，并确保 `uiautomator dump` 可写 `/sdcard/window_dump.xml`。
+>
+> **MIUI/部分国产 ROM**：还需在开发者选项开启「USB 调试（安全设置）」与「USB 安装」，否则 `adb shell input` 可能返回 0
+> 但实际被 `INJECT_EVENTS` 拦截；驱动会识别该错误并返回失败，而不是误报成功。
 
 ## 5. 已知边界
 

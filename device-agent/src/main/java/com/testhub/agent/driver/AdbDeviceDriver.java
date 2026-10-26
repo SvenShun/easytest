@@ -48,7 +48,8 @@ public class AdbDeviceDriver implements DeviceDriver {
     public byte[] screenshot() {
         AdbResult result = run(DEFAULT_TIMEOUT, "exec-out", "screencap", "-p");
         if (result.exitCode() != 0 || result.stdout().length == 0) {
-            throw new IllegalStateException("adb screencap failed: " + result.errorText());
+            throw new IllegalStateException("adb screencap failed (device may be locked/secure): "
+                    + result.errorText());
         }
         return result.stdout();
     }
@@ -231,8 +232,11 @@ public class AdbDeviceDriver implements DeviceDriver {
         factory.setExpandEntityReferences(false);
         Document document = factory.newDocumentBuilder().parse(new java.io.ByteArrayInputStream(xml));
         Element root = document.getDocumentElement();
-        String pkg = root.getAttribute("package");
         NodeList nodes = document.getElementsByTagName("node");
+        String pkg = root.getAttribute("package");
+        if ((pkg == null || pkg.isBlank()) && nodes.getLength() > 0) {
+            pkg = ((Element) nodes.item(0)).getAttribute("package");
+        }
         Bounds rootBounds = parseBounds(root.getAttribute("bounds"));
         if (rootBounds == null && nodes.getLength() > 0) {
             rootBounds = parseBounds(((Element) nodes.item(0)).getAttribute("bounds"));
@@ -319,10 +323,19 @@ public class AdbDeviceDriver implements DeviceDriver {
     }
 
     private ActionResult toResult(AdbResult result, String message) {
-        if (result.exitCode() == 0) {
+        String error = result.errorText() == null ? "" : result.errorText();
+        boolean injected = error.contains("INJECT_EVENTS")
+                || error.contains("Injecting to another application")
+                || error.contains("SecurityException");
+        if (result.exitCode() == 0 && !injected) {
             return ActionResult.ok(message, "adb");
         }
-        return ActionResult.fail(message + " failed: " + result.errorText(), "adb");
+        if (injected) {
+            return ActionResult.fail(message + " failed: MIUI/ROM blocked ADB input; "
+                    + "enable Developer options -> USB debugging (Security settings) / USB调试（安全设置）",
+                    "adb");
+        }
+        return ActionResult.fail(message + " failed: " + error, "adb");
     }
 
     private AdbResult run(Duration timeout, String... args) {
