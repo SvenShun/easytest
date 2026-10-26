@@ -137,6 +137,19 @@ public class AgentClient {
         }
     }
 
+    public Object rotate(String agentBaseUrl, String serial, String direction) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri(uriBuilder -> uriBuilder.path("/device/{serial}/rotate")
+                            .queryParam("direction", direction).build(serial))
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("旋转设备失败: " + e.getMessage(), e);
+        }
+    }
+
     public Object pushFile(String agentBaseUrl, String serial, byte[] data, String filename, String remotePath) {
         MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
         parts.add("file", new ByteArrayResource(data) {

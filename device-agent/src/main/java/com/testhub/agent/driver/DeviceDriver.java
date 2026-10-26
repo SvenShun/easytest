@@ -43,6 +43,10 @@ public interface DeviceDriver {
         return ActionResult.fail("clear not supported by " + descriptor().platform(), "driver");
     }
 
+    default ActionResult rotate(String direction) {
+        return ActionResult.fail("rotate not supported by " + descriptor().platform(), "driver");
+    }
+
     default ActionResult pushFile(byte[] data, String remotePath) {
         return ActionResult.fail("file push not supported by " + descriptor().platform(), "driver");
     }

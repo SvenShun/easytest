@@ -85,6 +85,10 @@ export const uiexecApi = {
     request<{ ok?: boolean; message?: string }>(
       'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/apps/${action}?packageName=${encodeURIComponent(packageName)}`,
       { method: 'POST' }),
+  deviceRotate: (deviceId: string, direction: 'left' | 'right' | 'auto') =>
+    request<{ ok?: boolean; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/rotate?direction=${direction}`,
+      { method: 'POST' }),
   devicePushFile: (deviceId: string, file: File, remotePath?: string) => {
     const form = new FormData();
     form.append('file', file);

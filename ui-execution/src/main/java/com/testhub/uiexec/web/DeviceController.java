@@ -155,6 +155,15 @@ public class DeviceController {
         return agentClient.appAction(agent.getBaseUrl(), device.getSerial(), action, packageName);
     }
 
+    @PostMapping("/{deviceId}/rotate")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object rotate(@PathVariable String deviceId,
+                         @RequestParam(defaultValue = "auto") String direction) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.rotate(agent.getBaseUrl(), device.getSerial(), direction);
+    }
+
     @PostMapping("/{deviceId}/files")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object pushFile(@PathVariable String deviceId,

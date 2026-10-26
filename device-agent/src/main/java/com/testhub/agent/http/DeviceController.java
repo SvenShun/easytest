@@ -119,6 +119,16 @@ public class DeviceController {
         return ResponseEntity.ok(driver.get().clearApp(packageName));
     }
 
+    @PostMapping("/{serial}/rotate")
+    public ResponseEntity<?> rotate(@PathVariable String serial,
+            @RequestParam(defaultValue = "auto") String direction) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(driver.get().rotate(direction));
+    }
+
     @PostMapping("/{serial}/files")
     public ResponseEntity<?> pushFile(@PathVariable String serial,
             @RequestParam("file") MultipartFile file,

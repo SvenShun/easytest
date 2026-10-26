@@ -687,6 +687,14 @@ export function DevicesPage() {
                         onClick={() => void deviceAction({ action: 'home' }, '已回到桌面')}>
                   Home
                 </Button>
+                <Button size="sm" variant="ghost" loading={actionBusy}
+                        onClick={() => void uiexecApi.deviceRotate(manageDevice!.deviceId, 'left').then(() => toastSuccess('已左转')).catch((err) => setManageError(safeErrorMessage(err)))}>
+                  左转
+                </Button>
+                <Button size="sm" variant="ghost" loading={actionBusy}
+                        onClick={() => void uiexecApi.deviceRotate(manageDevice!.deviceId, 'right').then(() => toastSuccess('已右转')).catch((err) => setManageError(safeErrorMessage(err)))}>
+                  右转
+                </Button>
               </div>
               <div className="form-grid-2">
                 <Input value={tapX} onChange={(event) => setTapX(event.target.value)} placeholder="x" />

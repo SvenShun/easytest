@@ -134,6 +134,8 @@ tail -f logs/core.log
 - [docs/ACCEPTANCE-PART3.md](docs/ACCEPTANCE-PART3.md) — 环境/鉴权、数据驱动、共享队列验收
 - [docs/ACCEPTANCE-PART3-DEVICE.md](docs/ACCEPTANCE-PART3-DEVICE.md) — ADB 设备驱动验收（假 adb/真机步骤）
 - [docs/SCRCPY-WEB.md](docs/SCRCPY-WEB.md) — 页面内 scrcpy 实时画面与鼠标控制
+- [docs/DEVICE-MANAGEMENT.md](docs/DEVICE-MANAGEMENT.md) — 真机管理/远程操作/应用/文件/Shell/性能
+- [docs/SONIC-PORT-INVENTORY.md](docs/SONIC-PORT-INVENTORY.md) — Sonic 源码功能清单与移植差距
 
 ## 目录结构
 

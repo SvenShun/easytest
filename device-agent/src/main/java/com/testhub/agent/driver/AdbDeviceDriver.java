@@ -230,6 +230,25 @@ public class AdbDeviceDriver implements DeviceDriver {
     }
 
     @Override
+    public ActionResult rotate(String direction) {
+        String dir = direction == null ? "auto" : direction.trim().toLowerCase(Locale.ROOT);
+        AdbResult result;
+        switch (dir) {
+            case "left" -> {
+                run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "accelerometer_rotation", "0");
+                result = run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "user_rotation", "1");
+            }
+            case "right" -> {
+                run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "accelerometer_rotation", "0");
+                result = run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "user_rotation", "3");
+            }
+            default -> result = run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system",
+                    "accelerometer_rotation", "1");
+        }
+        return toResult(result, "rotated " + dir);
+    }
+
+    @Override
     public ActionResult pushFile(byte[] data, String remotePath) {
         if (data == null || data.length == 0) {
             return ActionResult.fail("文件为空", "adb");
