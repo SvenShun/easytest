@@ -23,8 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** Case CRUD, review state machine, capability and execution context. */
 @Service
@@ -74,12 +77,16 @@ public class CaseService {
     @Transactional
     public CaseView create(CaseRequest request) {
         validate(request);
+        ExecutionMode executionMode = ExecutionMode.parseOrDefault(request.executionMode(), ExecutionMode.AI);
+        List<StepDraft> stepDrafts = request.steps() == null ? List.of() : parseSteps(request.steps());
+        requireExecutableSteps(executionMode, stepDrafts);
         ScriptProject script = resolveScript(request.scriptId());
         AuthPrincipal principal = CurrentUser.require();
         Instant now = Instant.now();
         ClientCase clientCase = new ClientCase();
         clientCase.setId(Ids.newId("case"));
-        apply(clientCase, request);
+        apply(clientCase, request, executionMode);
+        applySteps(clientCase, stepDrafts);
         clientCase.setScriptId(script == null ? null : script.getId());
         clientCase.setSource(CaseSource.MANUAL);
         clientCase.setReviewStatus(ReviewStatus.DRAFT);
@@ -94,8 +101,20 @@ public class CaseService {
     public CaseView update(String id, CaseRequest request) {
         validate(request);
         ClientCase clientCase = require(id);
+        ExecutionMode executionMode = ExecutionMode.parseOrDefault(request.executionMode(),
+                clientCase.getExecutionMode());
+        List<StepDraft> stepDrafts = request.steps() == null ? null : parseSteps(request.steps());
+        if (stepDrafts != null) {
+            requireExecutableSteps(executionMode, stepDrafts);
+        } else if (executionMode == ExecutionMode.STEPS
+                && clientCase.getSteps().stream().noneMatch(CaseStep::isEnabled)) {
+            throw ApiException.badRequest("STEP 执行模式的用例至少需要一个启用的步骤");
+        }
         ScriptProject script = resolveScript(request.scriptId());
-        apply(clientCase, request);
+        apply(clientCase, request, executionMode);
+        if (stepDrafts != null) {
+            applySteps(clientCase, stepDrafts);
+        }
         clientCase.setScriptId(script == null ? null : script.getId());
         clientCase.setUpdatedAt(Instant.now());
         return view(caseRepository.save(clientCase), script);
@@ -157,6 +176,13 @@ public class CaseService {
     }
 
     public CapabilityView capability(boolean hasScript) {
+        return capability(hasScript, ExecutionMode.AI);
+    }
+
+    public CapabilityView capability(boolean hasScript, ExecutionMode executionMode) {
+        if (executionMode == ExecutionMode.STEPS) {
+            return new CapabilityView(List.of(ExecutorType.STEP), ExecutorType.STEP);
+        }
         if (hasScript) {
             return new CapabilityView(List.of(ExecutorType.SCRIPT, ExecutorType.AI_RUNTIME),
                     ExecutorType.SCRIPT);
@@ -191,20 +217,26 @@ public class CaseService {
                 .findByCaseIdOrderByCreatedAtAsc(clientCase.getId()).stream()
                 .map(CaseReviewView::of)
                 .toList();
+        List<CaseStepView> steps = clientCase.getSteps().stream()
+                .sorted(Comparator.comparingInt(CaseStep::getSeq))
+                .map(CaseStepView::of)
+                .toList();
         return new CaseView(clientCase.getId(), clientCase.getTitle(), clientCase.getBddGiven(),
                 clientCase.getBddWhen(), clientCase.getBddThen(), clientCase.getRequirementId(),
                 clientCase.getReviewStatus(), clientCase.getSource(), clientCase.getModelId(),
                 hasScript ? CaseScriptView.of(script) : null, null, clientCase.getFailureAnalysis(),
-                clientCase.getFailureReportUrl(), capability(hasScript), hasScript, reviews,
+                clientCase.getFailureReportUrl(), capability(hasScript, clientCase.getExecutionMode()),
+                hasScript, clientCase.getExecutionMode(), steps, reviews,
                 clientCase.getCreatedBy(), clientCase.getCreatedAt(), clientCase.getUpdatedAt());
     }
 
-    private void apply(ClientCase clientCase, CaseRequest request) {
+    private void apply(ClientCase clientCase, CaseRequest request, ExecutionMode executionMode) {
         clientCase.setTitle(request.title().trim());
         clientCase.setBddGiven(request.given());
         clientCase.setBddWhen(request.when());
         clientCase.setBddThen(request.then());
         clientCase.setRequirementId(isBlank(request.requirementId()) ? null : request.requirementId().trim());
+        clientCase.setExecutionMode(executionMode);
     }
 
     private ScriptProject resolveScript(String scriptId) {
@@ -222,6 +254,174 @@ public class CaseService {
         if (request == null || isBlank(request.title())) {
             throw ApiException.badRequest("用例标题不能为空");
         }
+    }
+
+    private void requireExecutableSteps(ExecutionMode executionMode, List<StepDraft> steps) {
+        if (executionMode == ExecutionMode.STEPS && steps.stream().noneMatch(StepDraft::enabled)) {
+            throw ApiException.badRequest("STEP 执行模式的用例至少需要一个启用的步骤");
+        }
+    }
+
+    private List<StepDraft> parseSteps(List<CaseStepRequest> requests) {
+        if (requests.size() > 500) {
+            throw ApiException.badRequest("单个用例最多支持 500 个步骤");
+        }
+        List<StepDraft> drafts = new ArrayList<>();
+        Set<Integer> seqs = new HashSet<>();
+        int index = 0;
+        for (CaseStepRequest request : requests) {
+            index++;
+            if (request == null) {
+                throw ApiException.badRequest("步骤不能为空");
+            }
+            StepType stepType = StepType.parse(request.stepType());
+            int seq = request.seq() == null || request.seq() <= 0 ? index : request.seq();
+            if (!seqs.add(seq)) {
+                throw ApiException.badRequest("步骤 seq 重复: " + seq);
+            }
+            int timeoutMs = request.timeoutMs() == null ? 0 : request.timeoutMs();
+            if (timeoutMs < 0) {
+                throw ApiException.badRequest("步骤超时时间不能为负数");
+            }
+            String selector = trimToNull(request.selector());
+            String value = request.value();
+            String assertValue = request.assertValue();
+            SelectorType selectorType = normalizeSelectorType(stepType,
+                    SelectorType.parse(request.selectorType()));
+            validateStep(stepType, selectorType, selector, value, assertValue);
+            boolean enabled = request.enabled() == null || request.enabled();
+            drafts.add(new StepDraft(seq, stepType, selectorType, selector, value, assertValue, timeoutMs,
+                    enabled));
+        }
+        drafts.sort(Comparator.comparingInt(StepDraft::seq));
+        return drafts;
+    }
+
+    private SelectorType normalizeSelectorType(StepType stepType, SelectorType selectorType) {
+        return switch (stepType) {
+            case TAP, SWIPE -> SelectorType.COORD;
+            case CLICK, INPUT, ASSERT_TEXT, ASSERT_EXISTS -> selectorType == null ? SelectorType.TEXT : selectorType;
+            default -> null;
+        };
+    }
+
+    private void validateStep(StepType stepType, SelectorType selectorType, String selector, String value,
+                              String assertValue) {
+        switch (stepType) {
+            case CLICK -> {
+                requireSelector(stepType, selector);
+                if (selectorType == SelectorType.COORD) {
+                    parsePoints(selector, 2, "CLICK 坐标");
+                } else if (selectorType != SelectorType.TEXT && selectorType != SelectorType.ID) {
+                    throw ApiException.badRequest("CLICK 仅支持 TEXT / ID / COORD selectorType");
+                }
+            }
+            case INPUT -> {
+                requireSelector(stepType, selector);
+                if (selectorType != SelectorType.TEXT && selectorType != SelectorType.ID) {
+                    throw ApiException.badRequest("INPUT 仅支持 TEXT / ID selectorType");
+                }
+            }
+            case TAP -> parsePoints(firstNonBlank(selector, value), 2, "TAP 坐标");
+            case SWIPE -> {
+                requireSelector(stepType, firstNonBlank(value, assertValue, selector));
+                parsePoints(firstNonBlank(value, assertValue, selector), 4, "SWIPE 坐标");
+            }
+            case WAIT -> {
+                String raw = firstNonBlank(value, selector);
+                if (raw == null) {
+                    throw ApiException.badRequest("WAIT 需要 value（毫秒）");
+                }
+                parseLong(raw, "WAIT 毫秒");
+            }
+            case LAUNCH -> requireSelector(stepType, firstNonBlank(value, selector));
+            case ASSERT_TEXT -> requireSelector(stepType, firstNonBlank(assertValue, value, selector));
+            case ASSERT_EXISTS -> {
+                requireSelector(stepType, selector);
+                if (selectorType == SelectorType.COORD) {
+                    parsePoints(selector, 2, "ASSERT_EXISTS 坐标");
+                }
+            }
+            case BACK, HOME, SCREENSHOT -> {
+                // no selector required
+            }
+        }
+    }
+
+    private void requireSelector(StepType stepType, String selector) {
+        if (isBlank(selector)) {
+            throw ApiException.badRequest(stepType.name() + " 步骤需要 selector");
+        }
+    }
+
+    private int[] parsePoints(String raw, int expected, String label) {
+        if (isBlank(raw)) {
+            throw ApiException.badRequest(label + "不能为空");
+        }
+        String[] parts = raw.split(",");
+        if (parts.length != expected) {
+            throw ApiException.badRequest(label + "需要 " + expected + " 个数字，格式为 "
+                    + (expected == 2 ? "x,y" : "x1,y1,x2,y2"));
+        }
+        int[] values = new int[expected];
+        for (int i = 0; i < expected; i++) {
+            long parsed = parseLong(parts[i].trim(), label);
+            if (parsed < 0 || parsed > Integer.MAX_VALUE) {
+                throw ApiException.badRequest(label + "必须是非负整数");
+            }
+            values[i] = (int) parsed;
+        }
+        return values;
+    }
+
+    private long parseLong(String raw, String label) {
+        try {
+            long value = Long.parseLong(raw.trim());
+            if (value < 0) {
+                throw ApiException.badRequest(label + "必须是非负整数");
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            throw ApiException.badRequest(label + "必须是整数: " + raw);
+        }
+    }
+
+    private void applySteps(ClientCase clientCase, List<StepDraft> drafts) {
+        List<CaseStep> existing = new ArrayList<>(clientCase.getSteps());
+        List<CaseStep> result = new ArrayList<>();
+        for (int i = 0; i < drafts.size(); i++) {
+            StepDraft draft = drafts.get(i);
+            CaseStep step = i < existing.size() ? existing.get(i) : new CaseStep(Ids.newId("case-step"));
+            step.setClientCase(clientCase);
+            step.setSeq(draft.seq());
+            step.setStepType(draft.stepType());
+            step.setSelectorType(draft.selectorType());
+            step.setSelector(draft.selector());
+            step.setValue(draft.value());
+            step.setAssertValue(draft.assertValue());
+            step.setTimeoutMs(draft.timeoutMs());
+            step.setEnabled(draft.enabled());
+            result.add(step);
+        }
+        clientCase.getSteps().clear();
+        clientCase.getSteps().addAll(result);
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (!isBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private record StepDraft(int seq, StepType stepType, SelectorType selectorType, String selector,
+                             String value, String assertValue, int timeoutMs, boolean enabled) {
     }
 
     private ReviewStatus parseStatus(String value) {

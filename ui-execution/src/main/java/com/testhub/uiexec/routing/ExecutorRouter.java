@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
  *
  * <ol>
  *   <li>case not APPROVED → {@code CASE_NOT_APPROVED}</li>
+ *   <li>requested STEP → STEP (declarative steps; no script/vision required, still needs a device)</li>
  *   <li>requested SCRIPT, available → SCRIPT; no script → {@code EXECUTOR_UNAVAILABLE}</li>
  *   <li>requested AI_RUNTIME, vision configured → AI_RUNTIME</li>
  *   <li>requested AI_RUNTIME, no vision, script available → fall back to SCRIPT</li>
@@ -28,6 +29,9 @@ public class ExecutorRouter {
             return RoutingDecision.reject(CASE_NOT_APPROVED, "用例未通过评审，不能创建执行任务");
         }
         ExecutorType requested = input.requested();
+        if (requested == ExecutorType.STEP) {
+            return RoutingDecision.ok(ExecutorType.STEP);
+        }
         if (requested == ExecutorType.SCRIPT) {
             return input.hasScript()
                     ? RoutingDecision.ok(ExecutorType.SCRIPT)

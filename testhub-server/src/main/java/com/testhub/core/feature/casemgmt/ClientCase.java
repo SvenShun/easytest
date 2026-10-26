@@ -1,14 +1,20 @@
 package com.testhub.core.feature.casemgmt;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Client-side functional case expressed as BDD, optionally bound to a script. */
 @Entity
@@ -41,6 +47,15 @@ public class ClientCase {
     @Enumerated(EnumType.STRING)
     @Column(name = "source", length = 16, nullable = false)
     private CaseSource source;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_mode", nullable = false, length = 16)
+    private ExecutionMode executionMode = ExecutionMode.AI;
+
+    @OneToMany(mappedBy = "clientCase", cascade = CascadeType.ALL, orphanRemoval = true,
+            fetch = FetchType.EAGER)
+    @OrderBy("seq ASC")
+    private List<CaseStep> steps = new ArrayList<>();
 
     @Column(name = "model_id", length = 128)
     private String modelId;
@@ -135,6 +150,22 @@ public class ClientCase {
 
     public void setSource(CaseSource source) {
         this.source = source;
+    }
+
+    public ExecutionMode getExecutionMode() {
+        return executionMode == null ? ExecutionMode.AI : executionMode;
+    }
+
+    public void setExecutionMode(ExecutionMode executionMode) {
+        this.executionMode = executionMode;
+    }
+
+    public List<CaseStep> getSteps() {
+        return steps;
+    }
+
+    public void setSteps(List<CaseStep> steps) {
+        this.steps = steps == null ? new ArrayList<>() : steps;
     }
 
     public String getModelId() {

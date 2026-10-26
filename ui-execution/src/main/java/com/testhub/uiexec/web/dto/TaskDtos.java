@@ -2,6 +2,7 @@ package com.testhub.uiexec.web.dto;
 
 import com.testhub.uiexec.domain.ExecutorType;
 import com.testhub.uiexec.domain.FailureCategory;
+import com.testhub.uiexec.domain.StepSpec;
 import com.testhub.uiexec.domain.TaskStatus;
 
 import java.time.Instant;
@@ -18,7 +19,8 @@ public final class TaskDtos {
 
     public record CreateTaskRequest(String planId, String planRunId, String caseId, ExecutorType executorType,
                                     TargetDeviceSelector targetDeviceSelector, Integer timeoutSec,
-                                    Integer stepTimeoutSec, String createdBy) {
+                                    Integer stepTimeoutSec, String createdBy, List<StepSpec> steps,
+                                    String caseTitle) {
     }
 
     public record CreateTaskResponse(String taskId, TaskStatus status, ExecutorType executorType, String deviceId,

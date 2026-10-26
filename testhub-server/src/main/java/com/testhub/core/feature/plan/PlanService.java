@@ -192,7 +192,7 @@ public class PlanService {
                 continue;
             }
             ScriptProject script = scriptService.findOrNull(clientCase.getScriptId());
-            CapabilityView capability = caseService.capability(script != null);
+            CapabilityView capability = caseService.capability(script != null, clientCase.getExecutionMode());
             views.add(new PlanCaseView(clientCase.getId(), clientCase.getTitle(), clientCase.getReviewStatus(),
                     script != null, script == null ? null : script.getScriptType(),
                     mounted.getExecutorTypeOverride(), capability.defaultExecutor(),

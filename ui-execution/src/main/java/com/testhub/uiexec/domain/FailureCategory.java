@@ -4,6 +4,7 @@ package com.testhub.uiexec.domain;
 public enum FailureCategory {
     MODEL_DECISION_FAILED,
     ACTION_FAILED,
+    ASSERTION_FAILED,
     ELEMENT_NOT_FOUND,
     TIMEOUT,
     MANUAL_INTERRUPT,

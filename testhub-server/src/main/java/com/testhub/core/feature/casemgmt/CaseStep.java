@@ -10,7 +10,6 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 
 /**
  * One declarative, deterministic step of a {@link ClientCase}. Ordered by {@code seq} within a case.
@@ -19,10 +18,7 @@ import jakarta.persistence.UniqueConstraint;
  * the plan task payload without serialising the parent association.</p>
  */
 @Entity
-@Table(name = "case_step", uniqueConstraints = @UniqueConstraint(
-        name = "uk_case_step_case_seq", columnNames = {"case_id", "seq"}), indexes = {
-        @Index(name = "idx_case_step_case", columnList = "case_id")
-})
+@Table(name = "case_step", indexes = @Index(name = "idx_case_step_case", columnList = "case_id"))
 public class CaseStep {
 
     @Id

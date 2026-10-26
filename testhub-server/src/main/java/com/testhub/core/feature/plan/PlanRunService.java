@@ -13,6 +13,7 @@ import com.testhub.core.feature.apicase.ApiCaseRepository;
 import com.testhub.core.feature.apicase.ApiCaseService;
 import com.testhub.core.feature.casemgmt.ClientCase;
 import com.testhub.core.feature.casemgmt.ClientCaseRepository;
+import com.testhub.core.feature.casemgmt.ExecutionMode;
 import com.testhub.core.feature.metersphere.MeterSphereResultSink;
 import com.testhub.core.feature.casemgmt.ReviewStatus;
 import com.testhub.core.feature.script.ScriptProject;
@@ -164,9 +165,26 @@ public class PlanRunService {
                 continue;
             }
             ScriptProject script = scriptService.findOrNull(clientCase.getScriptId());
-            ExecutorType intended = mount.getExecutorTypeOverride() != null
-                    ? mount.getExecutorTypeOverride()
-                    : (script != null ? ExecutorType.SCRIPT : ExecutorType.AI_RUNTIME);
+            ExecutorType override = mount.getExecutorTypeOverride();
+            boolean stepCase = clientCase.getExecutionMode() == ExecutionMode.STEPS;
+            ExecutorType intended;
+            String executorError = null;
+            if (stepCase) {
+                intended = ExecutorType.STEP;
+                if (override != null && override != ExecutorType.STEP) {
+                    intended = override;
+                    executorError = "STEP 执行模式的用例只支持 STEP 执行器，当前覆盖为 " + override;
+                } else if (clientCase.getSteps().stream().noneMatch(step -> step.isEnabled())) {
+                    executorError = "STEP 执行模式的用例没有启用步骤，无法执行";
+                }
+            } else {
+                intended = override != null
+                        ? override
+                        : (script != null ? ExecutorType.SCRIPT : ExecutorType.AI_RUNTIME);
+                if (override == ExecutorType.STEP) {
+                    executorError = "非 STEP 执行模式的用例不能使用 STEP 执行器";
+                }
+            }
             PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), clientCase.getId(),
                     clientCase.getTitle(), intended, RunItemStatus.PENDING, itemTime);
             if (clientCase.getReviewStatus() != ReviewStatus.APPROVED) {
@@ -177,11 +195,19 @@ public class PlanRunService {
                 views.add(triggerView(item));
                 continue;
             }
+            if (executorError != null) {
+                item.setStatus(RunItemStatus.FAILED);
+                item.setError(executorError);
+                item.setUpdatedAt(Instant.now());
+                itemRepository.save(item);
+                views.add(triggerView(item));
+                continue;
+            }
             // Persist the pending item before the remote call so an early callback can find it.
             itemRepository.save(item);
             try {
                 Map<String, Object> payload = taskPayload(planId, run.getId(), clientCase,
-                        mount.getExecutorTypeOverride(), options.targetDeviceId(), options.targetTags(),
+                        intended, options.targetDeviceId(), options.targetTags(),
                         timeoutSec, stepTimeoutSec, actor);
                 UiExecutionClient.TaskCreated created = uiExecutionClient.createTask(payload);
                 item.setTaskId(created.taskId());
@@ -501,13 +527,14 @@ public class PlanRunService {
     }
 
     private Map<String, Object> taskPayload(String planId, String runId, ClientCase clientCase,
-                                           ExecutorType override, String targetDeviceId, List<String> targetTags,
+                                           ExecutorType executorType, String targetDeviceId, List<String> targetTags,
                                            int timeoutSec, int stepTimeoutSec, String actor) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("planId", planId);
         payload.put("planRunId", runId);
         payload.put("caseId", clientCase.getId());
-        payload.put("executorType", override == null ? null : override.name());
+        payload.put("caseTitle", clientCase.getTitle());
+        payload.put("executorType", executorType == null ? null : executorType.name());
         Map<String, Object> selector = new LinkedHashMap<>();
         selector.put("deviceId", targetDeviceId);
         selector.put("tags", targetTags == null ? List.of() : targetTags);
@@ -515,7 +542,29 @@ public class PlanRunService {
         payload.put("timeoutSec", timeoutSec);
         payload.put("stepTimeoutSec", stepTimeoutSec);
         payload.put("createdBy", actor);
+        if (clientCase.getExecutionMode() == ExecutionMode.STEPS) {
+            payload.put("steps", stepPayload(clientCase));
+        }
         return payload;
+    }
+
+    private List<Map<String, Object>> stepPayload(ClientCase clientCase) {
+        return clientCase.getSteps().stream()
+                .filter(step -> step.isEnabled())
+                .sorted((left, right) -> Integer.compare(left.getSeq(), right.getSeq()))
+                .map(step -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("seq", step.getSeq());
+                    row.put("stepType", step.getStepType() == null ? null : step.getStepType().name());
+                    row.put("selectorType",
+                            step.getSelectorType() == null ? null : step.getSelectorType().name());
+                    row.put("selector", step.getSelector());
+                    row.put("value", step.getValue());
+                    row.put("assertValue", step.getAssertValue());
+                    row.put("timeoutMs", step.getTimeoutMs());
+                    return row;
+                })
+                .toList();
     }
 
     private List<ExecutorStats> executorStats(List<PlanRunItem> items) {
