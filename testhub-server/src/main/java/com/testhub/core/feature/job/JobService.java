@@ -70,7 +70,7 @@ public class JobService {
         Instant now = Instant.now();
         TestJob job = new TestJob(Ids.newId("job"), request.name().trim(), request.planId(),
                 request.cronExpression().trim(), blankToNull(request.deviceId()),
-                blankToNull(request.deviceTags()), request.enabled() == null || request.enabled(),
+                blankToNull(request.deviceTags()), join(request.deviceIds()), request.enabled() == null || request.enabled(),
                 principal.username(), now, now);
         job.setNextRunAt(next(request.cronExpression(), now));
         return view(jobs.save(job));
@@ -85,6 +85,7 @@ public class JobService {
         job.setCronExpression(request.cronExpression().trim());
         job.setDeviceId(blankToNull(request.deviceId()));
         job.setDeviceTags(blankToNull(request.deviceTags()));
+        job.setDeviceIds(join(request.deviceIds()));
         job.setEnabled(request.enabled() == null || request.enabled());
         job.setUpdatedAt(Instant.now());
         job.setNextRunAt(next(job.getCronExpression(), Instant.now()));
@@ -148,8 +149,9 @@ public class JobService {
                 ? List.of()
                 : Arrays.stream(job.getDeviceTags().split(",")).map(String::trim)
                         .filter(value -> !value.isEmpty()).toList();
+        List<String> deviceIds = split(job.getDeviceIds());
         return planRunService.trigger(plan.getId(),
-                new TriggerRequest(job.getDeviceId(), tags, 120, 30));
+                new TriggerRequest(job.getDeviceId(), tags, 120, 30, deviceIds));
     }
 
     private void validate(JobRequest request) {
@@ -176,7 +178,7 @@ public class JobService {
     private JobView view(TestJob job) {
         String planName = plans.findById(job.getPlanId()).map(TestPlan::getName).orElse("(已删除)");
         return new JobView(job.getId(), job.getName(), job.getPlanId(), planName, job.getCronExpression(),
-                job.getDeviceId(), job.getDeviceTags(), job.isEnabled(), job.getLastRunId(),
+                job.getDeviceId(), job.getDeviceTags(), split(job.getDeviceIds()), job.isEnabled(), job.getLastRunId(),
                 job.getLastRunAt(), job.getNextRunAt(), job.getCreatedBy(), job.getCreatedAt(),
                 job.getUpdatedAt());
     }
@@ -192,6 +194,23 @@ public class JobService {
             predicates.add(cb.like(cb.lower(root.get("cronExpression")), pattern));
             return cb.or(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private static String join(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        String joined = values.stream().filter(value -> value != null && !value.isBlank())
+                .map(String::trim).distinct().reduce((a, b) -> a + "," + b).orElse("");
+        return joined.isBlank() ? null : joined;
+    }
+
+    private static List<String> split(String value) {
+        if (value == null || value.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(value.split(",")).map(String::trim)
+                .filter(item -> !item.isEmpty()).distinct().toList();
     }
 
     private static String blankToNull(String value) {

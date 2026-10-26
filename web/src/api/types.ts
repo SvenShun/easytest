@@ -298,6 +298,7 @@ export interface TestJob {
   cronExpression: string;
   deviceId?: string | null;
   deviceTags?: string | null;
+  deviceIds?: string[];
   enabled: boolean;
   lastRunId?: string | null;
   lastRunAt?: string | null;
@@ -313,6 +314,7 @@ export interface TestJobInput {
   cronExpression: string;
   deviceId?: string | null;
   deviceTags?: string | null;
+  deviceIds?: string[];
   enabled?: boolean;
 }
 

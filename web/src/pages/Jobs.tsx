@@ -33,6 +33,7 @@ interface FormState {
   cronExpression: string;
   deviceId: string;
   deviceTags: string;
+  deviceIds: string[];
   enabled: boolean;
 }
 
@@ -42,6 +43,7 @@ const EMPTY: FormState = {
   cronExpression: '0 0 2 * * *',
   deviceId: '',
   deviceTags: '',
+  deviceIds: [],
   enabled: true,
 };
 
@@ -96,6 +98,7 @@ export function JobsPage() {
       cronExpression: job.cronExpression,
       deviceId: job.deviceId || '',
       deviceTags: job.deviceTags || '',
+      deviceIds: job.deviceIds || [],
       enabled: job.enabled,
     });
     setFormError('');
@@ -116,6 +119,7 @@ export function JobsPage() {
         cronExpression: form.cronExpression.trim(),
         deviceId: form.deviceId || null,
         deviceTags: form.deviceTags.trim() || null,
+        deviceIds: form.deviceIds,
         enabled: form.enabled,
       };
       if (editing) {
@@ -217,7 +221,11 @@ export function JobsPage() {
                     <td>{job.name}<div className="cell-sub mono">{job.id}</div></td>
                     <td>{job.planName || job.planId}</td>
                     <td className="mono">{job.cronExpression}</td>
-                    <td className="mono">{job.deviceId || job.deviceTags || '任意设备'}</td>
+                    <td className="mono">
+                      {job.deviceIds && job.deviceIds.length > 0
+                        ? `${job.deviceIds.length} 台矩阵设备`
+                        : job.deviceId || job.deviceTags || '任意设备'}
+                    </td>
                     <td><Pill tone={job.enabled ? 'green' : 'red'} dot>{job.enabled ? '启用' : '暂停'}</Pill></td>
                     <td>{job.lastRunAt ? formatDateTime(job.lastRunAt) : '—'}</td>
                     <td>{job.nextRunAt ? formatDateTime(job.nextRunAt) : '—'}</td>
@@ -290,6 +298,24 @@ export function JobsPage() {
               <Input id="job-tags" value={form.deviceTags} onChange={(event) => setForm((prev) => ({ ...prev, deviceTags: event.target.value }))} />
             </Field>
           </div>
+          <Field label="矩阵设备（可多选）" htmlFor="job-devices"
+                 hint="选中多台时每个 UI 用例按设备生成运行项；留空使用上方单设备">
+            <select
+              id="job-devices"
+              multiple
+              className="input"
+              style={{ minHeight: 90 }}
+              value={form.deviceIds}
+              onChange={(event) => setForm((prev) => ({
+                ...prev,
+                deviceIds: Array.from(event.target.selectedOptions).map((option) => option.value),
+              }))}
+            >
+              {devices.filter((device) => device.online).map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>{device.serial} · {device.name || device.model}</option>
+              ))}
+            </select>
+          </Field>
           <Field label="状态" htmlFor="job-enabled">
             <Select id="job-enabled" value={form.enabled ? '1' : '0'} onChange={(event) => setForm((prev) => ({ ...prev, enabled: event.target.value === '1' }))}>
               <option value="1">启用</option>

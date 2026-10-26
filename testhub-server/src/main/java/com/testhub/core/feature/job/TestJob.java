@@ -32,6 +32,10 @@ public class TestJob {
     @Column(name = "device_tags", length = 500)
     private String deviceTags;
 
+    /** Comma separated target device ids for multi-device matrix runs. */
+    @Column(name = "device_ids", length = 2000)
+    private String deviceIds;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
@@ -59,12 +63,19 @@ public class TestJob {
     public TestJob(String id, String name, String planId, String cronExpression, String deviceId,
                    String deviceTags, boolean enabled, String createdBy, Instant createdAt,
                    Instant updatedAt) {
+        this(id, name, planId, cronExpression, deviceId, deviceTags, null, enabled, createdBy, createdAt, updatedAt);
+    }
+
+    public TestJob(String id, String name, String planId, String cronExpression, String deviceId,
+                   String deviceTags, String deviceIds, boolean enabled, String createdBy, Instant createdAt,
+                   Instant updatedAt) {
         this.id = id;
         this.name = name;
         this.planId = planId;
         this.cronExpression = cronExpression;
         this.deviceId = deviceId;
         this.deviceTags = deviceTags;
+        this.deviceIds = deviceIds;
         this.enabled = enabled;
         this.createdBy = createdBy;
         this.createdAt = createdAt;
@@ -77,6 +88,7 @@ public class TestJob {
     public String getCronExpression() { return cronExpression; }
     public String getDeviceId() { return deviceId; }
     public String getDeviceTags() { return deviceTags; }
+    public String getDeviceIds() { return deviceIds; }
     public boolean isEnabled() { return enabled; }
     public String getLastRunId() { return lastRunId; }
     public Instant getLastRunAt() { return lastRunAt; }
@@ -90,6 +102,7 @@ public class TestJob {
     public void setCronExpression(String cronExpression) { this.cronExpression = cronExpression; }
     public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
     public void setDeviceTags(String deviceTags) { this.deviceTags = deviceTags; }
+    public void setDeviceIds(String deviceIds) { this.deviceIds = deviceIds; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setLastRunId(String lastRunId) { this.lastRunId = lastRunId; }
     public void setLastRunAt(Instant lastRunAt) { this.lastRunAt = lastRunAt; }
