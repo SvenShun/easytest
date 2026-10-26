@@ -28,7 +28,7 @@
 
 | 检查 | 结果 |
 |---|---|
-| `./scripts/check.sh` | 通过（Java 170 + Python 48 = 218；前端构建通过） |
+| `./scripts/check.sh` | 通过（Java 173 + Python 48 = 221；前端构建通过） |
 | `scripts/part2_smoke.py` | 18/18 |
 | `scripts/part3_smoke.py` | 14/14 |
 | `scripts/part4_smoke.py` | 10/10 |
