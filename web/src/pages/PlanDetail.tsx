@@ -113,6 +113,7 @@ export function PlanDetailPage() {
   const [triggerOpen, setTriggerOpen] = useState(false);
   const [triggerForm, setTriggerForm] = useState({
     targetDeviceId: '',
+    targetDeviceIds: [] as string[],
     targetTags: '',
     timeoutSec: '120',
     stepTimeoutSec: '30',
@@ -287,7 +288,7 @@ export function PlanDetailPage() {
   };
 
   const openTrigger = async () => {
-    setTriggerForm({ targetDeviceId: '', targetTags: '', timeoutSec: '120', stepTimeoutSec: '30' });
+    setTriggerForm({ targetDeviceId: '', targetDeviceIds: [], targetTags: '', timeoutSec: '120', stepTimeoutSec: '30' });
     setTriggerError('');
     setTriggerOpen(true);
     setDevicesError('');
@@ -320,6 +321,7 @@ export function PlanDetailPage() {
     try {
       const result = await plansApi.trigger(planId, {
         targetDeviceId: triggerForm.targetDeviceId || null,
+        targetDeviceIds: triggerForm.targetDeviceIds,
         targetTags: parseTags(triggerForm.targetTags),
         timeoutSec,
         stepTimeoutSec,
@@ -894,6 +896,26 @@ export function PlanDetailPage() {
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="矩阵设备（可多选）" htmlFor="trigger-devices"
+                 hint="选中多台时，每个 UI 用例会为每台设备各生成一个运行项；不选则使用上方目标设备/自动分配">
+            <select
+              id="trigger-devices"
+              multiple
+              className="input"
+              style={{ minHeight: 96 }}
+              value={triggerForm.targetDeviceIds}
+              onChange={(event) => setTriggerForm((prev) => ({
+                ...prev,
+                targetDeviceIds: Array.from(event.target.selectedOptions).map((option) => option.value),
+              }))}
+            >
+              {devices.filter((device) => device.online).map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.serial} · {device.name || device.model}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="目标标签" htmlFor="trigger-tags" hint="多个标签用英文逗号或空格分隔，可留空">
             <Input

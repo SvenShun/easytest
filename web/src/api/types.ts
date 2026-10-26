@@ -371,6 +371,7 @@ export interface TriggerPayload {
   targetTags: string[];
   timeoutSec: number;
   stepTimeoutSec: number;
+  targetDeviceIds?: string[];
 }
 
 export interface RunItem {

@@ -107,6 +107,7 @@ public class PlanRunService {
         plan.setUpdatedAt(startedAt);
         planRepository.save(plan);
 
+        List<String> targetDeviceIds = resolveTargetDeviceIds(options);
         List<TriggerItemView> views = new ArrayList<>();
         int index = 0;
         for (PlanCase mount : mounts) {
@@ -185,9 +186,9 @@ public class PlanRunService {
                     executorError = "非 STEP 执行模式的用例不能使用 STEP 执行器";
                 }
             }
-            PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), clientCase.getId(),
-                    clientCase.getTitle(), intended, RunItemStatus.PENDING, itemTime);
             if (clientCase.getReviewStatus() != ReviewStatus.APPROVED) {
+                PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), clientCase.getId(),
+                        clientCase.getTitle(), intended, RunItemStatus.SKIPPED, itemTime);
                 item.setStatus(RunItemStatus.SKIPPED);
                 item.setError("用例未通过评审，已跳过");
                 item.setUpdatedAt(Instant.now());
@@ -196,6 +197,8 @@ public class PlanRunService {
                 continue;
             }
             if (executorError != null) {
+                PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), clientCase.getId(),
+                        clientCase.getTitle(), intended, RunItemStatus.FAILED, itemTime);
                 item.setStatus(RunItemStatus.FAILED);
                 item.setError(executorError);
                 item.setUpdatedAt(Instant.now());
@@ -203,28 +206,40 @@ public class PlanRunService {
                 views.add(triggerView(item));
                 continue;
             }
-            // Persist the pending item before the remote call so an early callback can find it.
-            itemRepository.save(item);
-            try {
-                Map<String, Object> payload = taskPayload(planId, run.getId(), clientCase,
-                        intended, options.targetDeviceId(), options.targetTags(),
-                        timeoutSec, stepTimeoutSec, actor);
-                UiExecutionClient.TaskCreated created = uiExecutionClient.createTask(payload);
-                item.setTaskId(created.taskId());
-                RunItemStatus status = RunItemStatus.parse(created.status());
-                item.setStatus(status == null ? RunItemStatus.PENDING : status);
-                ExecutorType actual = ExecutorType.parse(created.executorType());
-                if (actual != null) {
-                    item.setExecutorType(actual);
+            int matrixIndex = 0;
+            for (String targetDeviceId : targetDeviceIds) {
+                String title = targetDeviceIds.size() > 1
+                        ? clientCase.getTitle() + " [设备 " + (matrixIndex + 1) + "/" + targetDeviceIds.size() + "]"
+                        : clientCase.getTitle();
+                PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), clientCase.getId(),
+                        title, intended, RunItemStatus.PENDING, itemTime.plusMillis(index++));
+                item.setDeviceId(targetDeviceId);
+                // Persist the pending item before the remote call so an early callback can find it.
+                itemRepository.save(item);
+                try {
+                    Map<String, Object> payload = taskPayload(planId, run.getId(), clientCase,
+                            intended, targetDeviceId, options.targetTags(),
+                            timeoutSec, stepTimeoutSec, actor);
+                    UiExecutionClient.TaskCreated created = uiExecutionClient.createTask(payload);
+                    item.setTaskId(created.taskId());
+                    RunItemStatus status = RunItemStatus.parse(created.status());
+                    item.setStatus(status == null ? RunItemStatus.PENDING : status);
+                    ExecutorType actual = ExecutorType.parse(created.executorType());
+                    if (actual != null) {
+                        item.setExecutorType(actual);
+                    }
+                    if (created.deviceId() != null) {
+                        item.setDeviceId(created.deviceId());
+                    }
+                } catch (Exception e) {
+                    item.setStatus(RunItemStatus.FAILED);
+                    item.setError(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
                 }
-                item.setDeviceId(created.deviceId());
-            } catch (Exception e) {
-                item.setStatus(RunItemStatus.FAILED);
-                item.setError(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                item.setUpdatedAt(Instant.now());
+                itemRepository.save(item);
+                views.add(triggerView(item));
+                matrixIndex++;
             }
-            item.setUpdatedAt(Instant.now());
-            itemRepository.save(item);
-            views.add(triggerView(item));
         }
 
         PlanRun finished = recompute(run);
@@ -524,6 +539,24 @@ public class PlanRunService {
         payload.put("assertions", environmentResolver.applyAssertions(view.assertions(), environment, dataRow));
         payload.put("createdBy", actor);
         return payload;
+    }
+
+    private List<String> resolveTargetDeviceIds(TriggerRequest options) {
+        List<String> ids = new ArrayList<>();
+        if (options.targetDeviceIds() != null) {
+            options.targetDeviceIds().stream()
+                    .filter(id -> id != null && !id.isBlank())
+                    .map(String::trim)
+                    .distinct()
+                    .forEach(ids::add);
+        }
+        if (ids.isEmpty() && options.targetDeviceId() != null && !options.targetDeviceId().isBlank()) {
+            ids.add(options.targetDeviceId().trim());
+        }
+        if (ids.isEmpty()) {
+            ids.add(null);
+        }
+        return ids;
     }
 
     private Map<String, Object> taskPayload(String planId, String runId, ClientCase clientCase,
