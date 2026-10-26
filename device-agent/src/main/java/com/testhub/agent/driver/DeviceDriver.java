@@ -31,6 +31,22 @@ public interface DeviceDriver {
         return java.util.List.of();
     }
 
+    default ActionResult launchApp(String packageName) {
+        return ActionResult.fail("launch not supported by " + descriptor().platform(), "driver");
+    }
+
+    default ActionResult stopApp(String packageName) {
+        return ActionResult.fail("stop not supported by " + descriptor().platform(), "driver");
+    }
+
+    default ActionResult clearApp(String packageName) {
+        return ActionResult.fail("clear not supported by " + descriptor().platform(), "driver");
+    }
+
+    default ActionResult pushFile(byte[] data, String remotePath) {
+        return ActionResult.fail("file push not supported by " + descriptor().platform(), "driver");
+    }
+
     default ActionResult uninstall(String packageName) {
         return ActionResult.fail("uninstall not supported by " + descriptor().platform(), "driver");
     }

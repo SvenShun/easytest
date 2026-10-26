@@ -251,7 +251,41 @@ public class DeviceService {
                 queueLength(device.getId()),
                 device.getAgentId(),
                 agent == null ? null : agent.getName(),
-                device.getLastSeenAt());
+                device.getLastSeenAt(),
+                activeOccupant(device), activeOccupant(device) == null ? null : device.getOccupiedUntil());
+    }
+
+    public synchronized DeviceView occupy(String deviceId, String user) {
+        DeviceEntity device = requireDevice(deviceId);
+        Instant now = Instant.now();
+        if (device.getOccupant() != null && device.getOccupiedUntil() != null
+                && device.getOccupiedUntil().isAfter(now) && !device.getOccupant().equals(user)) {
+            throw ApiException.conflict("设备已被 " + device.getOccupant() + " 占用");
+        }
+        device.setOccupant(user);
+        device.setOccupiedUntil(now.plusSeconds(600));
+        devices.save(device);
+        return toView(device);
+    }
+
+    public synchronized DeviceView release(String deviceId, String user) {
+        DeviceEntity device = requireDevice(deviceId);
+        if (device.getOccupant() != null && !device.getOccupant().equals(user)
+                && !com.testhub.common.security.CurrentUser.isAdmin()) {
+            throw ApiException.conflict("只有占用者或管理员可以释放设备");
+        }
+        device.setOccupant(null);
+        device.setOccupiedUntil(null);
+        devices.save(device);
+        return toView(device);
+    }
+
+    private String activeOccupant(DeviceEntity device) {
+        if (device.getOccupant() == null || device.getOccupiedUntil() == null
+                || device.getOccupiedUntil().isBefore(Instant.now())) {
+            return null;
+        }
+        return device.getOccupant();
     }
 
     public static List<String> splitTags(String tags) {

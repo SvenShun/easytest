@@ -92,6 +92,53 @@ public class DeviceController {
         return ResponseEntity.ok(Map.of("items", driver.get().apps()));
     }
 
+    @PostMapping("/{serial}/apps/launch")
+    public ResponseEntity<?> launchApp(@PathVariable String serial, @RequestParam String packageName) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(driver.get().launchApp(packageName));
+    }
+
+    @PostMapping("/{serial}/apps/stop")
+    public ResponseEntity<?> stopApp(@PathVariable String serial, @RequestParam String packageName) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(driver.get().stopApp(packageName));
+    }
+
+    @PostMapping("/{serial}/apps/clear")
+    public ResponseEntity<?> clearApp(@PathVariable String serial, @RequestParam String packageName) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(driver.get().clearApp(packageName));
+    }
+
+    @PostMapping("/{serial}/files")
+    public ResponseEntity<?> pushFile(@PathVariable String serial,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) String remotePath) throws java.io.IOException {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "file is empty"));
+        }
+        if (file.getSize() > 100L * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "file larger than 100MB"));
+        }
+        String target = remotePath == null || remotePath.isBlank()
+                ? "/sdcard/Download/" + (file.getOriginalFilename() == null ? "upload.bin" : file.getOriginalFilename())
+                : remotePath;
+        return ResponseEntity.ok(driver.get().pushFile(file.getBytes(), target));
+    }
+
     @PostMapping("/{serial}/uninstall")
     public ResponseEntity<?> uninstall(@PathVariable String serial, @RequestParam String packageName) {
         Optional<DeviceDriver> driver = deviceManager.find(serial);

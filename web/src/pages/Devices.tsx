@@ -71,6 +71,9 @@ export function DevicesPage() {
   const [appsBusy, setAppsBusy] = useState(false);
   const [perf, setPerf] = useState<Record<string, unknown> | null>(null);
   const [perfBusy, setPerfBusy] = useState(false);
+  const [deviceFile, setDeviceFile] = useState<File | null>(null);
+  const [fileBusy, setFileBusy] = useState(false);
+  const [leaseBusy, setLeaseBusy] = useState(false);
 
   const [queueDevice, setQueueDevice] = useState<Device | null>(null);
   const [queueData, setQueueData] = useState<DeviceQueue | null>(null);
@@ -265,6 +268,57 @@ export function DevicesPage() {
       setApps((prev) => prev.filter((item) => item !== packageName));
     } catch (err) {
       toastError(safeErrorMessage(err));
+    }
+  };
+
+  const toggleLease = async () => {
+    if (!manageDevice) return;
+    setLeaseBusy(true);
+    setManageError('');
+    try {
+      if (manageDevice.occupant) {
+        await uiexecApi.deviceRelease(manageDevice.deviceId);
+        toastSuccess('设备已释放');
+      } else {
+        await uiexecApi.deviceOccupy(manageDevice.deviceId);
+        toastSuccess('设备已占用 10 分钟');
+      }
+      await load(true);
+      setManageDevice(null);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setLeaseBusy(false);
+    }
+  };
+
+  const appAction = async (action: 'launch' | 'stop' | 'clear', packageName: string) => {
+    if (!manageDevice) return;
+    try {
+      const result = await uiexecApi.deviceAppAction(manageDevice.deviceId, action, packageName);
+      if (result && result.ok === false) throw new Error(result.message || '操作失败');
+      toastSuccess(`已${action === 'launch' ? '启动' : action === 'stop' ? '停止' : '清除'} ${packageName}`);
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    }
+  };
+
+  const pushFile = async () => {
+    if (!manageDevice || !deviceFile) {
+      setManageError('请选择文件');
+      return;
+    }
+    setFileBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.devicePushFile(manageDevice.deviceId, deviceFile);
+      if (result && result.ok === false) throw new Error(result.message || '上传失败');
+      toastSuccess(`已上传 ${deviceFile.name}`);
+      setDeviceFile(null);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setFileBusy(false);
     }
   };
 
@@ -532,6 +586,10 @@ export function DevicesPage() {
                         <strong>{formatDateTime(device.lastSeenAt)}</strong>
                       </div>
                       <div>
+                        <span className="meta-label">占用</span>
+                        <strong className={device.occupant ? 'text-warning' : ''}>{device.occupant || '空闲'}</strong>
+                      </div>
+                      <div>
                         <span className="meta-label">在线</span>
                         <strong className={device.online ? 'text-success' : 'text-muted'}>
                           {device.online ? '是' : '否'}
@@ -676,7 +734,12 @@ export function DevicesPage() {
                       {apps.map((pkg) => (
                         <div key={pkg} className="app-row">
                           <span className="mono">{pkg}</span>
-                          <Button size="sm" variant="ghost" onClick={() => void uninstallApp(pkg)}>卸载</Button>
+                          <div className="row-actions">
+                            <Button size="sm" variant="ghost" onClick={() => void appAction('launch', pkg)}>启动</Button>
+                            <Button size="sm" variant="ghost" onClick={() => void appAction('stop', pkg)}>停止</Button>
+                            <Button size="sm" variant="ghost" onClick={() => void appAction('clear', pkg)}>清除</Button>
+                            <Button size="sm" variant="ghost" onClick={() => void uninstallApp(pkg)}>卸载</Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -686,6 +749,11 @@ export function DevicesPage() {
                   {perf ? <pre className="shell-output">{JSON.stringify(perf, null, 2)}</pre> : null}
                 </div>
               ) : null}
+              <span className="meta-label">上传文件到 /sdcard/Download</span>
+              <input type="file" onChange={(event) => setDeviceFile(event.target.files?.[0] || null)} />
+              <Button size="sm" variant="secondary" loading={fileBusy} onClick={() => void pushFile()}>
+                上传{deviceFile ? ` ${deviceFile.name}` : ''}
+              </Button>
               <span className="meta-label">安装 APK</span>
               <input
                 type="file"

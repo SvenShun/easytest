@@ -87,6 +87,18 @@ public class DeviceController {
         return new QueueView(device.getId(), device.getSerial(), items.size(), items);
     }
 
+    @PostMapping("/{deviceId}/occupy")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public DeviceView occupy(@PathVariable String deviceId) {
+        return deviceService.occupy(deviceId, com.testhub.common.security.CurrentUser.require().username());
+    }
+
+    @PostMapping("/{deviceId}/release")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public DeviceView release(@PathVariable String deviceId) {
+        return deviceService.release(deviceId, com.testhub.common.security.CurrentUser.require().username());
+    }
+
     @GetMapping("/{deviceId}/screenshot")
     public ResponseEntity<byte[]> screenshot(@PathVariable String deviceId) {
         DeviceEntity device = deviceService.requireDevice(deviceId);
@@ -129,6 +141,32 @@ public class DeviceController {
         DeviceEntity device = deviceService.requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.uninstall(agent.getBaseUrl(), device.getSerial(), packageName);
+    }
+
+    @PostMapping("/{deviceId}/apps/{action}")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object appAction(@PathVariable String deviceId, @PathVariable String action,
+                            @RequestParam String packageName) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        if (!action.equals("launch") && !action.equals("stop") && !action.equals("clear")) {
+            throw com.testhub.common.web.ApiException.badRequest("action 仅支持 launch/stop/clear");
+        }
+        return agentClient.appAction(agent.getBaseUrl(), device.getSerial(), action, packageName);
+    }
+
+    @PostMapping("/{deviceId}/files")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object pushFile(@PathVariable String deviceId,
+                           @RequestParam("file") MultipartFile file,
+                           @RequestParam(required = false) String remotePath) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw com.testhub.common.web.ApiException.badRequest("文件为空");
+        }
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.pushFile(agent.getBaseUrl(), device.getSerial(), file.getBytes(),
+                file.getOriginalFilename(), remotePath);
     }
 
     @GetMapping("/{deviceId}/performance")

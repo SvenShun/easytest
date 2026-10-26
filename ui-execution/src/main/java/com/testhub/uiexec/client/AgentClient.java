@@ -124,6 +124,46 @@ public class AgentClient {
         }
     }
 
+    public Object appAction(String agentBaseUrl, String serial, String action, String packageName) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri(uriBuilder -> uriBuilder.path("/device/{serial}/apps/" + action)
+                            .queryParam("packageName", packageName).build(serial))
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("应用操作失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object pushFile(String agentBaseUrl, String serial, byte[] data, String filename, String remotePath) {
+        MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        parts.add("file", new ByteArrayResource(data) {
+            @Override
+            public String getFilename() {
+                return filename == null ? "upload.bin" : filename;
+            }
+        });
+        try {
+            return client(agentBaseUrl).post()
+                    .uri(uriBuilder -> {
+                        var builder = uriBuilder.path("/device/{serial}/files");
+                        if (remotePath != null && !remotePath.isBlank()) {
+                            builder.queryParam("remotePath", remotePath);
+                        }
+                        return builder.build(serial);
+                    })
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .body(parts)
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("上传文件失败: " + e.getMessage(), e);
+        }
+    }
+
     public Object performance(String agentBaseUrl, String serial) {
         try {
             return client(agentBaseUrl).get()

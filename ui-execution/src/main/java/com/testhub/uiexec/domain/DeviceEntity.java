@@ -43,6 +43,13 @@ public class DeviceEntity {
     @Column(name = "last_seen_at")
     private Instant lastSeenAt;
 
+    /** Manual remote-control lease (Sonic occupy/release). */
+    @Column(name = "occupant", length = 128)
+    private String occupant;
+
+    @Column(name = "occupied_until")
+    private Instant occupiedUntil;
+
     protected DeviceEntity() {
     }
 
@@ -113,6 +120,11 @@ public class DeviceEntity {
     public void setOnline(boolean online) {
         this.online = online;
     }
+
+    public String getOccupant() { return occupant; }
+    public void setOccupant(String occupant) { this.occupant = occupant; }
+    public Instant getOccupiedUntil() { return occupiedUntil; }
+    public void setOccupiedUntil(Instant occupiedUntil) { this.occupiedUntil = occupiedUntil; }
 
     public Instant getLastSeenAt() {
         return lastSeenAt;

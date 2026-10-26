@@ -203,6 +203,59 @@ public class AdbDeviceDriver implements DeviceDriver {
     }
 
     @Override
+    public ActionResult launchApp(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(DEFAULT_TIMEOUT, "shell", "monkey", "-p", packageName,
+                "-c", "android.intent.category.LAUNCHER", "1"), "launched " + packageName);
+    }
+
+    @Override
+    public ActionResult stopApp(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(DEFAULT_TIMEOUT, "shell", "am", "force-stop", packageName),
+                "stopped " + packageName);
+    }
+
+    @Override
+    public ActionResult clearApp(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(Duration.ofSeconds(60), "shell", "pm", "clear", packageName),
+                "cleared " + packageName);
+    }
+
+    @Override
+    public ActionResult pushFile(byte[] data, String remotePath) {
+        if (data == null || data.length == 0) {
+            return ActionResult.fail("文件为空", "adb");
+        }
+        String target = remotePath == null || remotePath.isBlank()
+                ? "/sdcard/Download/upload.bin" : remotePath.trim();
+        java.nio.file.Path temp = null;
+        try {
+            temp = java.nio.file.Files.createTempFile("testhub-push-", ".bin");
+            java.nio.file.Files.write(temp, data);
+            AdbResult result = run(Duration.ofSeconds(120), "push", temp.toAbsolutePath().toString(), target);
+            return toResult(result, "pushed " + data.length + " bytes to " + target);
+        } catch (Exception e) {
+            return ActionResult.fail("adb push failed: " + e.getMessage(), "adb");
+        } finally {
+            if (temp != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(temp);
+                } catch (Exception ignored) {
+                    // best effort
+                }
+            }
+        }
+    }
+
+    @Override
     public ActionResult uninstall(String packageName) {
         if (packageName == null || packageName.isBlank()) {
             return ActionResult.fail("package 不能为空", "adb");

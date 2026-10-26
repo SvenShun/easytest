@@ -15,7 +15,8 @@ public final class DeviceDtos {
 
     public record DeviceView(String deviceId, String serial, String name, String model, String platform,
                              List<String> tags, DeviceStatus status, boolean online, String currentTaskId,
-                             int queueLength, String agentId, String agentName, Instant lastSeenAt) {
+                             int queueLength, String agentId, String agentName, Instant lastSeenAt,
+                             String occupant, Instant occupiedUntil) {
     }
 
     public record DeviceListResponse(List<DeviceView> items, long total, int page, int size) {

@@ -477,6 +477,8 @@ export interface Device {
   agentId?: string | null;
   agentName?: string | null;
   lastSeenAt?: string;
+  occupant?: string | null;
+  occupiedUntil?: string | null;
 }
 
 export interface DeviceQueueTask {

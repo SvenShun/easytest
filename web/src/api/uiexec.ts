@@ -57,6 +57,10 @@ export const uiexecApi = {
     ),
   deviceQueue: (deviceId: string) =>
     request<DeviceQueue>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/queue`),
+  deviceOccupy: (deviceId: string) =>
+    request<Device>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/occupy`, { method: 'POST' }),
+  deviceRelease: (deviceId: string) =>
+    request<Device>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/release`, { method: 'POST' }),
   deviceUiTree: (deviceId: string) =>
     request<{ width: number; height: number }>(
       'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/ui-tree`),
@@ -77,6 +81,18 @@ export const uiexecApi = {
       { method: 'POST', body: { command, timeoutSec } }),
   deviceApps: (deviceId: string) =>
     request<{ items: string[] }>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/apps`),
+  deviceAppAction: (deviceId: string, action: 'launch' | 'stop' | 'clear', packageName: string) =>
+    request<{ ok?: boolean; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/apps/${action}?packageName=${encodeURIComponent(packageName)}`,
+      { method: 'POST' }),
+  devicePushFile: (deviceId: string, file: File, remotePath?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (remotePath) form.append('remotePath', remotePath);
+    return request<{ ok?: boolean; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/files`,
+      { method: 'POST', body: form, timeoutMs: 180000 });
+  },
   deviceUninstall: (deviceId: string, packageName: string) =>
     request<{ ok?: boolean; message?: string }>(
       'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/uninstall?packageName=${encodeURIComponent(packageName)}`,
