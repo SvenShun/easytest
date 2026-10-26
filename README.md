@@ -137,6 +137,7 @@ tail -f logs/core.log
 - [docs/DEVICE-MANAGEMENT.md](docs/DEVICE-MANAGEMENT.md) — 真机管理/远程操作/应用/文件/Shell/性能
 - [docs/SONIC-PORT-INVENTORY.md](docs/SONIC-PORT-INVENTORY.md) — Sonic 源码功能清单与移植差距
 - [docs/SONIC-PORTING-STATUS.md](docs/SONIC-PORTING-STATUS.md) — Sonic 能力移植进度
+- [docs/ACCEPTANCE-PART3-STEP.md](docs/ACCEPTANCE-PART3-STEP.md) — 步骤化 UI 用例真机验收
 
 ## 目录结构
 

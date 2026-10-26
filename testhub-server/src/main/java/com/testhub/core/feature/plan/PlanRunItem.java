@@ -50,14 +50,14 @@ public class PlanRunItem {
     private String failureReportUrl;
 
     @Lob
-    @Column(name = "summary")
+    @Column(name = "summary", length = 2000)
     private String summary;
 
     @Column(name = "device_id", length = 64)
     private String deviceId;
 
     @Lob
-    @Column(name = "error")
+    @Column(name = "error", length = 4000)
     private String error;
 
     @Column(name = "created_at", nullable = false)

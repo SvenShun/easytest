@@ -45,6 +45,8 @@ public class SchemaCompatibility implements ApplicationRunner {
         }
         alter("ALTER TABLE plan_run_item MODIFY COLUMN executor_type VARCHAR(16) NULL");
         alter("ALTER TABLE plan_case MODIFY COLUMN executor_type_override VARCHAR(16) NULL");
+        alter("ALTER TABLE plan_run_item MODIFY COLUMN error TEXT NULL");
+        alter("ALTER TABLE plan_run_item MODIFY COLUMN summary TEXT NULL");
     }
 
     private void alter(String sql) {

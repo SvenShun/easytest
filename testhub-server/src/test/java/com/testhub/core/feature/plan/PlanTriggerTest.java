@@ -23,6 +23,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -203,6 +204,135 @@ class PlanTriggerTest extends ApiTestSupport {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CASE_IN_USE"));
+    }
+
+    @Test
+    void stepCaseRoutesToStepExecutorWithStepsAndCaseTitle() throws Exception {
+        String token = testerToken();
+        String caseId = createStepCase(token, "步骤登录用例");
+        review(token, caseId, "SUBMIT");
+        review(token, caseId, "APPROVE");
+        String planId = createPlan(token, "步骤执行计划");
+        mount(token, planId, List.of(caseId), null);
+
+        when(uiExecutionClient.createTask(anyMap()))
+                .thenReturn(new UiExecutionClient.TaskCreated("task-step-1", "PENDING", "STEP", "device-step"));
+
+        MvcResult triggerResult = mockMvc.perform(post("/api/v1/plans/{id}/trigger", planId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"timeoutSec\":90,\"stepTimeoutSec\":20}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].executorType").value("STEP"))
+                .andExpect(jsonPath("$.items[0].taskStatus").value("PENDING"))
+                .andExpect(jsonPath("$.items[0].taskId").value("task-step-1"))
+                .andReturn();
+        String runId = json(triggerResult).path("runId").asText();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(uiExecutionClient, times(1)).createTask(captor.capture());
+        Map<String, Object> payload = captor.getValue();
+        assertThat(payload.get("planId")).isEqualTo(planId);
+        assertThat(payload.get("planRunId")).isEqualTo(runId);
+        assertThat(payload.get("caseId")).isEqualTo(caseId);
+        assertThat(payload.get("caseTitle")).isEqualTo("步骤登录用例");
+        assertThat(payload.get("executorType")).isEqualTo("STEP");
+        assertThat(payload.get("timeoutSec")).isEqualTo(90);
+        assertThat(payload.get("stepTimeoutSec")).isEqualTo(20);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> steps = (List<Map<String, Object>>) payload.get("steps");
+        assertThat(steps).hasSize(3);
+        assertThat(steps.get(0).get("seq")).isEqualTo(1);
+        assertThat(steps.get(0).get("stepType")).isEqualTo("CLICK");
+        assertThat(steps.get(0).get("selectorType")).isEqualTo("TEXT");
+        assertThat(steps.get(0).get("selector")).isEqualTo("登录");
+        assertThat(steps.get(1).get("stepType")).isEqualTo("INPUT");
+        assertThat(steps.get(1).get("value")).isEqualTo("tester");
+        assertThat(steps.get(2).get("stepType")).isEqualTo("ASSERT_TEXT");
+        assertThat(steps.get(2).get("assertValue")).isEqualTo("首页");
+        assertThat(steps.get(2).get("timeoutMs")).isEqualTo(5000);
+        // Disabled steps are not dispatched.
+        assertThat(steps).noneMatch(step -> "SCREENSHOT".equals(step.get("stepType")));
+
+        JsonNode planDetail = getJson("/api/v1/plans/" + planId, token);
+        assertThat(planDetail.path("cases").get(0).path("defaultExecutor").asText()).isEqualTo("STEP");
+        assertThat(planDetail.path("cases").get(0).path("availableExecutors").get(0).asText())
+                .isEqualTo("STEP");
+
+        mockMvc.perform(post("/internal/v1/plan-runs/items/result")
+                        .header("X-Service-Token", "testhub-dev-service-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"planRunId":"%s","caseId":"%s","taskId":"task-step-1","status":"SUCCESS",
+                                 "executorType":"STEP","summary":"3/3 steps passed"}
+                                """.formatted(runId, caseId)))
+                .andExpect(status().isNoContent());
+
+        JsonNode run = getJson("/api/v1/plan-runs/" + runId, token);
+        assertThat(run.path("run").path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(run.path("items").get(0).path("executorType").asText()).isEqualTo("STEP");
+        assertThat(run.path("items").get(0).path("summary").asText()).isEqualTo("3/3 steps passed");
+    }
+
+    @Test
+    void stepCaseRejectsNonStepOverride() throws Exception {
+        String token = testerToken();
+        String caseId = createStepCase(token, "覆盖冲突步骤用例");
+        review(token, caseId, "SUBMIT");
+        review(token, caseId, "APPROVE");
+        String planId = createPlan(token, "覆盖冲突计划");
+        mount(token, planId, List.of(caseId), "AI_RUNTIME");
+
+        mockMvc.perform(post("/api/v1/plans/{id}/trigger", planId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].taskStatus").value("FAILED"))
+                .andExpect(jsonPath("$.items[0].taskId").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.items[0].error").value(
+                        org.hamcrest.Matchers.containsString("只支持 STEP")));
+
+        verify(uiExecutionClient, never()).createTask(anyMap());
+    }
+
+    private String createStepCase(String token, String title) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("title", title);
+        body.put("given", "已打开 App");
+        body.put("when", "执行步骤");
+        body.put("then", "看到首页");
+        body.put("executionMode", "STEPS");
+        body.put("steps", List.of(
+                step(1, "CLICK", "TEXT", "登录", null, null, null, true),
+                step(2, "INPUT", "ID", "username", "tester", null, null, true),
+                step(3, "ASSERT_TEXT", "TEXT", "首页", null, "首页", 5000, true),
+                step(4, "SCREENSHOT", null, null, null, null, null, false)));
+        MvcResult result = mockMvc.perform(post("/api/v1/cases")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andReturn();
+        return json(result).path("id").asText();
+    }
+
+    private Map<String, Object> step(Integer seq, String stepType, String selectorType, String selector,
+                                     String value, String assertValue, Integer timeoutMs, Boolean enabled) {
+        Map<String, Object> step = new LinkedHashMap<>();
+        step.put("seq", seq);
+        step.put("stepType", stepType);
+        step.put("selectorType", selectorType);
+        step.put("selector", selector);
+        step.put("value", value);
+        step.put("assertValue", assertValue);
+        step.put("timeoutMs", timeoutMs);
+        step.put("enabled", enabled);
+        return step;
     }
 
 }

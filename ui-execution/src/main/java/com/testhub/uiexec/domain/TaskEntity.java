@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -67,6 +68,11 @@ public class TaskEntity {
 
     @Column(name = "skills_commit", length = 100)
     private String skillsCommit;
+
+    /** Serialised {@link StepSpec} list for {@code STEP} tasks; null for AI/SCRIPT tasks. */
+    @Lob
+    @Column(name = "steps_json")
+    private String stepsJson;
 
     @Column(name = "timeout_sec", nullable = false)
     private int timeoutSec;
@@ -233,6 +239,14 @@ public class TaskEntity {
 
     public void setSkillsCommit(String skillsCommit) {
         this.skillsCommit = skillsCommit;
+    }
+
+    public String getStepsJson() {
+        return stepsJson;
+    }
+
+    public void setStepsJson(String stepsJson) {
+        this.stepsJson = stepsJson;
     }
 
     public int getTimeoutSec() {

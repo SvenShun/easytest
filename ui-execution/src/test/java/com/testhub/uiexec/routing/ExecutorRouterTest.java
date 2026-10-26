@@ -58,6 +58,24 @@ class ExecutorRouterTest {
     }
 
     @Test
+    void explicitStepUsesStepExecutorWithoutScriptOrVision() {
+        RoutingDecision decision = router.route(new RoutingInput(true, false, ExecutorType.STEP, false));
+
+        assertThat(decision.ok()).isTrue();
+        assertThat(decision.rejected()).isFalse();
+        assertThat(decision.executorType()).isEqualTo(ExecutorType.STEP);
+        assertThat(decision.hasFallback()).isFalse();
+    }
+
+    @Test
+    void stepRequestForUnapprovedCaseIsStillRejected() {
+        RoutingDecision decision = router.route(new RoutingInput(false, false, ExecutorType.STEP, false));
+
+        assertThat(decision.rejected()).isTrue();
+        assertThat(decision.errorCode()).isEqualTo("CASE_NOT_APPROVED");
+    }
+
+    @Test
     void aiRuntimeWithoutVisionFallsBackToScriptWhenScriptExists() {
         RoutingDecision decision = router.route(new RoutingInput(true, true, ExecutorType.AI_RUNTIME, false));
 

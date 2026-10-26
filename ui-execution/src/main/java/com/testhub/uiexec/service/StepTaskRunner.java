@@ -119,8 +119,10 @@ public class StepTaskRunner {
             recordStep(context, seq, "FAIL", outcome.decision(), outcome.action(), elapsed, screenshot);
             FailureCategory category = outcome.category() == null
                     ? FailureCategory.ACTION_FAILED : outcome.category();
+            String detail = outcome.action() == null || outcome.action().isBlank()
+                    ? outcome.decision() : outcome.decision() + " - " + outcome.action();
             return StepRunResult.failed(category, "第 " + seq + " 步 " + label + " 失败: "
-                    + outcome.decision() + "（已通过 " + passed + "/" + total + " 步）");
+                    + detail + "（已通过 " + passed + "/" + total + " 步）");
         }
         return StepRunResult.success(passed + "/" + total + " steps passed");
     }

@@ -4906,3 +4906,12 @@ a.btn:hover {
 .failure-bar-track { height: 8px; border-radius: 4px; background: rgba(148,163,184,.18); overflow: hidden; }
 .failure-bar-track > span { display: block; height: 100%; background: #ef4444; }
 .clickable-row { cursor: pointer; }
+
+.step-list { margin: 8px 0 0; padding-left: 0; list-style: none; }
+.step-list li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(148,163,184,.12); }
+.step-seq { width: 22px; text-align: center; color: #64748b; }
+.step-editor { border: 1px solid rgba(148,163,184,.22); border-radius: 10px; overflow-x: auto; }
+.step-editor-head, .step-editor-row { display: grid; grid-template-columns: 28px 120px 82px 150px 1fr 74px 120px; gap: 6px; align-items: center; padding: 6px 8px; min-width: 900px; }
+.step-editor-head { background: rgba(148,163,184,.08); font-size: 12px; color: #64748b; }
+.step-editor-row { border-top: 1px solid rgba(148,163,184,.1); }
+.step-value-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

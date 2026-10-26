@@ -4,7 +4,11 @@ import { casesApi, requirementsApi, scriptsApi } from '../api';
 import type {
   CaseDetail,
   CaseInput,
+  CaseStep,
+  ExecutionMode,
   ExecutorType,
+  SelectorType,
+  StepType,
   Requirement,
   ReviewAction,
   ReviewStatus,
@@ -83,6 +87,7 @@ function defaultExecutorFor(item: CaseDetail): ExecutorType {
 }
 
 function capabilityText(item: CaseDetail): string {
+  if (item.executionMode === 'STEPS') return '按用例步骤确定性执行（真机/模拟器）';
   const available = availableExecutorsFor(item);
   if (available.includes('SCRIPT') && available.includes('AI_RUNTIME')) {
     return `传统脚本 + AI Runtime（默认${defaultExecutorFor(item) === 'SCRIPT' ? '传统脚本' : 'AI Runtime'}）`;
@@ -146,6 +151,11 @@ export function CasesPage() {
   const [metaReady, setMetaReady] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [stepDetail, setStepDetail] = useState<CaseDetail | null>(null);
+  const [stepMode, setStepMode] = useState<ExecutionMode>('AI');
+  const [stepRows, setStepRows] = useState<CaseStep[]>([]);
+  const [stepSaving, setStepSaving] = useState(false);
+  const [stepError, setStepError] = useState('');
   const [editing, setEditing] = useState<CaseDetail | null>(null);
   const [form, setForm] = useState<CaseFormState>(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState<Partial<CaseFormState>>({});
@@ -295,6 +305,65 @@ export function CasesPage() {
     return Object.keys(errors).length === 0;
   };
 
+  const openStepEditor = (item: CaseDetail) => {
+    setStepDetail(item);
+    setStepMode(item.executionMode || 'AI');
+    setStepRows((item.steps || []).map((step) => ({ ...step })));
+    setStepError('');
+  };
+
+  const addStep = () => {
+    setStepRows((prev) => [...prev, {
+      stepType: 'CLICK', selectorType: 'TEXT', selector: '', value: '',
+      assertValue: '', timeoutMs: 10000, enabled: true,
+    }]);
+  };
+
+  const updateStep = (index: number, patch: Partial<CaseStep>) => {
+    setStepRows((prev) => prev.map((step, i) => (i === index ? { ...step, ...patch } : step)));
+  };
+
+  const moveStep = (index: number, delta: number) => {
+    setStepRows((prev) => {
+      const next = [...prev];
+      const target = index + delta;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const saveSteps = async () => {
+    if (!stepDetail) return;
+    if (stepMode === 'STEPS' && stepRows.length === 0) {
+      setStepError('步骤模式至少需要一条步骤');
+      return;
+    }
+    setStepSaving(true);
+    setStepError('');
+    try {
+      await casesApi.update(stepDetail.id, {
+        title: stepDetail.title,
+        given: stepDetail.given,
+        when: stepDetail.when,
+        then: stepDetail.then,
+        requirementId: stepDetail.requirementId || null,
+        scriptId: stepDetail.scriptId || stepDetail.script?.id || null,
+        source: stepDetail.source,
+        executionMode: stepMode,
+        steps: stepRows.map((step, index) => ({ ...step, seq: index + 1 })),
+      });
+      toastSuccess('执行步骤已保存');
+      setStepDetail(null);
+      await load();
+      await openDetail(stepDetail.id);
+    } catch (err) {
+      setStepError(safeErrorMessage(err));
+    } finally {
+      setStepSaving(false);
+    }
+  };
+
   const saveCase = async () => {
     if (!validateForm()) return;
     setFormSaving(true);
@@ -306,6 +375,8 @@ export function CasesPage() {
       then: form.then.trim(),
       requirementId: form.requirementId || null,
       scriptId: form.scriptId || null,
+      executionMode: editing?.executionMode || 'AI',
+      steps: editing?.steps || [],
     };
     try {
       if (editing) {
@@ -856,6 +927,37 @@ export function CasesPage() {
                   <p>{detail.then || '—'}</p>
                 </div>
               </div>
+            </section>
+
+            <section>
+              <h4 className="detail-section-title">执行步骤</h4>
+              <div className="capability-row">
+                <span className="capability-label">执行模式</span>
+                <Pill tone={detail.executionMode === 'STEPS' ? 'blue' : 'purple'}>
+                  {detail.executionMode === 'STEPS' ? '步骤化执行' : 'AI Runtime'}
+                </Pill>
+                <span className="capability-text">
+                  {detail.executionMode === 'STEPS'
+                    ? `${detail.steps?.length || 0} 条确定性步骤`
+                    : '按 BDD 由 AI Runtime 决策执行'}
+                </span>
+                {manage ? (
+                  <Button size="sm" variant="secondary" onClick={() => openStepEditor(detail)}>编辑步骤</Button>
+                ) : null}
+              </div>
+              {detail.executionMode === 'STEPS' && detail.steps?.length ? (
+                <ol className="step-list">
+                  {detail.steps.map((step) => (
+                    <li key={step.id || step.seq}>
+                      <span className="step-seq">{step.seq}</span>
+                      <Pill tone="blue">{step.stepType}</Pill>
+                      <span className="mono">{step.selectorType || ''} {step.selector || ''}</span>
+                      {step.value ? <span className="text-muted">= {step.value}</span> : null}
+                      {step.assertValue ? <span className="text-muted">期望 {step.assertValue}</span> : null}
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
             </section>
 
             <section>

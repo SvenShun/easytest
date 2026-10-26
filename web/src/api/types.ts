@@ -3,7 +3,7 @@ export type Role = 'ADMIN' | 'TESTER' | 'BUSINESS' | 'OPS';
 export type ReviewStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export type CaseSource = 'MANUAL' | 'AI';
 export type ScriptType = 'TESTNG' | 'UIAUTOMATOR2' | 'PYTEST' | 'CUSTOM';
-export type ExecutorType = 'SCRIPT' | 'AI_RUNTIME' | 'API';
+export type ExecutorType = 'SCRIPT' | 'AI_RUNTIME' | 'API' | 'STEP';
 export type TaskStatus =
   | 'PENDING'
   | 'DISPATCHED'
@@ -135,10 +135,30 @@ export interface CaseDetail {
   failureAnalysis?: FailureAnalysis | string | null;
   failureReportUrl?: string | null;
   capability?: CaseCapability;
+  executionMode?: ExecutionMode;
+  steps?: CaseStep[];
   reviews?: CaseReview[];
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type ExecutionMode = 'AI' | 'STEPS';
+export type StepType =
+  | 'CLICK' | 'INPUT' | 'TAP' | 'SWIPE' | 'BACK' | 'HOME' | 'WAIT'
+  | 'LAUNCH' | 'ASSERT_TEXT' | 'ASSERT_EXISTS' | 'SCREENSHOT';
+export type SelectorType = 'TEXT' | 'ID' | 'COORD';
+
+export interface CaseStep {
+  id?: string;
+  seq?: number;
+  stepType: StepType;
+  selectorType?: SelectorType;
+  selector?: string;
+  value?: string;
+  assertValue?: string;
+  timeoutMs?: number;
+  enabled?: boolean;
 }
 
 export interface CaseInput {
@@ -149,6 +169,8 @@ export interface CaseInput {
   requirementId: string | null;
   scriptId: string | null;
   source?: CaseSource;
+  executionMode?: ExecutionMode;
+  steps?: CaseStep[];
 }
 
 export type ReviewAction = 'SUBMIT' | 'APPROVE' | 'REJECT';

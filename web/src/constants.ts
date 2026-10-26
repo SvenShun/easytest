@@ -79,6 +79,7 @@ export const EXECUTOR_META: Record<string, StatusMeta> = {
   SCRIPT: { label: '传统脚本', tone: 'blue' },
   AI_RUNTIME: { label: 'AI Runtime', tone: 'purple' },
   API: { label: '接口执行', tone: 'slate' },
+  STEP: { label: '步骤化执行', tone: 'blue' },
 };
 
 export const SOURCE_META: Record<string, StatusMeta> = {

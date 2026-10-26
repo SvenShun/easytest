@@ -1,5 +1,8 @@
 package com.testhub.uiexec.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.testhub.common.security.SecurityProperties;
 import com.testhub.common.util.Ids;
 import com.testhub.common.web.ApiException;
@@ -22,6 +25,7 @@ import com.testhub.uiexec.domain.ExecutorType;
 import com.testhub.uiexec.domain.FailureCategory;
 import com.testhub.uiexec.domain.FailureReportEntity;
 import com.testhub.uiexec.domain.SkillsPointerEntity;
+import com.testhub.uiexec.domain.StepSpec;
 import com.testhub.uiexec.domain.TaskEntity;
 import com.testhub.uiexec.domain.TaskStateMachine;
 import com.testhub.uiexec.domain.TaskStatus;
@@ -45,6 +49,8 @@ import com.testhub.uiexec.web.dto.TaskDtos.TaskSummaryView;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -54,8 +60,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Core orchestration: create → route → select device → enqueue → dispatch,
@@ -92,6 +100,9 @@ public class TaskService {
     private final TaskEventPublisher eventPublisher;
     private final CaseContextSource caseContextSource;
     private final FailureAnalysisSink failureAnalysisSink;
+    private final ObjectMapper objectMapper;
+    private final StepTaskRunner stepTaskRunner;
+    private final TaskExecutor stepTaskExecutor;
 
     public TaskService(TaskRepository tasks, AgentRepository agents, DeviceService devices,
                        DeviceQueueStore queue, CoreClient core, AgentClient agentClient, SkillsService skills,
@@ -100,7 +111,9 @@ public class TaskService {
                        StepService stepService, LogService logService, ExecutionLock lock,
                        UiExecProperties properties, SecurityProperties securityProperties,
                        TaskEventPublisher eventPublisher, CaseContextSource caseContextSource,
-                       FailureAnalysisSink failureAnalysisSink) {
+                       FailureAnalysisSink failureAnalysisSink, ObjectMapper objectMapper,
+                       StepTaskRunner stepTaskRunner,
+                       @Qualifier("stepTaskExecutor") TaskExecutor stepTaskExecutor) {
         this.tasks = tasks;
         this.agents = agents;
         this.devices = devices;
@@ -120,6 +133,9 @@ public class TaskService {
         this.eventPublisher = eventPublisher;
         this.caseContextSource = caseContextSource;
         this.failureAnalysisSink = failureAnalysisSink;
+        this.objectMapper = objectMapper;
+        this.stepTaskRunner = stepTaskRunner;
+        this.stepTaskExecutor = stepTaskExecutor;
     }
 
     // ---------------------------------------------------------------- create
@@ -131,6 +147,11 @@ public class TaskService {
         String caseId = request.caseId().trim();
         int timeoutSec = positiveOrDefault(request.timeoutSec(), DEFAULT_TIMEOUT_SEC);
         int stepTimeoutSec = positiveOrDefault(request.stepTimeoutSec(), DEFAULT_STEP_TIMEOUT_SEC);
+        ExecutorType requested = request.executorType();
+        List<StepSpec> steps = normalizeSteps(request.steps());
+        if (requested == ExecutorType.STEP && steps.stream().noneMatch(StepSpec::enabledOrDefault)) {
+            throw ApiException.badRequest("STEP 任务至少需要一个启用的步骤");
+        }
 
         ExecutionContext context;
         try {
@@ -140,7 +161,6 @@ public class TaskService {
         }
 
         boolean hasScript = context.script() != null;
-        ExecutorType requested = request.executorType();
         boolean needVision = requested == ExecutorType.AI_RUNTIME || (requested == null && !hasScript);
         boolean visionConfigured = false;
         if (needVision) {
@@ -162,7 +182,10 @@ public class TaskService {
                 timeoutSec, stepTimeoutSec, Instant.now());
         task.setPlanId(blankToNull(request.planId()));
         task.setPlanRunId(blankToNull(request.planRunId()));
-        task.setCaseTitle(context.title());
+        task.setCaseTitle(truncate(hasText(request.caseTitle()) ? request.caseTitle().trim() : context.title(), 500));
+        if (decision.executorType() == ExecutorType.STEP) {
+            task.setStepsJson(writeSteps(steps));
+        }
         if (context.bdd() != null) {
             task.setBddGiven(context.bdd().given());
             task.setBddWhen(context.bdd().when());
@@ -238,6 +261,10 @@ public class TaskService {
     }
 
     private void dispatchOne(TaskEntity task, DeviceEntity device) {
+        if (task.getExecutorType() == ExecutorType.STEP) {
+            dispatchStepTask(task, device);
+            return;
+        }
         ExecutionContext context;
         try {
             context = caseContextSource.fetch(task.getCaseId());
@@ -292,6 +319,87 @@ public class TaskService {
             log.warn("任务下发失败 taskId={} agentId={}: {}", task.getId(), agent.getId(), e.getMessage());
             finishLocked(task, TaskStatus.FAILED, FailureCategory.EXECUTOR_UNAVAILABLE,
                     "任务下发失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * STEP tasks never reach {@code POST /agent/tasks}: the orchestrator marks the task RUNNING and
+     * runs the declarative steps itself through the device endpoints exposed by the agent.
+     */
+    private void dispatchStepTask(TaskEntity task, DeviceEntity device) {
+        AgentEntity agent = agents.findById(device.getAgentId()).orElse(null);
+        if (agent == null) {
+            finishLocked(task, TaskStatus.FAILED, FailureCategory.EXECUTOR_UNAVAILABLE, "设备所属 Agent 不存在");
+            return;
+        }
+        List<StepSpec> steps = readSteps(task.getStepsJson());
+        if (steps.stream().noneMatch(StepSpec::enabledOrDefault)) {
+            finishLocked(task, TaskStatus.FAILED, FailureCategory.ACTION_FAILED, "STEP 任务没有可执行的步骤");
+            return;
+        }
+        Instant now = Instant.now();
+        task.setAgentId(agent.getId());
+        task.setStatus(TaskStatus.DISPATCHED);
+        task.setDispatchedAt(now);
+        task.setQueuePosition(0);
+        tasks.save(task);
+        task.setStatus(TaskStatus.RUNNING);
+        task.setStartedAt(now);
+        tasks.save(task);
+
+        StepTaskRunner.Context context = new StepTaskRunner.Context(
+                task.getId(), agent.getBaseUrl(), device.getSerial(), task.getCaseTitle(), steps,
+                task.getTimeoutSec(), task.getStepTimeoutSec(), now,
+                () -> isStepTaskInactive(task.getId()));
+        publishQuietly(() -> eventPublisher.dispatched(task, device), task);
+        stepTaskExecutor.execute(() -> {
+            StepTaskRunner.StepRunResult result;
+            try {
+                result = stepTaskRunner.run(context);
+            } catch (RuntimeException e) {
+                log.error("STEP 任务执行异常 taskId={}", task.getId(), e);
+                result = StepTaskRunner.StepRunResult.failed(FailureCategory.ACTION_FAILED,
+                        "步骤执行异常: " + (e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+            }
+            finishStepTask(task.getId(), result.status(), result.failureReason(), result.summary());
+        });
+        log.info("STEP 任务开始执行 taskId={} deviceId={} agentId={} steps={}", task.getId(), device.getId(),
+                agent.getId(), steps.size());
+    }
+
+    private boolean isStepTaskInactive(String taskId) {
+        return tasks.findById(taskId)
+                .map(task -> task.getStatus().isTerminal() || task.getCancelRequestedAt() != null)
+                .orElse(true);
+    }
+
+    /**
+     * Terminal transition for a STEP run. Uses the same finish path (failure report, core callbacks,
+     * plan-run result, event publication) as agent-reported results and releases the device queue.
+     */
+    public TaskEntity finishStepTask(String taskId, TaskStatus status, FailureCategory reason, String summary) {
+        if (status == null || !status.isTerminal()) {
+            throw ApiException.badRequest("STEP 任务结束状态必须是终止态");
+        }
+        lock.lock();
+        try {
+            TaskEntity task = tasks.findById(taskId).orElse(null);
+            if (task == null || task.getStatus().isTerminal()) {
+                return task;
+            }
+            TaskStatus effectiveStatus = status;
+            FailureCategory effectiveReason = reason;
+            String effectiveSummary = summary;
+            if (task.getCancelRequestedAt() != null && status == TaskStatus.SUCCESS) {
+                effectiveStatus = TaskStatus.CANCELLED;
+                effectiveReason = FailureCategory.MANUAL_INTERRUPT;
+                effectiveSummary = "任务已取消";
+            }
+            TaskEntity finished = finishLocked(task, effectiveStatus, effectiveReason, effectiveSummary);
+            tryDispatch(task.getDeviceId());
+            return finished;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -653,8 +761,58 @@ public class TaskService {
             case SCRIPT_FAILED -> "脚本执行失败";
             case ELEMENT_NOT_FOUND -> "未找到目标元素";
             case MODEL_DECISION_FAILED -> "模型决策失败";
+            case ASSERTION_FAILED -> "断言失败";
             case ACTION_FAILED -> "动作执行失败";
         };
+    }
+
+    private List<StepSpec> normalizeSteps(List<StepSpec> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        List<StepSpec> result = new ArrayList<>();
+        Set<Integer> seqs = new HashSet<>();
+        int index = 0;
+        for (StepSpec spec : raw) {
+            index++;
+            if (spec == null) {
+                continue;
+            }
+            String stepType = StepSpec.normalize(spec.stepType());
+            if (stepType == null || !StepSpec.SUPPORTED_TYPES.contains(stepType)) {
+                throw ApiException.badRequest("不支持的步骤类型: " + spec.stepType());
+            }
+            int seq = spec.seqOr(index);
+            if (!seqs.add(seq)) {
+                throw ApiException.badRequest("步骤 seq 重复: " + seq);
+            }
+            result.add(new StepSpec(seq, stepType, StepSpec.normalize(spec.selectorType()),
+                    blankToNull(spec.selector()), spec.value(), spec.assertValue(), spec.timeoutMs(),
+                    spec.enabled()));
+        }
+        return result;
+    }
+
+    private String writeSteps(List<StepSpec> steps) {
+        try {
+            return objectMapper.writeValueAsString(steps);
+        } catch (JsonProcessingException e) {
+            throw ApiException.badRequest("步骤序列化失败: " + e.getMessage());
+        }
+    }
+
+    private List<StepSpec> readSteps(String json) {
+        if (!hasText(json)) {
+            return List.of();
+        }
+        try {
+            List<StepSpec> steps = objectMapper.readValue(json, new TypeReference<List<StepSpec>>() {
+            });
+            return steps == null ? List.of() : steps;
+        } catch (JsonProcessingException e) {
+            log.warn("解析任务步骤失败: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     private int positiveOrDefault(Integer value, int fallback) {
