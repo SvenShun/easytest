@@ -4901,3 +4901,8 @@ a.btn:hover {
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
   font-size: 12px;
 }
+
+.failure-bar { display: grid; grid-template-columns: 220px 1fr 48px; gap: 12px; align-items: center; padding: 6px 0; }
+.failure-bar-track { height: 8px; border-radius: 4px; background: rgba(148,163,184,.18); overflow: hidden; }
+.failure-bar-track > span { display: block; height: 100%; background: #ef4444; }
+.clickable-row { cursor: pointer; }

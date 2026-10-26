@@ -37,7 +37,7 @@ public class PlanRunItem {
 
     /** 1-based data-driven iteration; 0 for a normal single execution. */
     @Column(name = "iteration")
-    private int iteration;
+    private Integer iteration = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 16, nullable = false)
@@ -116,7 +116,7 @@ public class PlanRunItem {
     }
 
     public int getIteration() {
-        return iteration;
+        return iteration == null ? 0 : iteration;
     }
 
     public void setIteration(int iteration) {

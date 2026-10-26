@@ -9,6 +9,7 @@ export type { CaseListParams } from './cases';
 export { aiApi } from './ai';
 export { plansApi } from './plans';
 export { jobsApi } from './jobs';
+export { dashboardApi } from './dashboard';
 export { uiexecApi } from './uiexec';
 export type { TaskListParams } from './uiexec';
 export { ApiError, TOKEN_KEY, USER_KEY, clearToken, getToken, saveToken, request } from './client';

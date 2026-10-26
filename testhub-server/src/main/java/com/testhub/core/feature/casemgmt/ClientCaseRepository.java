@@ -10,4 +10,6 @@ public interface ClientCaseRepository extends JpaRepository<ClientCase, String>,
         JpaSpecificationExecutor<ClientCase> {
 
     List<ClientCase> findByReviewStatusOrderByUpdatedAtDesc(ReviewStatus reviewStatus, Pageable pageable);
+
+    long countByReviewStatus(ReviewStatus reviewStatus);
 }
