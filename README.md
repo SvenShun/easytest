@@ -138,6 +138,7 @@ tail -f logs/core.log
 - [docs/SONIC-PORT-INVENTORY.md](docs/SONIC-PORT-INVENTORY.md) — Sonic 源码功能清单与移植差距
 - [docs/SONIC-PORTING-STATUS.md](docs/SONIC-PORTING-STATUS.md) — Sonic 能力移植进度
 - [docs/ACCEPTANCE-PART3-STEP.md](docs/ACCEPTANCE-PART3-STEP.md) — 步骤化 UI 用例真机验收
+- [docs/ACCEPTANCE-PART5-PLATFORM.md](docs/ACCEPTANCE-PART5-PLATFORM.md) — 平台能力阶段验收汇总
 
 ## 目录结构
 
