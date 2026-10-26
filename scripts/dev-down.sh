@@ -9,7 +9,7 @@ if [ -d data/pids ]; then
     name="$(basename "$pidfile" .pid)"
     # Only manage TestHub's own services; MeterSphere has its own script.
     case "$name" in
-      core|uiexec|apiexec|apiexec-2|agent|ai-runtime|web) ;;
+      core|uiexec|apiexec|apiexec-2|agent|ai-runtime|web|scrcpy-web) ;;
       *) continue ;;
     esac
     pid="$(cat "$pidfile")"

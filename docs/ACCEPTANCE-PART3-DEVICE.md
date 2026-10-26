@@ -116,7 +116,7 @@ python3 scripts/real-device-check.py f04af072 --apk app-debug.apk
 ## 5. 已知边界
 
 - 物理设备已实测（Mi 10 / Android 12）；不同 ROM 的权限开关不同，见 §4.1。
-- 没有 scrcpy 投屏/实时视频；截图是单帧。
+- 已接入 ws-scrcpy 实时视频（WebCodecs）；鼠标控制走 ADB 覆盖层，不是 scrcpy 原生 control socket。
 - 只支持 Android；iOS/WDA 未实现。
 - `input text` 仅做空格转义，复杂 Unicode/中文输入可能受 ADB 限制，后续可接 ADBKeyboard。
 - APK 安装仅 `adb install -r`，未做签名校验、分包安装。

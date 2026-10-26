@@ -73,6 +73,18 @@ public class AgentClient {
         }
     }
 
+    public Object uiTree(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).get()
+                    .uri("/device/{serial}/ui-tree", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("获取设备 UI 树失败: " + e.getMessage(), e);
+        }
+    }
+
     public Object action(String agentBaseUrl, String serial, Map<String, Object> action) {
         try {
             return client(agentBaseUrl).post()

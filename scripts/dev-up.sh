@@ -135,6 +135,10 @@ wait_for apiexec http://127.0.0.1:8084/actuator/health
 wait_for agent   http://127.0.0.1:8090/agent/health
 wait_for runtime http://127.0.0.1:8095/runtime/health 60 || true
 
+if [ "${TESTHUB_SCRCPY_WEB:-auto}" != "0" ] && [ -f "$ROOT/tools/ws-scrcpy/dist/index.js" ]; then
+  ./scripts/scrcpy-web-up.sh || echo "[warn] ws-scrcpy failed to start; run make scrcpy-setup" >&2
+fi
+
 echo
 echo "TestHub is up ($INFRA):"
 echo "  core         http://127.0.0.1:8080"

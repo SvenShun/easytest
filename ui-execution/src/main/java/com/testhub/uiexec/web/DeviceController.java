@@ -96,6 +96,13 @@ public class DeviceController {
                 .body(agentClient.screenshot(agent.getBaseUrl(), device.getSerial()));
     }
 
+    @GetMapping("/{deviceId}/ui-tree")
+    public Object uiTree(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.uiTree(agent.getBaseUrl(), device.getSerial());
+    }
+
     @PostMapping("/{deviceId}/install")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object install(@PathVariable String deviceId,

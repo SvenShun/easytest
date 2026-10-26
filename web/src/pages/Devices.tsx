@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 import { uiexecApi } from '../api';
 import type { Agent, Device, DeviceQueue } from '../api/types';
 import { AGENT_STATUS_META, DEVICE_STATUS_META, EXECUTOR_META, TASK_STATUS_META, metaOf } from '../constants';
@@ -52,6 +53,8 @@ export function DevicesPage() {
   const [manageShot, setManageShot] = useState('');
   const [manageError, setManageError] = useState('');
   const [manageLoading, setManageLoading] = useState(false);
+  const [deviceSize, setDeviceSize] = useState({ width: 1080, height: 2340 });
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const [apkFile, setApkFile] = useState<File | null>(null);
   const [installBusy, setInstallBusy] = useState(false);
   const [appPackage, setAppPackage] = useState('com.testhub.demo');
@@ -131,6 +134,18 @@ export function DevicesPage() {
     if (route.query.get('queue')) navigate('/devices', { replace: true });
   };
 
+  const streamUrl = (device: Device) => {
+    const host = window.location.hostname || '127.0.0.1';
+    const secure = window.location.protocol === 'https:';
+    const http = secure ? 'https' : 'http';
+    const ws = secure ? 'wss' : 'ws';
+    const proxy = `${ws}://${host}:8000/?action=proxy-adb&remote=tcp:8886&udid=${encodeURIComponent(device.serial)}`;
+    const query = new URLSearchParams({
+      action: 'stream', udid: device.serial, player: 'webcodecs', ws: proxy, fitToScreen: 'true',
+    });
+    return `${http}://${host}:8000/#!${query.toString()}`;
+  };
+
   const loadShot = async (device: Device) => {
     setManageLoading(true);
     setManageError('');
@@ -154,6 +169,13 @@ export function DevicesPage() {
     setApkFile(null);
     setManageError('');
     void loadShot(device);
+    void uiexecApi.deviceUiTree(device.deviceId)
+      .then((tree) => {
+        if (tree && tree.width > 0 && tree.height > 0) {
+          setDeviceSize({ width: tree.width, height: tree.height });
+        }
+      })
+      .catch(() => undefined);
   };
 
   const closeManage = () => {
@@ -164,6 +186,38 @@ export function DevicesPage() {
     });
     setApkFile(null);
     setManageError('');
+  };
+
+  const pointerToDevice = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nx = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const ny = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    return { x: Math.round(nx * deviceSize.width), y: Math.round(ny * deviceSize.height) };
+  };
+
+  const onStreamPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pointerStart.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const onStreamPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const start = pointerStart.current;
+    pointerStart.current = null;
+    if (!start || !manageDevice) return;
+    const from = pointerToDevice(event);
+    const dx = event.clientX - start.x;
+    const dy = event.clientY - start.y;
+    if (Math.hypot(dx, dy) < 10) {
+      void deviceAction({ action: 'tap', from }, `已点击 ${from.x},${from.y}`);
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const nx = Math.min(1, Math.max(0, (start.x - rect.left) / rect.width));
+      const ny = Math.min(1, Math.max(0, (start.y - rect.top) / rect.height));
+      const origin = { x: Math.round(nx * deviceSize.width), y: Math.round(ny * deviceSize.height) };
+      void deviceAction({ action: 'swipe', from: origin, to: from, durationMs: 300 }, '已滑动');
+    }
   };
 
   const installApk = async () => {
@@ -476,7 +530,24 @@ export function DevicesPage() {
       >
         <div className="form-stack">
           {manageError ? <ErrorPanel message={manageError} compact /> : null}
-          <div style={{ background: '#0b1220', borderRadius: 10, padding: 8, minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {manageDevice ? (
+            <div className="scrcpy-stage">
+              <iframe
+                title="scrcpy-stream"
+                src={streamUrl(manageDevice)}
+                className="scrcpy-frame"
+                allow="autoplay"
+              />
+              <div
+                className="scrcpy-overlay"
+                onPointerDown={onStreamPointerDown}
+                onPointerUp={onStreamPointerUp}
+                onContextMenu={(event) => event.preventDefault()}
+              />
+              <div className="scrcpy-hint">实时画面（scrcpy/WebCodecs）· 鼠标点击/拖动会下发到真机；无画面请运行 make scrcpy-up</div>
+            </div>
+          ) : null}
+          <div style={{ background: '#0b1220', borderRadius: 10, padding: 8, minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {manageLoading && !manageShot ? (
               <span className="text-muted">正在获取截图…</span>
             ) : manageShot ? (

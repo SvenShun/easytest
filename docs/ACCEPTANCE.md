@@ -163,7 +163,8 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 | 截图/UI 树 | PNG、200x400、元素“登录” |
 | 动作/安装 | click → `input tap`；APK → `install -r` |
 | 真机 | Xiaomi Mi 10 / Android 12：Demo APK 安装、登录 UI 用例 4 步 SUCCESS（`run_605dd55251f64aa4864f`） |
-| 设备管理 | 真机截图、启动应用、APK 安装接口通过 |
+| 设备管理 | 真机截图、启动应用、APK 安装、返回/Home/坐标点击/文本输入通过 |
+| 实时画面 | ws-scrcpy + WebCodecs 内嵌设备管理弹窗，鼠标点击/拖动经 ADB 下发 |
 | 验收脚本 | `make part4` 10/10（假 adb）；真机 `make device-check` |
 
 真机步骤见 [docs/ACCEPTANCE-PART3-DEVICE.md](ACCEPTANCE-PART3-DEVICE.md)。

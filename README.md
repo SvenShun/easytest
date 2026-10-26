@@ -20,6 +20,7 @@
 | device-agent | `device-agent/` | 8090 | 设备子服务器 Agent：注册心跳、模拟设备/ADB（热插拔/截图/UI 树/APK 安装）、脚本执行器、AI Runtime 桥接、Skills 缓存；设备池支持截图/操作/安装/启动 |
 | ai-runtime | `agents/ai-runtime/` | 8095 | 设备侧 AI 执行期决策器（Python）：截图+UI 树 → 模型决策 → 动作 → 轨迹 |
 | web | `web/` | 5173 | React 控制台 |
+| ws-scrcpy（可选） | `tools/ws-scrcpy/` | 8000 | 真机实时画面（scrcpy H.264 → WebCodecs），设备管理弹窗内嵌 |
 | common | `common/` | — | JWT/角色/服务令牌/异常/加密等共享能力 |
 
 中间件：MySQL 8（业务库）、Redis 7（设备 FIFO）、MinIO（产物）、Kafka 3.8（任务事件流）；
@@ -60,6 +61,7 @@ python3 scripts/part2_smoke.py   # 接口自动化 18 项
 make part3                       # 环境/数据驱动 14 项（共享队列另启实例后 16 项）
 make part4                       # ADB 设备驱动 10 项（假 adb）
 make device-check                # 真机预检（输入注入/APK 安装）
+make scrcpy-setup / scrcpy-up    # 实时真机画面（ws-scrcpy :8000）
 
 # 只部署第一部分（主服务：用户/用例/计划等，不含执行）
 make main-up        # http://127.0.0.1:8080
@@ -131,6 +133,7 @@ tail -f logs/core.log
 - [docs/API-EXECUTION-CONTRACT.md](docs/API-EXECUTION-CONTRACT.md) — 接口执行契约
 - [docs/ACCEPTANCE-PART3.md](docs/ACCEPTANCE-PART3.md) — 环境/鉴权、数据驱动、共享队列验收
 - [docs/ACCEPTANCE-PART3-DEVICE.md](docs/ACCEPTANCE-PART3-DEVICE.md) — ADB 设备驱动验收（假 adb/真机步骤）
+- [docs/SCRCPY-WEB.md](docs/SCRCPY-WEB.md) — 页面内 scrcpy 实时画面与鼠标控制
 
 ## 目录结构
 
@@ -151,7 +154,7 @@ scripts/          构建/启动/验收脚本
 ## V1 已知边界
 
 接口执行 V1 + 增强已实现（HTTP + 断言 + 超时/取消 + 环境/登录鉴权 + 数据驱动 + Redis 共享队列）；前后置脚本、用例级重试、CSV 文件数据源、Token 过期自动刷新不在本版；
-真机 ADB 驱动已在 Xiaomi Mi 10（Android 12）接入并通过登录 UI 用例（4 步 SUCCESS）；投屏/scrcpy、Kafka 异步下发、集群化、Flyway、Windows 设备子服务器不在 V1 范围；
+真机 ADB 驱动已在 Xiaomi Mi 10（Android 12）接入并通过登录 UI 用例（4 步 SUCCESS）；设备管理弹窗已内嵌 scrcpy 实时画面与鼠标操作；投屏/scrcpy、Kafka 异步下发、集群化、Flyway、Windows 设备子服务器不在 V1 范围；
 MeterSphere v3 已按你提供的源码**本地构建并运行**，已真实验证“用例源 + 失败评论回写 + 计划结果回写”，
 并完成 **ui-execution 源码级内嵌**（MS 同进程；FIFO 队列、看门狗、失败报告、取消、计划关联、会话自动登录）；
 Sonic 的 **driver-core（Apache-2.0）** 已接入为 `mode=sonic` 真机驱动。

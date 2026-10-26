@@ -57,6 +57,9 @@ export const uiexecApi = {
     ),
   deviceQueue: (deviceId: string) =>
     request<DeviceQueue>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/queue`),
+  deviceUiTree: (deviceId: string) =>
+    request<{ width: number; height: number }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/ui-tree`),
   deviceScreenshot: (deviceId: string) =>
     request('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/screenshot`, { raw: true }),
   deviceInstall: (deviceId: string, file: File) => {
