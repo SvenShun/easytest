@@ -135,6 +135,47 @@ class PlanTriggerTest extends ApiTestSupport {
         assertThat(report.path("executors").get(0).path("total").asInt()).isEqualTo(2);
     }
 
+
+    @Test
+    void multiDeviceMatrixCreatesOneItemPerDevice() throws Exception {
+        String token = testerToken();
+        String caseId = createApprovedCase(token, "矩阵执行用例");
+        String planId = createPlan(token, "矩阵计划");
+        mount(token, planId, List.of(caseId), null);
+
+        when(uiExecutionClient.createTask(anyMap()))
+                .thenReturn(new UiExecutionClient.TaskCreated("task-d1", "PENDING", "AI_RUNTIME", "device-1"))
+                .thenReturn(new UiExecutionClient.TaskCreated("task-d2", "PENDING", "AI_RUNTIME", "device-2"));
+
+        MvcResult result = mockMvc.perform(post("/api/v1/plans/{id}/trigger", planId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"targetDeviceId":null,"targetDeviceIds":["device-1","device-2"],
+                                 "targetTags":[],"timeoutSec":60,"stepTimeoutSec":20}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].taskId").value("task-d1"))
+                .andExpect(jsonPath("$.items[1].taskId").value("task-d2"))
+                .andReturn();
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(uiExecutionClient, times(2)).createTask(captor.capture());
+        for (int i = 0; i < 2; i++) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> selector = (Map<String, Object>) captor.getAllValues().get(i)
+                    .get("targetDeviceSelector");
+            assertThat(selector.get("deviceId")).isEqualTo("device-" + (i + 1));
+        }
+        String runId = json(result).path("runId").asText();
+        JsonNode run = getJson("/api/v1/plan-runs/" + runId, token);
+        assertThat(run.path("items")).hasSize(2);
+        assertThat(run.path("items").get(0).path("deviceId").asText()).isEqualTo("device-1");
+        assertThat(run.path("items").get(1).path("deviceId").asText()).isEqualTo("device-2");
+    }
+
     @Test
     void nonApprovedMountedCaseIsSkipped() throws Exception {
         String token = testerToken();
