@@ -4,6 +4,7 @@ import com.testhub.core.config.ArtifactProperties;
 import com.testhub.core.config.CoreProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 /**
@@ -11,6 +12,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  * test plans, AI analysis and system settings.
  */
 @SpringBootApplication(scanBasePackages = "com.testhub")
+@EnableScheduling
 @EnableConfigurationProperties({CoreProperties.class, ArtifactProperties.class})
 public class TestHubServerApplication {
 

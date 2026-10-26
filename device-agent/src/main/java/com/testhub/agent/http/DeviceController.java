@@ -66,6 +66,50 @@ public class DeviceController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/{serial}/shell")
+    public ResponseEntity<?> shell(@PathVariable String serial,
+            @RequestBody Map<String, Object> body) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        String command = body == null ? null : String.valueOf(body.get("command"));
+        if (command == null || command.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "command 不能为空"));
+        }
+        int timeout = body.get("timeoutSec") instanceof Number number ? number.intValue() : 30;
+        var result = driver.get().shell(command, timeout);
+        return ResponseEntity.ok(Map.of("exitCode", result.exitCode(),
+                "stdout", result.stdout(), "stderr", result.stderr()));
+    }
+
+    @GetMapping("/{serial}/apps")
+    public ResponseEntity<?> apps(@PathVariable String serial) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(Map.of("items", driver.get().apps()));
+    }
+
+    @PostMapping("/{serial}/uninstall")
+    public ResponseEntity<?> uninstall(@PathVariable String serial, @RequestParam String packageName) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(driver.get().uninstall(packageName));
+    }
+
+    @GetMapping("/{serial}/performance")
+    public ResponseEntity<?> performance(@PathVariable String serial) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(driver.get().performance());
+    }
+
     @PostMapping("/{serial}/install")
     public ResponseEntity<?> install(@PathVariable String serial,
             @RequestParam("file") MultipartFile file,

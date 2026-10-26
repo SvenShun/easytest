@@ -85,6 +85,57 @@ public class AgentClient {
         }
     }
 
+    public Object shell(String agentBaseUrl, String serial, String command, int timeoutSec) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri("/device/{serial}/shell", serial)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .body(Map.of("command", command, "timeoutSec", timeoutSec))
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("执行 shell 失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object apps(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).get()
+                    .uri("/device/{serial}/apps", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("获取应用列表失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object uninstall(String agentBaseUrl, String serial, String packageName) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri(uriBuilder -> uriBuilder.path("/device/{serial}/uninstall")
+                            .queryParam("packageName", packageName).build(serial))
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("卸载失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object performance(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).get()
+                    .uri("/device/{serial}/performance", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("获取性能信息失败: " + e.getMessage(), e);
+        }
+    }
+
     public Object action(String agentBaseUrl, String serial, Map<String, Object> action) {
         try {
             return client(agentBaseUrl).post()

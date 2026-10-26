@@ -71,6 +71,18 @@ export const uiexecApi = {
       { method: 'POST', body: form, timeoutMs: 180000 },
     );
   },
+  deviceShell: (deviceId: string, command: string, timeoutSec = 30) =>
+    request<{ exitCode: number; stdout: string; stderr: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/shell`,
+      { method: 'POST', body: { command, timeoutSec } }),
+  deviceApps: (deviceId: string) =>
+    request<{ items: string[] }>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/apps`),
+  deviceUninstall: (deviceId: string, packageName: string) =>
+    request<{ ok?: boolean; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/uninstall?packageName=${encodeURIComponent(packageName)}`,
+      { method: 'POST' }),
+  devicePerformance: (deviceId: string) =>
+    request<Record<string, unknown>>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/performance`),
   deviceAction: (deviceId: string, action: Record<string, unknown>) =>
     request<{ ok?: boolean; message?: string }>(
       'uexec',

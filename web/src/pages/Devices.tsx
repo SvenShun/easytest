@@ -63,6 +63,14 @@ export function DevicesPage() {
   const [tapY, setTapY] = useState('1200');
   const [inputTarget, setInputTarget] = useState('用户名');
   const [inputValue, setInputValue] = useState('tester');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [shellCommand, setShellCommand] = useState('dumpsys battery | head -20');
+  const [shellOutput, setShellOutput] = useState('');
+  const [shellBusy, setShellBusy] = useState(false);
+  const [apps, setApps] = useState<string[]>([]);
+  const [appsBusy, setAppsBusy] = useState(false);
+  const [perf, setPerf] = useState<Record<string, unknown> | null>(null);
+  const [perfBusy, setPerfBusy] = useState(false);
 
   const [queueDevice, setQueueDevice] = useState<Device | null>(null);
   const [queueData, setQueueData] = useState<DeviceQueue | null>(null);
@@ -217,6 +225,59 @@ export function DevicesPage() {
       const ny = Math.min(1, Math.max(0, (start.y - rect.top) / rect.height));
       const origin = { x: Math.round(nx * deviceSize.width), y: Math.round(ny * deviceSize.height) };
       void deviceAction({ action: 'swipe', from: origin, to: from, durationMs: 300 }, '已滑动');
+    }
+  };
+
+  const runShell = async () => {
+    if (!manageDevice || !shellCommand.trim()) return;
+    setShellBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceShell(manageDevice.deviceId, shellCommand.trim());
+      setShellOutput(`$ ${shellCommand}\n${result.stdout || ''}${result.stderr ? '\n[stderr]\n' + result.stderr : ''}\n[exit ${result.exitCode}]`);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setShellBusy(false);
+    }
+  };
+
+  const loadApps = async () => {
+    if (!manageDevice) return;
+    setAppsBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceApps(manageDevice.deviceId);
+      setApps(result.items || []);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setAppsBusy(false);
+    }
+  };
+
+  const uninstallApp = async (packageName: string) => {
+    if (!manageDevice) return;
+    try {
+      const result = await uiexecApi.deviceUninstall(manageDevice.deviceId, packageName);
+      if (result && result.ok === false) throw new Error(result.message || '卸载失败');
+      toastSuccess(`已卸载 ${packageName}`);
+      setApps((prev) => prev.filter((item) => item !== packageName));
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    }
+  };
+
+  const loadPerformance = async () => {
+    if (!manageDevice) return;
+    setPerfBusy(true);
+    setManageError('');
+    try {
+      setPerf(await uiexecApi.devicePerformance(manageDevice.deviceId));
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setPerfBusy(false);
     }
   };
 
@@ -599,6 +660,32 @@ export function DevicesPage() {
               </Button>
             </div>
             <div className="form-stack">
+              <Button size="sm" variant="ghost" onClick={() => setAdvancedOpen((prev) => !prev)}>
+                {advancedOpen ? '收起高级工具' : '高级工具（Shell / 应用 / 性能）'}
+              </Button>
+              {advancedOpen ? (
+                <div className="form-stack">
+                  <span className="meta-label">远程 Shell</span>
+                  <Input value={shellCommand} onChange={(event) => setShellCommand(event.target.value)} />
+                  <Button size="sm" variant="secondary" loading={shellBusy} onClick={() => void runShell()}>执行命令</Button>
+                  {shellOutput ? <pre className="shell-output">{shellOutput}</pre> : null}
+                  <span className="meta-label">应用管理</span>
+                  <Button size="sm" variant="secondary" loading={appsBusy} onClick={() => void loadApps()}>加载应用列表</Button>
+                  {apps.length > 0 ? (
+                    <div className="app-list">
+                      {apps.map((pkg) => (
+                        <div key={pkg} className="app-row">
+                          <span className="mono">{pkg}</span>
+                          <Button size="sm" variant="ghost" onClick={() => void uninstallApp(pkg)}>卸载</Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <span className="meta-label">性能</span>
+                  <Button size="sm" variant="secondary" loading={perfBusy} onClick={() => void loadPerformance()}>读取性能</Button>
+                  {perf ? <pre className="shell-output">{JSON.stringify(perf, null, 2)}</pre> : null}
+                </div>
+              ) : null}
               <span className="meta-label">安装 APK</span>
               <input
                 type="file"

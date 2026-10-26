@@ -178,6 +178,85 @@ public class AdbDeviceDriver implements DeviceDriver {
     }
 
     @Override
+    public DeviceShellResult shell(String command, int timeoutSec) {
+        int timeout = Math.max(1, Math.min(timeoutSec <= 0 ? 30 : timeoutSec, 600));
+        AdbResult result = run(Duration.ofSeconds(timeout), "shell", command);
+        return new DeviceShellResult(result.exitCode(),
+                truncate(new String(result.stdout(), StandardCharsets.UTF_8), 20_000),
+                truncate(result.errorText(), 20_000));
+    }
+
+    @Override
+    public List<String> apps() {
+        AdbResult result = run(DEFAULT_TIMEOUT, "shell", "pm", "list", "packages", "-3");
+        if (result.exitCode() != 0) {
+            return List.of();
+        }
+        return new String(result.stdout(), StandardCharsets.UTF_8).lines()
+                .map(String::trim)
+                .filter(line -> line.startsWith("package:"))
+                .map(line -> line.substring("package:".length()))
+                .filter(name -> !name.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    @Override
+    public ActionResult uninstall(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(Duration.ofSeconds(60), "shell", "pm", "uninstall", packageName),
+                "uninstalled " + packageName);
+    }
+
+    @Override
+    public java.util.Map<String, Object> performance() {
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        AdbResult mem = run(DEFAULT_TIMEOUT, "shell", "cat", "/proc/meminfo");
+        if (mem.exitCode() == 0) {
+            java.util.Map<String, Long> values = new java.util.LinkedHashMap<>();
+            for (String line : new String(mem.stdout(), StandardCharsets.UTF_8).lines().toList()) {
+                String[] parts = line.split("\\s+");
+                if (parts.length >= 2) {
+                    try {
+                        values.put(parts[0].replace(":", ""), Long.parseLong(parts[1]));
+                    } catch (NumberFormatException ignored) {
+                        // skip header/odd lines
+                    }
+                }
+            }
+            result.put("memTotalKb", values.getOrDefault("MemTotal", 0L));
+            result.put("memAvailableKb", values.getOrDefault("MemAvailable", 0L));
+        }
+        AdbResult cpu = run(DEFAULT_TIMEOUT, "shell", "dumpsys", "cpuinfo");
+        if (cpu.exitCode() == 0) {
+            result.put("cpuinfo", truncate(new String(cpu.stdout(), StandardCharsets.UTF_8), 4000));
+        }
+        AdbResult battery = run(DEFAULT_TIMEOUT, "shell", "dumpsys", "battery");
+        if (battery.exitCode() == 0) {
+            String text = new String(battery.stdout(), StandardCharsets.UTF_8);
+            for (String line : text.lines().toList()) {
+                if (line.contains("level:")) {
+                    result.put("batteryLevel", line.substring(line.indexOf(':') + 1).trim());
+                } else if (line.contains("temperature:")) {
+                    result.put("batteryTemperature", line.substring(line.indexOf(':') + 1).trim());
+                }
+            }
+        }
+        result.put("serial", descriptor.serial());
+        return result;
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= max ? value : value.substring(0, max) + "\n...(truncated)";
+    }
+
+    @Override
     public ActionResult installApk(byte[] apk, boolean replace) {
         if (apk == null || apk.length == 0) {
             return ActionResult.fail("empty apk", "adb");

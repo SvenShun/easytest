@@ -103,6 +103,41 @@ public class DeviceController {
         return agentClient.uiTree(agent.getBaseUrl(), device.getSerial());
     }
 
+    @PostMapping("/{deviceId}/shell")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object shell(@PathVariable String deviceId, @RequestBody Map<String, Object> body) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        String command = body == null ? null : String.valueOf(body.get("command"));
+        if (command == null || command.isBlank()) {
+            throw com.testhub.common.web.ApiException.badRequest("command 不能为空");
+        }
+        int timeout = body.get("timeoutSec") instanceof Number number ? number.intValue() : 30;
+        return agentClient.shell(agent.getBaseUrl(), device.getSerial(), command, timeout);
+    }
+
+    @GetMapping("/{deviceId}/apps")
+    public Object apps(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.apps(agent.getBaseUrl(), device.getSerial());
+    }
+
+    @PostMapping("/{deviceId}/uninstall")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object uninstall(@PathVariable String deviceId, @RequestParam String packageName) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.uninstall(agent.getBaseUrl(), device.getSerial(), packageName);
+    }
+
+    @GetMapping("/{deviceId}/performance")
+    public Object performance(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.performance(agent.getBaseUrl(), device.getSerial());
+    }
+
     @PostMapping("/{deviceId}/install")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object install(@PathVariable String deviceId,

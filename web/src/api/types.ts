@@ -268,6 +268,32 @@ export interface ApiEnvironmentInput {
   enabled?: boolean;
 }
 
+export interface TestJob {
+  id: string;
+  name: string;
+  planId: string;
+  planName?: string;
+  cronExpression: string;
+  deviceId?: string | null;
+  deviceTags?: string | null;
+  enabled: boolean;
+  lastRunId?: string | null;
+  lastRunAt?: string | null;
+  nextRunAt?: string | null;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TestJobInput {
+  name: string;
+  planId: string;
+  cronExpression: string;
+  deviceId?: string | null;
+  deviceTags?: string | null;
+  enabled?: boolean;
+}
+
 export interface PlanCase {
   caseId: string;
   title: string;

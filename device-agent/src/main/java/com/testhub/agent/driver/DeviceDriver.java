@@ -21,6 +21,25 @@ public interface DeviceDriver {
     /** Reset the device to its initial state. */
     ActionResult reset();
 
+    /** Execute a shell command on the device. */
+    default DeviceShellResult shell(String command, int timeoutSec) {
+        return new DeviceShellResult(1, "", "shell not supported by " + descriptor().platform());
+    }
+
+    /** List installed third-party packages. */
+    default java.util.List<String> apps() {
+        return java.util.List.of();
+    }
+
+    default ActionResult uninstall(String packageName) {
+        return ActionResult.fail("uninstall not supported by " + descriptor().platform(), "driver");
+    }
+
+    /** Lightweight performance snapshot (cpu/mem/battery). */
+    default java.util.Map<String, Object> performance() {
+        return java.util.Map.of();
+    }
+
     /** Install an APK; drivers without install support return ok=false. */
     default ActionResult installApk(byte[] apk, boolean replace) {
         return ActionResult.fail("install not supported by " + descriptor().platform(), "driver");

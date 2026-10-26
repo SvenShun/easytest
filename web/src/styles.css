@@ -4874,3 +4874,30 @@ a.btn:hover {
   font-size: 12px;
   pointer-events: none;
 }
+
+.shell-output {
+  max-height: 180px;
+  overflow: auto;
+  background: #0b1220;
+  color: #dbeafe;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.app-list {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+}
+.app-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  font-size: 12px;
+}
