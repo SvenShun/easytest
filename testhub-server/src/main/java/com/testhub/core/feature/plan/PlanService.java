@@ -80,7 +80,7 @@ public class PlanService {
         List<PlanRunView> runs = runRepository.findByPlanIdOrderByStartedAtDesc(id).stream()
                 .map(PlanRunView::of)
                 .toList();
-        return new PlanDetailView(PlanView.of(plan), planCases(id), runs);
+        return new PlanDetailView(PlanView.of(plan), planCases(id), runs, splitDevices(plan.getDeviceIds()));
     }
 
     @Transactional
@@ -103,6 +103,26 @@ public class PlanService {
         plan.setEnvironmentId(validateEnvironment(request.environmentId()));
         plan.setUpdatedAt(Instant.now());
         return PlanView.of(planRepository.save(plan));
+    }
+
+    @Transactional
+    public List<String> bindDevices(String id, List<String> deviceIds) {
+        TestPlan plan = require(id);
+        List<String> normalized = deviceIds == null ? List.of() : deviceIds.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim).distinct().toList();
+        plan.setDeviceIds(normalized.isEmpty() ? null : String.join(",", normalized));
+        plan.setUpdatedAt(Instant.now());
+        planRepository.save(plan);
+        return normalized;
+    }
+
+    public static List<String> splitDevices(String deviceIds) {
+        if (deviceIds == null || deviceIds.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(deviceIds.split(",")).map(String::trim)
+                .filter(value -> !value.isEmpty()).distinct().toList();
     }
 
     @Transactional

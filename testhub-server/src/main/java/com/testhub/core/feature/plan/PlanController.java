@@ -60,6 +60,15 @@ public class PlanController {
         return planService.update(id, request);
     }
 
+    public record BindDevicesRequest(List<String> deviceIds) {
+    }
+
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    @PutMapping("/{id}/devices")
+    public List<String> bindDevices(@PathVariable String id, @RequestBody BindDevicesRequest request) {
+        return planService.bindDevices(id, request == null ? List.of() : request.deviceIds());
+    }
+
     @RequireRole({Role.ADMIN, Role.TESTER})
     @DeleteMapping("/{id}")
     public void delete(@PathVariable String id) {

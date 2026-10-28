@@ -189,6 +189,63 @@ public class AgentClient {
         }
     }
 
+    public Object startUia2(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri("/device/{serial}/uia2/start", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve().body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("启动 UIA2 失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object stopUia2(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri("/device/{serial}/uia2/stop", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve().body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("停止 UIA2 失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object uia2Status(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).get()
+                    .uri("/device/{serial}/uia2/status", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve().body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("读取 UIA2 状态失败: " + e.getMessage(), e);
+        }
+    }
+
+    public Object startRecording(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri("/device/{serial}/recording/start", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(Object.class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("启动录屏失败: " + e.getMessage(), e);
+        }
+    }
+
+    public byte[] stopRecording(String agentBaseUrl, String serial) {
+        try {
+            return client(agentBaseUrl).post()
+                    .uri("/device/{serial}/recording/stop", serial)
+                    .header(AuthFilter.AGENT_TOKEN_HEADER, security.getAgentToken())
+                    .retrieve()
+                    .body(byte[].class);
+        } catch (RestClientException e) {
+            throw new AgentUnavailableException("停止录屏失败: " + e.getMessage(), e);
+        }
+    }
+
     public Object action(String agentBaseUrl, String serial, Map<String, Object> action) {
         try {
             return client(agentBaseUrl).post()

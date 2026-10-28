@@ -38,6 +38,42 @@ const DEVICE_FILTERS = [
   { value: 'MAINTENANCE', label: '维护' },
 ];
 
+function MetricChart({ samples }: { samples: Array<{ createdAt: string; cpuPercent?: number; memUsedPercent?: number; batteryLevel?: number }> }) {
+  if (samples.length === 0) {
+    return <div className="metric-chart-empty">开始采样后显示 CPU / 内存曲线</div>;
+  }
+  const width = 620;
+  const height = 150;
+  const pad = 24;
+  const points = (key: 'cpuPercent' | 'memUsedPercent') => samples.map((sample, index) => {
+    const value = Math.max(0, Math.min(100, Number(sample[key] || 0)));
+    const x = samples.length === 1 ? pad : pad + (index / (samples.length - 1)) * (width - pad * 2);
+    const y = height - pad - (value / 100) * (height - pad * 2);
+    return `${x},${y}`;
+  }).join(' ');
+  const last = samples[samples.length - 1];
+  return (
+    <div className="metric-chart-wrap">
+      <div className="metric-chart-legend">
+        <span className="legend-cpu">CPU {last.cpuPercent ?? '—'}%</span>
+        <span className="legend-mem">内存 {last.memUsedPercent ?? '—'}%</span>
+        <span className="text-muted">电量 {last.batteryLevel ?? '—'}%</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="metric-chart" role="img" aria-label="性能曲线">
+        {[0, 25, 50, 75, 100].map((tick) => (
+          <g key={tick}>
+            <line x1={pad} x2={width - pad} y1={height - pad - tick / 100 * (height - pad * 2)}
+                  y2={height - pad - tick / 100 * (height - pad * 2)} className="metric-grid" />
+            <text x={4} y={height - pad - tick / 100 * (height - pad * 2) + 4} className="metric-axis">{tick}</text>
+          </g>
+        ))}
+        <polyline points={points('cpuPercent')} className="metric-line-cpu" />
+        <polyline points={points('memUsedPercent')} className="metric-line-mem" />
+      </svg>
+    </div>
+  );
+}
+
 export function DevicesPage() {
   const route = useHashRoute();
   const [devices, setDevices] = useState<Device[]>([]);
@@ -90,6 +126,23 @@ export function DevicesPage() {
   const [renameAgent, setRenameAgent] = useState<Agent | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
+  const metricTimer = useRef<number | null>(null);
+  const [metrics, setMetrics] = useState<Array<{
+    id: string; cpuPercent?: number; memUsedPercent?: number; memUsedKb?: number;
+    batteryLevel?: number; batteryTemperature?: number; createdAt: string;
+  }>>([]);
+  const [metricBusy, setMetricBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingBusy, setRecordingBusy] = useState(false);
+  const [recordingUrl, setRecordingUrl] = useState('');
+  const [baselineFile, setBaselineFile] = useState<File | null>(null);
+  const [diffBusy, setDiffBusy] = useState(false);
+  const [uia2, setUia2] = useState<{ enabled: boolean; url?: string; message?: string }>({ enabled: false });
+  const [uia2Busy, setUia2Busy] = useState(false);
+  const [diffResult, setDiffResult] = useState<{
+    mismatchPercent: number; diffUrl: string; baselineUrl: string; currentUrl: string;
+    baselineWidth: number; baselineHeight: number; currentWidth: number; currentHeight: number;
+  } | null>(null);
 
   const [queueDevice, setQueueDevice] = useState<Device | null>(null);
   const [queueData, setQueueData] = useState<DeviceQueue | null>(null);
@@ -209,6 +262,10 @@ export function DevicesPage() {
     setManageDevice(device);
     setApkFile(null);
     setManageError('');
+    setUia2({ enabled: false });
+    void uiexecApi.deviceUia2Status(device.deviceId)
+      .then((result) => setUia2({ enabled: Boolean(result?.ok), url: result?.uiaUrl }))
+      .catch(() => undefined);
     void loadShot(device);
     void uiexecApi.deviceUiTree(device.deviceId)
       .then((tree) => {
@@ -220,6 +277,7 @@ export function DevicesPage() {
   };
 
   const closeManage = () => {
+    if (metricTimer.current) { window.clearInterval(metricTimer.current); metricTimer.current = null; }
     setManageDevice(null);
     setManageShot((previous) => {
       if (previous) URL.revokeObjectURL(previous);
@@ -349,6 +407,124 @@ export function DevicesPage() {
       setManageError(safeErrorMessage(err));
     } finally {
       setFileBusy(false);
+    }
+  };
+
+  const sampleMetrics = async () => {
+    if (!manageDevice) return;
+    try {
+      const sample = await uiexecApi.devicePerformanceSample(manageDevice.deviceId);
+      setMetrics((prev) => [...prev.slice(-59), sample]);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    }
+  };
+
+  const startMetricSampling = async () => {
+    if (!manageDevice || metricTimer.current) return;
+    setMetricBusy(true);
+    await sampleMetrics();
+    metricTimer.current = window.setInterval(() => void sampleMetrics(), 3000);
+    setMetricBusy(false);
+  };
+
+  const stopMetricSampling = () => {
+    if (metricTimer.current) {
+      window.clearInterval(metricTimer.current);
+      metricTimer.current = null;
+    }
+  };
+
+  const startUia2 = async () => {
+    if (!manageDevice) return;
+    setUia2Busy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceUia2Start(manageDevice.deviceId);
+      if (result && result.ok === false) throw new Error(result.message || 'UIA2 启动失败');
+      setUia2({ enabled: true, url: result?.uiaUrl });
+      toastSuccess('UIA2 已启用：中文输入与多点触控可用');
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setUia2Busy(false);
+    }
+  };
+
+  const stopUia2 = async () => {
+    if (!manageDevice) return;
+    setUia2Busy(true);
+    try {
+      await uiexecApi.deviceUia2Stop(manageDevice.deviceId);
+      setUia2({ enabled: false });
+      toastSuccess('UIA2 已停止，恢复 ADB 驱动');
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setUia2Busy(false);
+    }
+  };
+
+  const pinch = async (direction: 'in' | 'out') => {
+    if (!manageDevice) return;
+    const cx = Math.round(deviceSize.width / 2);
+    const cy = Math.round(deviceSize.height / 2);
+    const spread = direction === 'out' ? 320 : 90;
+    const action = {
+      action: 'multitouch',
+      fingers: [
+        { from: { x: cx - 80, y: cy }, to: { x: cx - spread, y: cy }, durationMs: 350 },
+        { from: { x: cx + 80, y: cy }, to: { x: cx + spread, y: cy }, durationMs: 350 },
+      ],
+    };
+    await deviceAction(action, direction === 'out' ? '双指放大已发送' : '双指缩小已发送');
+  };
+
+  const startRecording = async () => {
+    if (!manageDevice) return;
+    setRecordingBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceRecordingStart(manageDevice.deviceId);
+      if (result && result.ok === false) throw new Error(result.message || '启动录屏失败');
+      setRecording(true);
+      toastSuccess('开始录屏（最长 180 秒）');
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setRecordingBusy(false);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!manageDevice) return;
+    setRecordingBusy(true);
+    setManageError('');
+    try {
+      const result = await uiexecApi.deviceRecordingStop(manageDevice.deviceId);
+      setRecordingUrl(result.url);
+      setRecording(false);
+      toastSuccess('录屏已保存');
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setRecordingBusy(false);
+    }
+  };
+
+  const compareScreenshot = async () => {
+    if (!manageDevice || !baselineFile) {
+      setManageError('请选择基准截图');
+      return;
+    }
+    setDiffBusy(true);
+    setManageError('');
+    try {
+      setDiffResult(await uiexecApi.deviceCompareScreenshot(manageDevice.deviceId, baselineFile));
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setDiffBusy(false);
     }
   };
 
@@ -859,6 +1035,18 @@ export function DevicesPage() {
               </Button>
               {advancedOpen ? (
                 <div className="form-stack">
+                  <span className="meta-label">UIA2（中文输入 / 多点触控）</span>
+                  <div className="row-actions">
+                    <Pill tone={uia2.enabled ? 'green' : 'gray'} dot>{uia2.enabled ? 'UIA2 已启用' : 'ADB 模式'}</Pill>
+                    {!uia2.enabled ? (
+                      <Button size="sm" variant="secondary" loading={uia2Busy} onClick={() => void startUia2()}>启用 UIA2</Button>
+                    ) : (
+                      <Button size="sm" variant="ghost" loading={uia2Busy} onClick={() => void stopUia2()}>关闭 UIA2</Button>
+                    )}
+                    <Button size="sm" variant="ghost" disabled={!uia2.enabled} onClick={() => void pinch('out')}>双指放大</Button>
+                    <Button size="sm" variant="ghost" disabled={!uia2.enabled} onClick={() => void pinch('in')}>双指缩小</Button>
+                  </div>
+                  {uia2.url ? <div className="field-hint mono">UIA2: {uia2.url}</div> : null}
                   <span className="meta-label">远程 Shell</span>
                   <Input value={shellCommand} onChange={(event) => setShellCommand(event.target.value)} />
                   <Button size="sm" variant="secondary" loading={shellBusy} onClick={() => void runShell()}>执行命令</Button>
@@ -883,6 +1071,41 @@ export function DevicesPage() {
                   <span className="meta-label">性能</span>
                   <Button size="sm" variant="secondary" loading={perfBusy} onClick={() => void loadPerformance()}>读取性能</Button>
                   {perf ? <pre className="shell-output">{JSON.stringify(perf, null, 2)}</pre> : null}
+                  <span className="meta-label">性能曲线</span>
+                  <div className="row-actions">
+                    <Button size="sm" variant="secondary" loading={metricBusy} onClick={() => void startMetricSampling()}>
+                      {metricTimer.current ? '采样中…' : '开始采样'}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={stopMetricSampling}>停止采样</Button>
+                    <span className="field-hint">每 3 秒采样一次（保留最近 60 点）</span>
+                  </div>
+                  <MetricChart samples={metrics} />
+                  <span className="meta-label">录屏</span>
+                  <div className="row-actions">
+                    {!recording ? (
+                      <Button size="sm" variant="secondary" loading={recordingBusy} onClick={() => void startRecording()}>开始录屏</Button>
+                    ) : (
+                      <Button size="sm" variant="danger" loading={recordingBusy} onClick={() => void stopRecording()}>停止并保存</Button>
+                    )}
+                    {recordingUrl ? <a href={recordingUrl} target="_blank" rel="noreferrer">查看录屏</a> : null}
+                  </div>
+                  <span className="meta-label">截图对比</span>
+                  <input type="file" accept="image/png,image/jpeg" onChange={(event) => setBaselineFile(event.target.files?.[0] || null)} />
+                  <Button size="sm" variant="secondary" loading={diffBusy} onClick={() => void compareScreenshot()}>
+                    与当前屏幕对比{baselineFile ? `（${baselineFile.name}）` : ''}
+                  </Button>
+                  {diffResult ? (
+                    <div className="diff-result">
+                      <div className="diff-summary">差异像素：<strong>{diffResult.mismatchPercent}%</strong>
+                        <span className="text-muted">（基准 {diffResult.baselineWidth}×{diffResult.baselineHeight} / 当前 {diffResult.currentWidth}×{diffResult.currentHeight}）</span>
+                      </div>
+                      <div className="diff-images">
+                        <img src={diffResult.baselineUrl} alt="基准" />
+                        <img src={diffResult.currentUrl} alt="当前" />
+                        <img src={diffResult.diffUrl} alt="差异" />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               <span className="meta-label">上传文件到 /sdcard/Download</span>

@@ -29,9 +29,12 @@ import com.testhub.agent.driver.UiTree;
 public class DeviceController {
 
     private final DeviceManager deviceManager;
+    private final com.testhub.agent.driver.Uia2Manager uia2Manager;
 
-    public DeviceController(DeviceManager deviceManager) {
+    public DeviceController(DeviceManager deviceManager,
+                            com.testhub.agent.driver.Uia2Manager uia2Manager) {
         this.deviceManager = deviceManager;
+        this.uia2Manager = uia2Manager;
     }
 
     @GetMapping("/{serial}/screenshot")
@@ -64,6 +67,32 @@ public class DeviceController {
         }
         ActionResult result = driver.get().action(action);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{serial}/uia2/start")
+    public ResponseEntity<?> startUia2(@PathVariable String serial) {
+        if (deviceManager.find(serial).isEmpty()) {
+            return deviceNotFound();
+        }
+        try {
+            return ResponseEntity.ok(uia2Manager.start(serial));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{serial}/uia2/stop")
+    public ResponseEntity<?> stopUia2(@PathVariable String serial) {
+        if (deviceManager.find(serial).isEmpty()) {
+            return deviceNotFound();
+        }
+        return ResponseEntity.ok(uia2Manager.stop(serial));
+    }
+
+    @GetMapping("/{serial}/uia2/status")
+    public ResponseEntity<?> uia2Status(@PathVariable String serial) {
+        return ResponseEntity.ok(uia2Manager.status(serial)
+                .orElse(Map.of("ok", false, "message", "UIA2 未运行")));
     }
 
     @PostMapping("/{serial}/shell")
@@ -127,6 +156,40 @@ public class DeviceController {
             return deviceNotFound();
         }
         return ResponseEntity.ok(driver.get().rotate(direction));
+    }
+
+    @PostMapping("/{serial}/recording/start")
+    public ResponseEntity<?> startRecording(@PathVariable String serial) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        if (!(driver.get() instanceof com.testhub.agent.driver.AdbDeviceDriver adbDriver)) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "录屏仅支持 ADB 真机"));
+        }
+        try {
+            return ResponseEntity.ok(Map.of("ok", true, "path", adbDriver.startRecording()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{serial}/recording/stop")
+    public ResponseEntity<?> stopRecording(@PathVariable String serial) {
+        Optional<DeviceDriver> driver = deviceManager.find(serial);
+        if (driver.isEmpty()) {
+            return deviceNotFound();
+        }
+        if (!(driver.get() instanceof com.testhub.agent.driver.AdbDeviceDriver adbDriver)) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", "录屏仅支持 ADB 真机"));
+        }
+        try {
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType("video/mp4"))
+                    .body(adbDriver.stopRecording());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("ok", false, "message", e.getMessage()));
+        }
     }
 
     @PostMapping("/{serial}/files")

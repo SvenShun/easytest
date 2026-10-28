@@ -9,6 +9,7 @@ import com.testhub.core.feature.apicase.ApiCase;
 import com.testhub.core.feature.apienv.ApiEnvironment;
 import com.testhub.core.feature.apienv.ApiEnvironmentRepository;
 import com.testhub.core.feature.apienv.ApiEnvironmentResolver;
+import com.testhub.core.feature.notification.NotificationService;
 import com.testhub.core.feature.apicase.ApiCaseRepository;
 import com.testhub.core.feature.apicase.ApiCaseService;
 import com.testhub.core.feature.casemgmt.ClientCase;
@@ -57,6 +58,7 @@ public class PlanRunService {
     private final ApiCaseService apiCaseService;
     private final ApiEnvironmentRepository environmentRepository;
     private final ApiEnvironmentResolver environmentResolver;
+    private final NotificationService notificationService;
 
     public PlanRunService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                           PlanRunRepository runRepository, PlanRunItemRepository itemRepository,
@@ -65,7 +67,8 @@ public class PlanRunService {
                           MeterSphereResultSink meterSphereResultSink,
                           ApiExecutionClient apiExecutionClient, ApiCaseRepository apiCaseRepository,
                           ApiCaseService apiCaseService, ApiEnvironmentRepository environmentRepository,
-                          ApiEnvironmentResolver environmentResolver) {
+                          ApiEnvironmentResolver environmentResolver,
+                          NotificationService notificationService) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -80,6 +83,7 @@ public class PlanRunService {
         this.apiCaseService = apiCaseService;
         this.environmentRepository = environmentRepository;
         this.environmentResolver = environmentResolver;
+        this.notificationService = notificationService;
     }
 
     public TriggerResponse trigger(String planId, TriggerRequest request) {
@@ -107,7 +111,7 @@ public class PlanRunService {
         plan.setUpdatedAt(startedAt);
         planRepository.save(plan);
 
-        List<String> targetDeviceIds = resolveTargetDeviceIds(options);
+        List<String> targetDeviceIds = resolveTargetDeviceIds(options, plan);
         List<TriggerItemView> views = new ArrayList<>();
         int index = 0;
         for (PlanCase mount : mounts) {
@@ -463,6 +467,7 @@ public class PlanRunService {
                 run.setFinishedAt(Instant.now());
             }
         }
+        notificationService.onRunFinished(run);
         PlanRun saved = runRepository.save(run);
         syncPlanStatus(saved.getPlanId());
         return saved;
@@ -541,7 +546,7 @@ public class PlanRunService {
         return payload;
     }
 
-    private List<String> resolveTargetDeviceIds(TriggerRequest options) {
+    private List<String> resolveTargetDeviceIds(TriggerRequest options, TestPlan plan) {
         List<String> ids = new ArrayList<>();
         if (options.targetDeviceIds() != null) {
             options.targetDeviceIds().stream()
@@ -552,6 +557,9 @@ public class PlanRunService {
         }
         if (ids.isEmpty() && options.targetDeviceId() != null && !options.targetDeviceId().isBlank()) {
             ids.add(options.targetDeviceId().trim());
+        }
+        if (ids.isEmpty()) {
+            PlanService.splitDevices(plan.getDeviceIds()).forEach(ids::add);
         }
         if (ids.isEmpty()) {
             ids.add(null);

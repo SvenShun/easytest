@@ -58,6 +58,9 @@ public class PlanRun {
     @Column(name = "skipped", nullable = false)
     private int skipped;
 
+    @Column(name = "notification_sent", nullable = false)
+    private boolean notificationSent;
+
     protected PlanRun() {
     }
 
@@ -164,6 +167,9 @@ public class PlanRun {
     public void setPending(int pending) {
         this.pending = pending;
     }
+
+    public boolean isNotificationSent() { return notificationSent; }
+    public void setNotificationSent(boolean notificationSent) { this.notificationSent = notificationSent; }
 
     public int getSkipped() {
         return skipped;

@@ -19,6 +19,10 @@ public final class DeviceDtos {
                              String occupant, Instant occupiedUntil) {
     }
 
+    public record MetricView(String id, String deviceId, Double cpuPercent, Double memUsedPercent,
+                             Long memUsedKb, Integer batteryLevel, Double batteryTemperature, Instant createdAt) {
+    }
+
     public record DeviceListResponse(List<DeviceView> items, long total, int page, int size) {
     }
 

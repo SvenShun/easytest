@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -135,6 +136,38 @@ class PlanTriggerTest extends ApiTestSupport {
         assertThat(report.path("executors").get(0).path("total").asInt()).isEqualTo(2);
     }
 
+
+
+    @Test
+    void boundDevicesAreUsedWhenTriggerHasNoTarget() throws Exception {
+        String token = testerToken();
+        String caseId = createApprovedCase(token, "绑定设备用例");
+        String planId = createPlan(token, "绑定设备计划");
+        mount(token, planId, List.of(caseId), null);
+        mockMvc.perform(put("/api/v1/plans/{id}/devices", planId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"deviceIds\":[\"device-a\",\"device-b\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("device-a"))
+                .andExpect(jsonPath("$[1]").value("device-b"));
+
+        when(uiExecutionClient.createTask(anyMap()))
+                .thenReturn(new UiExecutionClient.TaskCreated("task-a", "PENDING", "AI_RUNTIME", "device-a"))
+                .thenReturn(new UiExecutionClient.TaskCreated("task-b", "PENDING", "AI_RUNTIME", "device-b"));
+        MvcResult result = mockMvc.perform(post("/api/v1/plans/{id}/trigger", planId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"timeoutSec\":60,\"stepTimeoutSec\":20}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andReturn();
+        String runId = json(result).path("runId").asText();
+        JsonNode run = getJson("/api/v1/plan-runs/" + runId, token);
+        assertThat(run.path("items")).hasSize(2);
+        assertThat(run.path("items").get(0).path("deviceId").asText()).isEqualTo("device-a");
+        assertThat(run.path("items").get(1).path("deviceId").asText()).isEqualTo("device-b");
+    }
 
     @Test
     void multiDeviceMatrixCreatesOneItemPerDevice() throws Exception {

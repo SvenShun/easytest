@@ -352,6 +352,7 @@ export interface PlanDetail {
   plan: Plan;
   cases: PlanCase[];
   runs: PlanRun[];
+  deviceIds?: string[];
 }
 
 export interface TriggerItem {

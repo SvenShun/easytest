@@ -34,6 +34,8 @@ public class AdbDeviceDriver implements DeviceDriver {
     private final DeviceDescriptor descriptor;
     private final String adb;
     private final String appPackage;
+    private volatile Process recordingProcess;
+    private volatile String recordingPath;
 
     public AdbDeviceDriver(DeviceDescriptor descriptor, String adb) {
         this(descriptor, adb, "");
@@ -248,6 +250,50 @@ public class AdbDeviceDriver implements DeviceDriver {
         return toResult(result, "rotated " + dir);
     }
 
+    public synchronized String startRecording() {
+        if (recordingProcess != null && recordingProcess.isAlive()) {
+            throw new IllegalStateException("设备正在录屏");
+        }
+        String path = "/sdcard/testhub-" + System.currentTimeMillis() + ".mp4";
+        try {
+            run(DEFAULT_TIMEOUT, "shell", "rm", "-f", path);
+            Process process = new ProcessBuilder(adb, "-s", descriptor.serial(), "shell", "screenrecord",
+                    "--bit-rate", "4000000", "--time-limit", "180", path)
+                    .redirectErrorStream(true).start();
+            recordingProcess = process;
+            recordingPath = path;
+            return path;
+        } catch (IOException e) {
+            throw new IllegalStateException("启动录屏失败: " + e.getMessage(), e);
+        }
+    }
+
+    public synchronized byte[] stopRecording() {
+        String path = recordingPath;
+        Process process = recordingProcess;
+        recordingPath = null;
+        recordingProcess = null;
+        if (path == null) {
+            throw new IllegalStateException("当前没有进行中的录屏");
+        }
+        try {
+            if (process != null && process.isAlive()) {
+                process.destroy();
+            }
+            run(Duration.ofSeconds(10), "shell", "pkill", "-INT", "screenrecord");
+            Thread.sleep(1200);
+            AdbResult result = run(Duration.ofSeconds(60), "exec-out", "cat", path);
+            run(DEFAULT_TIMEOUT, "shell", "rm", "-f", path);
+            if (result.exitCode() != 0 || result.stdout().length == 0) {
+                throw new IllegalStateException("读取录屏失败: " + result.errorText());
+            }
+            return result.stdout();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("停止录屏被中断", e);
+        }
+    }
+
     @Override
     public ActionResult pushFile(byte[] data, String remotePath) {
         if (data == null || data.length == 0) {
@@ -299,12 +345,27 @@ public class AdbDeviceDriver implements DeviceDriver {
                     }
                 }
             }
-            result.put("memTotalKb", values.getOrDefault("MemTotal", 0L));
-            result.put("memAvailableKb", values.getOrDefault("MemAvailable", 0L));
+            long total = values.getOrDefault("MemTotal", 0L);
+            long available = values.getOrDefault("MemAvailable", 0L);
+            result.put("memTotalKb", total);
+            result.put("memAvailableKb", available);
+            result.put("memUsedKb", Math.max(0, total - available));
+            result.put("memUsedPercent", total <= 0 ? 0.0
+                    : Math.round((total - available) * 1000.0 / total) / 10.0);
         }
         AdbResult cpu = run(DEFAULT_TIMEOUT, "shell", "dumpsys", "cpuinfo");
         if (cpu.exitCode() == 0) {
-            result.put("cpuinfo", truncate(new String(cpu.stdout(), StandardCharsets.UTF_8), 4000));
+            String cpuText = new String(cpu.stdout(), StandardCharsets.UTF_8);
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("(?im)^\\s*TOTAL\\s*:\\s*([0-9.]+)%").matcher(cpuText);
+            if (matcher.find()) {
+                try {
+                    result.put("cpuPercent", Double.parseDouble(matcher.group(1)));
+                } catch (NumberFormatException ignored) {
+                    // keep raw text only
+                }
+            }
+            result.put("cpuinfo", truncate(cpuText, 4000));
         }
         AdbResult battery = run(DEFAULT_TIMEOUT, "shell", "dumpsys", "battery");
         if (battery.exitCode() == 0) {
@@ -313,7 +374,12 @@ public class AdbDeviceDriver implements DeviceDriver {
                 if (line.contains("level:")) {
                     result.put("batteryLevel", line.substring(line.indexOf(':') + 1).trim());
                 } else if (line.contains("temperature:")) {
-                    result.put("batteryTemperature", line.substring(line.indexOf(':') + 1).trim());
+                    String raw = line.substring(line.indexOf(':') + 1).trim();
+                    try {
+                        result.put("batteryTemperature", Double.parseDouble(raw) / 10.0);
+                    } catch (NumberFormatException ignored) {
+                        result.put("batteryTemperature", raw);
+                    }
                 }
             }
         }

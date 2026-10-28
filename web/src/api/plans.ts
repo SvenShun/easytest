@@ -31,6 +31,10 @@ export const plansApi = {
     request<void>('core', `/api/v1/plans/${encodeURIComponent(id)}/cases/${encodeURIComponent(caseId)}`, {
       method: 'DELETE',
     }),
+  bindDevices: (id: string, deviceIds: string[]) =>
+    request<string[]>('core', `/api/v1/plans/${encodeURIComponent(id)}/devices`, {
+      method: 'PUT', body: { deviceIds },
+    }),
   trigger: (id: string, payload: TriggerPayload) =>
     request<TriggerResponse>('core', `/api/v1/plans/${encodeURIComponent(id)}/trigger`, {
       method: 'POST',

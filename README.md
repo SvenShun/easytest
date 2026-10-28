@@ -139,6 +139,9 @@ tail -f logs/core.log
 - [docs/SONIC-PORTING-STATUS.md](docs/SONIC-PORTING-STATUS.md) — Sonic 能力移植进度
 - [docs/ACCEPTANCE-PART3-STEP.md](docs/ACCEPTANCE-PART3-STEP.md) — 步骤化 UI 用例真机验收
 - [docs/ACCEPTANCE-PART5-PLATFORM.md](docs/ACCEPTANCE-PART5-PLATFORM.md) — 平台能力阶段验收汇总
+- [docs/UIA2-INTENT-ROBOTS.md](docs/UIA2-INTENT-ROBOTS.md) — UIA2/中文输入/多点触控/性能/录屏/对比/通知
+- [docs/UI-KNOWLEDGE-BASE.md](docs/UI-KNOWLEDGE-BASE.md) — APP/页面/控件/操作知识库
+- [docs/ACCEPTANCE-PART6.md](docs/ACCEPTANCE-PART6.md) — UIA2/性能/录屏/对比/通知/知识库验收
 
 ## 目录结构
 

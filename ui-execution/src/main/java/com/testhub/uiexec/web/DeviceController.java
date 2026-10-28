@@ -41,13 +41,22 @@ public class DeviceController {
     private final TaskRepository taskRepository;
     private final DeviceQueueStore queue;
     private final AgentClient agentClient;
+    private final com.testhub.uiexec.service.PerformanceService performanceService;
+    private final com.testhub.uiexec.artifact.ArtifactStore artifactStore;
+    private final com.testhub.uiexec.service.ImageDiffService imageDiffService;
 
     public DeviceController(DeviceService deviceService, TaskRepository taskRepository, DeviceQueueStore queue,
-                            AgentClient agentClient) {
+                            AgentClient agentClient,
+                            com.testhub.uiexec.service.PerformanceService performanceService,
+                            com.testhub.uiexec.artifact.ArtifactStore artifactStore,
+                            com.testhub.uiexec.service.ImageDiffService imageDiffService) {
         this.deviceService = deviceService;
         this.taskRepository = taskRepository;
         this.queue = queue;
         this.agentClient = agentClient;
+        this.performanceService = performanceService;
+        this.artifactStore = artifactStore;
+        this.imageDiffService = imageDiffService;
     }
 
     @GetMapping
@@ -164,6 +173,65 @@ public class DeviceController {
         return agentClient.rotate(agent.getBaseUrl(), device.getSerial(), direction);
     }
 
+    @PostMapping("/{deviceId}/uia2/start")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object startUia2(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.startUia2(agent.getBaseUrl(), device.getSerial());
+    }
+
+    @PostMapping("/{deviceId}/uia2/stop")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object stopUia2(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.stopUia2(agent.getBaseUrl(), device.getSerial());
+    }
+
+    @GetMapping("/{deviceId}/uia2/status")
+    public Object uia2Status(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.uia2Status(agent.getBaseUrl(), device.getSerial());
+    }
+
+    @PostMapping("/{deviceId}/recording/start")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object startRecording(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        return agentClient.startRecording(agent.getBaseUrl(), device.getSerial());
+    }
+
+    @PostMapping("/{deviceId}/recording/stop")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object stopRecording(@PathVariable String deviceId) {
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        byte[] video = agentClient.stopRecording(agent.getBaseUrl(), device.getSerial());
+        if (video == null || video.length == 0) {
+            throw com.testhub.common.web.ApiException.badRequest("录屏文件为空");
+        }
+        String relative = artifactStore.put("recordings", deviceId + "/" +
+                java.time.Instant.now().toEpochMilli() + ".mp4", video);
+        return Map.of("url", artifactStore.publicUrl(relative), "size", video.length);
+    }
+
+    @PostMapping("/{deviceId}/screenshot/compare")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public Object compareScreenshot(@PathVariable String deviceId,
+                                    @RequestParam("baseline") MultipartFile baseline,
+                                    @RequestParam(defaultValue = "16") double threshold) throws IOException {
+        if (baseline == null || baseline.isEmpty()) {
+            throw com.testhub.common.web.ApiException.badRequest("请上传基准截图");
+        }
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        AgentEntity agent = deviceService.requireAgent(device);
+        byte[] current = agentClient.screenshot(agent.getBaseUrl(), device.getSerial());
+        return imageDiffService.compare(baseline.getBytes(), current, threshold);
+    }
+
     @PostMapping("/{deviceId}/files")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object pushFile(@PathVariable String deviceId,
@@ -176,6 +244,17 @@ public class DeviceController {
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.pushFile(agent.getBaseUrl(), device.getSerial(), file.getBytes(),
                 file.getOriginalFilename(), remotePath);
+    }
+
+    @PostMapping("/{deviceId}/performance/sample")
+    public com.testhub.uiexec.web.dto.DeviceDtos.MetricView samplePerformance(@PathVariable String deviceId) {
+        return performanceService.sample(deviceId);
+    }
+
+    @GetMapping("/{deviceId}/performance/history")
+    public List<com.testhub.uiexec.web.dto.DeviceDtos.MetricView> performanceHistory(
+            @PathVariable String deviceId, @RequestParam(defaultValue = "60") int minutes) {
+        return performanceService.history(deviceId, minutes);
     }
 
     @GetMapping("/{deviceId}/performance")

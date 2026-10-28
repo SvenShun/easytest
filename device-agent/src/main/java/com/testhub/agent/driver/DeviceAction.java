@@ -24,6 +24,7 @@ public class DeviceAction {
     private Integer durationMs;
     private Integer ms;
     private String app;
+    private java.util.List<Finger> fingers;
 
     public DeviceAction() {
     }
@@ -96,6 +97,9 @@ public class DeviceAction {
     public void setApp(String app) {
         this.app = app;
     }
+
+    public java.util.List<Finger> getFingers() { return fingers; }
+    public void setFingers(java.util.List<Finger> fingers) { this.fingers = fingers; }
 
     // Convenience factories used by tests and internal callers.
 
@@ -183,6 +187,29 @@ public class DeviceAction {
             }
             return "<empty>";
         }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Finger {
+        private Point from;
+        private Point to;
+        private Integer durationMs;
+
+        public Finger() {
+        }
+
+        public Finger(Point from, Point to, Integer durationMs) {
+            this.from = from;
+            this.to = to;
+            this.durationMs = durationMs;
+        }
+
+        public Point getFrom() { return from; }
+        public void setFrom(Point from) { this.from = from; }
+        public Point getTo() { return to; }
+        public void setTo(Point to) { this.to = to; }
+        public Integer getDurationMs() { return durationMs; }
+        public void setDurationMs(Integer durationMs) { this.durationMs = durationMs; }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

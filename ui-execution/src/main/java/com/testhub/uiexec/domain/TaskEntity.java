@@ -70,8 +70,7 @@ public class TaskEntity {
     private String skillsCommit;
 
     /** Serialised {@link StepSpec} list for {@code STEP} tasks; null for AI/SCRIPT tasks. */
-    @Lob
-    @Column(name = "steps_json")
+    @Column(name = "steps_json", length = 60000)
     private String stepsJson;
 
     @Column(name = "timeout_sec", nullable = false)

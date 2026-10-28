@@ -105,6 +105,41 @@ export const uiexecApi = {
     request<{ ok?: boolean; message?: string }>(
       'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/uninstall?packageName=${encodeURIComponent(packageName)}`,
       { method: 'POST' }),
+  deviceUia2Start: (deviceId: string) =>
+    request<{ ok?: boolean; uiaUrl?: string; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/uia2/start`, { method: 'POST', timeoutMs: 180000 }),
+  deviceUia2Stop: (deviceId: string) =>
+    request<{ ok?: boolean; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/uia2/stop`, { method: 'POST' }),
+  deviceUia2Status: (deviceId: string) =>
+    request<{ ok?: boolean; uiaUrl?: string; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/uia2/status`),
+  devicePerformanceHistory: (deviceId: string, minutes = 60) =>
+    request<Array<{
+      id: string; deviceId: string; cpuPercent?: number; memUsedPercent?: number;
+      memUsedKb?: number; batteryLevel?: number; batteryTemperature?: number; createdAt: string;
+    }>>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/performance/history?minutes=${minutes}`),
+  devicePerformanceSample: (deviceId: string) =>
+    request<{
+      id: string; cpuPercent?: number; memUsedPercent?: number; memUsedKb?: number;
+      batteryLevel?: number; batteryTemperature?: number; createdAt: string;
+    }>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/performance/sample`, { method: 'POST' }),
+  deviceRecordingStart: (deviceId: string) =>
+    request<{ ok?: boolean; path?: string; message?: string }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/recording/start`, { method: 'POST' }),
+  deviceRecordingStop: (deviceId: string) =>
+    request<{ url: string; size: number }>(
+      'uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/recording/stop`, { method: 'POST', timeoutMs: 180000 }),
+  deviceCompareScreenshot: (deviceId: string, baseline: File, threshold = 16) => {
+    const form = new FormData();
+    form.append('baseline', baseline);
+    return request<{
+      width: number; height: number; baselineWidth: number; baselineHeight: number;
+      currentWidth: number; currentHeight: number; mismatchPercent: number;
+      diffUrl: string; baselineUrl: string; currentUrl: string;
+    }>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/screenshot/compare?threshold=${threshold}`,
+      { method: 'POST', body: form, timeoutMs: 120000 });
+  },
   devicePerformance: (deviceId: string) =>
     request<Record<string, unknown>>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/performance`),
   deviceAction: (deviceId: string, action: Record<string, unknown>) =>

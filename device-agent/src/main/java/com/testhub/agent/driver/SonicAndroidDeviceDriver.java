@@ -56,6 +56,14 @@ public class SonicAndroidDeviceDriver implements DeviceDriver {
         return descriptor;
     }
 
+    public void close() {
+        try {
+            driver.closeDriver();
+        } catch (Exception ignored) {
+            // best effort
+        }
+    }
+
     @Override
     public byte[] screenshot() {
         try {
@@ -87,8 +95,16 @@ public class SonicAndroidDeviceDriver implements DeviceDriver {
                     return click(action);
                 case "input":
                     return input(action);
+                case "text":
+                    if (action.getText() == null) {
+                        return ActionResult.fail("text requires text", null);
+                    }
+                    driver.sendKeys(action.getText(), true);
+                    return ActionResult.ok("sent unicode text", null);
                 case "swipe":
                     return swipe(action);
+                case "multitouch":
+                    return multiTouch(action);
                 case "back":
                     keyEvent(4);
                     return ActionResult.ok("back", null);
@@ -158,6 +174,72 @@ public class SonicAndroidDeviceDriver implements DeviceDriver {
         }
         element(xpath).sendKeys(action.getText());
         return ActionResult.ok("input " + action.getText(), null);
+    }
+
+    private ActionResult multiTouch(DeviceAction action) {
+        if (action.getFingers() == null || action.getFingers().size() < 2) {
+            return ActionResult.fail("multitouch 至少需要两根手指", null);
+        }
+        try {
+            var uia = driver.getUiaClient();
+            String base = uia.getRemoteUrl();
+            String session = driver.getSessionId();
+            if (base == null || base.isBlank() || session == null || session.isBlank()) {
+                return ActionResult.fail("UIA2 session 不可用", null);
+            }
+            com.alibaba.fastjson.JSONArray pointers = new com.alibaba.fastjson.JSONArray();
+            int index = 0;
+            for (DeviceAction.Finger finger : action.getFingers()) {
+                if (finger == null || finger.getFrom() == null || finger.getTo() == null) {
+                    return ActionResult.fail("每根手指都需要 from/to", null);
+                }
+                com.alibaba.fastjson.JSONObject pointer = new com.alibaba.fastjson.JSONObject();
+                pointer.put("type", "pointer");
+                pointer.put("id", "finger" + (index++));
+                pointer.put("parameters", java.util.Map.of("pointerType", "touch"));
+                com.alibaba.fastjson.JSONArray steps = new com.alibaba.fastjson.JSONArray();
+                steps.add(pointerStep("pointerMove", finger.getFrom(), 0));
+                com.alibaba.fastjson.JSONObject down = new com.alibaba.fastjson.JSONObject();
+                down.put("type", "pointerDown");
+                down.put("button", 0);
+                steps.add(down);
+                steps.add(pointerStep("pointerMove", finger.getTo(),
+                        finger.getDurationMs() == null ? 300 : finger.getDurationMs()));
+                com.alibaba.fastjson.JSONObject up = new com.alibaba.fastjson.JSONObject();
+                up.put("type", "pointerUp");
+                up.put("button", 0);
+                steps.add(up);
+                pointer.put("actions", steps);
+                pointers.add(pointer);
+            }
+            com.alibaba.fastjson.JSONObject body = new com.alibaba.fastjson.JSONObject();
+            body.put("actions", pointers);
+            String url = base.replaceAll("/+$", "") + "/session/" + session + "/touch/perform";
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url))
+                    .timeout(java.time.Duration.ofSeconds(15))
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(body.toJSONString()))
+                    .build();
+            java.net.http.HttpResponse<String> response = java.net.http.HttpClient.newHttpClient()
+                    .send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return ActionResult.fail("UIA2 多点触控失败: HTTP " + response.statusCode()
+                        + " " + response.body(), null);
+            }
+            return ActionResult.ok("multitouch " + action.getFingers().size() + " fingers", null);
+        } catch (Exception e) {
+            return ActionResult.fail("多点触控失败: " + e.getMessage(), null);
+        }
+    }
+
+    private com.alibaba.fastjson.JSONObject pointerStep(String type, DeviceAction.Point point, int durationMs) {
+        com.alibaba.fastjson.JSONObject step = new com.alibaba.fastjson.JSONObject();
+        step.put("type", type);
+        step.put("duration", durationMs);
+        step.put("x", point.getX());
+        step.put("y", point.getY());
+        step.put("origin", "viewport");
+        return step;
     }
 
     private ActionResult swipe(DeviceAction action) {

@@ -34,6 +34,10 @@ public class TestPlan {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    /** Comma separated devices bound to this plan (matrix defaults). */
+    @Column(name = "device_ids", length = 2000)
+    private String deviceIds;
+
     /** Optional API environment (base URL, variables, auth preset). */
     @Column(name = "api_environment_id", length = 64)
     private String environmentId;
@@ -99,6 +103,9 @@ public class TestPlan {
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    public String getDeviceIds() { return deviceIds; }
+    public void setDeviceIds(String deviceIds) { this.deviceIds = deviceIds; }
 
     public String getEnvironmentId() {
         return environmentId;

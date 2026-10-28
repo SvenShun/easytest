@@ -141,6 +141,29 @@ public class DeviceManager {
         return new ArrayList<>(devices.keySet());
     }
 
+    public Optional<DeviceDescriptor> descriptor(String serial) {
+        return find(serial).map(DeviceDriver::descriptor);
+    }
+
+    /** Replaces a driver in place (used by the UIA2 lifecycle manager). */
+    public void replace(String serial, DeviceDriver driver) {
+        devices.put(serial, driver);
+    }
+
+    /** Restores the ADB driver for a serial after UIA2 teardown. */
+    public void restoreAdb(String serial) {
+        descriptor(serial).ifPresent(descriptor ->
+                devices.put(serial, new AdbDeviceDriver(descriptor, adb, appPackage)));
+    }
+
+    public String adb() {
+        return adb;
+    }
+
+    public String appPackage() {
+        return appPackage;
+    }
+
     public Optional<DeviceDriver> find(String serial) {
         if (serial == null) {
             return Optional.empty();

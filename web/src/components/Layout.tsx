@@ -39,9 +39,11 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/api-cases', label: '接口用例', icon: 'api', roles: ['ADMIN', 'TESTER'] },
       { path: '/environments', label: '环境管理', icon: 'server', roles: ['ADMIN', 'TESTER'] },
       { path: '/ui-elements', label: '元素库', icon: 'cases', roles: ['ADMIN', 'TESTER'] },
+      { path: '/kb', label: 'UI 知识库', icon: 'devices', roles: ['ADMIN', 'TESTER'] },
       { path: '/plans', label: '测试计划', icon: 'plans', roles: ['ADMIN', 'TESTER'] },
       { path: '/jobs', label: '定时任务', icon: 'clock', roles: ['ADMIN', 'TESTER'] },
       { path: '/reports', label: '测试报告', icon: 'dashboard', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
+      { path: '/notifications', label: '通知机器人', icon: 'server', roles: ['ADMIN', 'TESTER'] },
       { path: '/ai', label: 'AI 分析', icon: 'ai', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
     ],
   },
@@ -75,6 +77,8 @@ export function routeTitle(route: RouteState): string {
       return '环境管理';
     case 'ui-elements':
       return '元素库';
+    case 'kb':
+      return 'UI 知识库';
     case 'ai':
       return 'AI 分析';
     case 'plans':
@@ -83,6 +87,8 @@ export function routeTitle(route: RouteState): string {
       return '定时任务';
     case 'reports':
       return '测试报告';
+    case 'notifications':
+      return '通知机器人';
     case 'runs':
       return '运行报告';
     case 'settings':

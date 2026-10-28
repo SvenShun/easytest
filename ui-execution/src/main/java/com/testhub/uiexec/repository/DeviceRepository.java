@@ -11,4 +11,6 @@ public interface DeviceRepository extends JpaRepository<DeviceEntity, String> {
     Optional<DeviceEntity> findByAgentIdAndSerial(String agentId, String serial);
 
     List<DeviceEntity> findByAgentId(String agentId);
+
+    void deleteByAgentId(String agentId);
 }

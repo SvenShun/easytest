@@ -124,6 +124,10 @@ export function PlanDetailPage() {
   const [triggerResultOpen, setTriggerResultOpen] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [devicesError, setDevicesError] = useState('');
+  const [deviceBindOpen, setDeviceBindOpen] = useState(false);
+  const [boundDevices, setBoundDevices] = useState<string[]>([]);
+  const [deviceBindBusy, setDeviceBindBusy] = useState(false);
+  const [deviceBindError, setDeviceBindError] = useState('');
 
   const load = useCallback(
     async (silent = false) => {
@@ -297,6 +301,28 @@ export function PlanDetailPage() {
       setDevices(data.items);
     } catch (err) {
       setDevicesError(safeErrorMessage(err));
+    }
+  };
+
+  const openDeviceBind = () => {
+    setBoundDevices(detail?.deviceIds || []);
+    setDeviceBindError('');
+    setDeviceBindOpen(true);
+  };
+
+  const saveDeviceBind = async () => {
+    if (!planId) return;
+    setDeviceBindBusy(true);
+    setDeviceBindError('');
+    try {
+      await plansApi.bindDevices(planId, boundDevices);
+      toastSuccess('计划设备已保存');
+      setDeviceBindOpen(false);
+      await load();
+    } catch (err) {
+      setDeviceBindError(safeErrorMessage(err));
+    } finally {
+      setDeviceBindBusy(false);
     }
   };
 
@@ -601,6 +627,27 @@ export function PlanDetailPage() {
 
       <Card>
         <CardHead
+          title="执行设备"
+          description="绑定后，触发计划且未手动选择设备时，默认按这些设备生成矩阵运行项"
+          icon="devices"
+          actions={<Button size="sm" variant="secondary" icon="edit" onClick={openDeviceBind}>绑定设备</Button>}
+        />
+        <div className="card-body">
+          {(detail?.deviceIds || []).length === 0 ? (
+            <span className="text-muted">未绑定计划设备；触发时自动选择在线设备。</span>
+          ) : (
+            <div className="pill-row">
+              {(detail?.deviceIds || []).map((deviceId) => {
+                const device = devices.find((item) => item.deviceId === deviceId);
+                return <Pill key={deviceId} tone="blue">{device ? `${device.serial} · ${device.name || device.model}` : deviceId}</Pill>;
+              })}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHead
           title="运行记录"
           description="每次触发创建一个计划运行，点击「报告」查看汇总、按执行器统计与失败分类"
           icon="tasks"
@@ -735,6 +782,39 @@ export function PlanDetailPage() {
           </Field>
           <button type="submit" hidden />
         </form>
+      </Modal>
+
+      <Modal
+        open={deviceBindOpen}
+        title="绑定计划设备"
+        description="可多选；触发时如未指定设备，将按绑定设备执行矩阵。"
+        onClose={() => !deviceBindBusy && setDeviceBindOpen(false)}
+        size="md"
+        closeOnOverlay={!deviceBindBusy}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeviceBindOpen(false)} disabled={deviceBindBusy}>取消</Button>
+            <Button variant="primary" loading={deviceBindBusy} onClick={() => void saveDeviceBind()}>保存</Button>
+          </>
+        }
+      >
+        <div className="form-stack">
+          {deviceBindError ? <Callout tone="error" title="保存失败">{deviceBindError}</Callout> : null}
+          {devices.map((device) => (
+            <label key={device.deviceId} className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={boundDevices.includes(device.deviceId)}
+                onChange={(event) => setBoundDevices((prev) => event.target.checked
+                  ? [...prev, device.deviceId]
+                  : prev.filter((id) => id !== device.deviceId))}
+              />
+              <span className="mono">{device.serial}</span>
+              <span className="text-muted">{device.name || device.model} · {metaOf(DEVICE_STATUS_META, device.status).label}</span>
+            </label>
+          ))}
+          {devices.length === 0 ? <span className="text-muted">暂无已注册设备</span> : null}
+        </div>
       </Modal>
 
       {/* 添加用例 */}

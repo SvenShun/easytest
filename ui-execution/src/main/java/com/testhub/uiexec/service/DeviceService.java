@@ -110,6 +110,13 @@ public class DeviceService {
         return agents.findAll();
     }
 
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteAgent(String agentId) {
+        requireAgent(agentId);
+        devices.deleteByAgentId(agentId);
+        agents.deleteById(agentId);
+    }
+
     public synchronized AgentEntity updateAgent(String agentId, String name, Boolean enabled) {
         AgentEntity agent = requireAgent(agentId);
         if (name != null && !name.isBlank()) {
