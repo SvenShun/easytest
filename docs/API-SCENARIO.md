@@ -198,3 +198,11 @@ GET  /api/v1/api-scenarios/{id}/runs
 - 场景编辑器仅 ADMIN/TESTER 可写/运行。
 - SQL 使用 `PreparedStatement` 参数绑定；`query` 仍由作者提供，平台按测试代码信任。
 - 报告脱敏环境 datasource，不返回 `env`。
+
+## 页面入口
+
+左侧「测试资产」→「API 场景」（`/#/api-scenarios`，需 ADMIN/TESTER）。
+
+页面顶部：批量运行、导入 YAML、新建/编辑（YAML 编辑器）。
+页面「YAML 能力入口」卡片可直接插入 HTTP/SQL/Groovy/set/assert/wait/if/loop/once/while/before-after/datasets 模板。
+编辑器内：校验 YAML、CSV 数据集导入。
