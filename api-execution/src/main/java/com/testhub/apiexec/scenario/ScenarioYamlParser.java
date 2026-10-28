@@ -48,16 +48,45 @@ public class ScenarioYamlParser {
                 throw ApiException.badRequest("steps[" + index + "].type 不能为空");
             }
             switch (type.toLowerCase()) {
-                case "http", "sql", "groovy", "set", "assert", "wait" -> {
+                case "http", "sql", "groovy", "set", "assert", "wait", "if", "loop" -> {
                 }
                 default -> throw ApiException.badRequest("不支持的步骤类型: " + type);
+            }
+            if ("if".equalsIgnoreCase(type) || "loop".equalsIgnoreCase(type)) {
+                validateChildren(step, index);
             }
             steps.add(step);
             index++;
         }
         return new ScenarioDefinition(string(map.get("name")), integer(map.get("timeoutSec")),
                 bool(map.get("continueOnFailure")), mapValue(map.get("variables")),
-                mapValue(map.get("environment")), steps);
+                mapValue(map.get("environment")), mapValue(map.get("datasets")), steps);
+    }
+
+    private void validateChildren(Map<String, Object> step, int index) {
+        for (String key : List.of("steps", "elseSteps")) {
+            Object value = step.get(key);
+            if (value == null) {
+                continue;
+            }
+            if (!(value instanceof List<?> children)) {
+                throw ApiException.badRequest("steps[" + index + "]." + key + " 必须是数组");
+            }
+            for (Object child : children) {
+                if (!(child instanceof Map<?, ?> map)) {
+                    throw ApiException.badRequest("steps[" + index + "]." + key + " 子步骤必须是对象");
+                }
+                Map<String, Object> childMap = stringKeyMap(map);
+                String childType = string(childMap.get("type"));
+                if (childType == null) {
+                    throw ApiException.badRequest("steps[" + index + "]." + key + " 子步骤 type 不能为空");
+                }
+                if (!java.util.Set.of("http", "sql", "groovy", "set", "assert", "wait", "if", "loop")
+                        .contains(childType.toLowerCase())) {
+                    throw ApiException.badRequest("不支持的子步骤类型: " + childType);
+                }
+            }
+        }
     }
 
     private Map<String, Object> stringKeyMap(Map<?, ?> source) {

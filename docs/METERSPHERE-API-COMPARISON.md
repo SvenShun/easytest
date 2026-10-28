@@ -21,6 +21,8 @@ MeterSphere 的 API 测试不是“单接口 + 断言”：
 |---|---|
 | 单接口用例 + HTTP + 5 类断言 + 环境 | 已有 |
 | 多步骤 YAML 场景 | ✅ 本轮 |
+| if/else、loop/times/items/dataset | ✅ |
+| 数据集行迭代 | ✅ YAML datasets（CSV 文件导入待补） |
 | HTTP/SQL/Groovy/set/assert/wait 步骤 | ✅ |
 | 步骤间变量提取/传递 | ✅ JSONPath/header/status/SQL rows |
 | 场景 CRUD、校验、运行历史、步骤报告 | ✅ |
@@ -32,8 +34,8 @@ MeterSphere 的 API 测试不是“单接口 + 断言”：
 
 ## 尚未对齐（按优先级）
 
-1. **控制器**：if/else、loop、once、等待组合；当前只有顺序步骤。
-2. **CSV/数据驱动**：场景级 CSV 数据集、每行迭代。
+1. ~~控制器~~：已支持 if/else、loop（times/items/dataset）；once/while 仍待补。
+2. ~~数据集~~：已支持 YAML `datasets` + loop 行迭代；CSV 文件导入仍待补。
 3. **场景直接定时**：当前场景通过计划+定时任务执行（已可用，但多一层计划）。
 4. **场景批量运行/选择多个场景**：当前逐个运行。
 5. **前置/后置处理器抽象**：当前脚本/SQL是普通步骤，不能绑定到每个 HTTP 步骤。

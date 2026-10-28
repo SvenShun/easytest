@@ -136,6 +136,60 @@ class ScenarioExecutorTest {
         assertThat(result.steps().get(4).assertions()).allMatch(a -> a.passed());
     }
 
+
+    @Test
+    void executesIfElseAndDatasetLoop() {
+        ScenarioExecutor executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),
+                new AssertionEvaluator(new ObjectMapper()), new ObjectMapper());
+        String yaml = """
+                name: controller-flow
+                datasets:
+                  users:
+                    - {username: tester}
+                    - {username: admin}
+                steps:
+                  - name: set branch
+                    type: set
+                    variables:
+                      flag: "yes"
+                  - name: branch
+                    type: if
+                    condition: "${flag} == yes"
+                    steps:
+                      - name: branch-ok
+                        type: assert
+                        assertions:
+                          - {type: VARIABLE, path: flag, operator: EQ, expected: "yes"}
+                    elseSteps:
+                      - name: branch-wrong
+                        type: assert
+                        assertions:
+                          - {type: VARIABLE, path: flag, operator: EQ, expected: "no"}
+                  - name: iterate users
+                    type: loop
+                    dataset: users
+                    indexVar: idx
+                    itemVar: row
+                    steps:
+                      - name: prepare
+                        type: set
+                        variables:
+                          current: "${username}"
+                      - name: check
+                        type: assert
+                        assertions:
+                          - {type: VARIABLE, path: current, operator: EQ, expected: "${username}"}
+                  - name: last row
+                    type: assert
+                    assertions:
+                      - {type: VARIABLE, path: current, operator: EQ, expected: admin}
+                """;
+        ScenarioRunResult result = executor.execute(yaml, Map.of(), Map.of(), 30, () -> false);
+        assertThat(result.status()).isEqualTo("SUCCESS");
+        assertThat(result.steps()).hasSize(9);
+        assertThat(result.variables().get("current")).isEqualTo("admin");
+    }
+
     @Test
     void assertionFailureStopsScenarioByDefault() {
         ScenarioExecutor executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),

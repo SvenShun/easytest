@@ -24,7 +24,9 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -83,7 +85,13 @@ public class ScenarioExecutor {
         List<ScenarioStepResult> results = new ArrayList<>();
         int passed = 0;
         int seq = 1;
-        for (Map<String, Object> step : definition.steps()) {
+        Deque<Map<String, Object>> pending = new ArrayDeque<>(definition.steps());
+        while (!pending.isEmpty()) {
+            Map<String, Object> step = pending.removeFirst();
+            if (controller(step)) {
+                expandController(step, pending, variables, definition);
+                continue;
+            }
             if (cancelled != null && cancelled.getAsBoolean()) {
                 return result("CANCELLED", "CANCELLED", "cancelled before step " + seq,
                         results, variables, started);
@@ -148,6 +156,135 @@ public class ScenarioExecutor {
         }
         return result("SUCCESS", null, passed + "/" + results.size() + " steps passed",
                 results, variables, started);
+    }
+
+    private boolean controller(Map<String, Object> step) {
+        String type = text(step.get("type"));
+        return "if".equalsIgnoreCase(type) || "loop".equalsIgnoreCase(type);
+    }
+
+    private void expandController(Map<String, Object> step, Deque<Map<String, Object>> pending,
+                                  Map<String, Object> variables, ScenarioDefinition definition) {
+        String type = text(step.get("type"));
+        if ("if".equalsIgnoreCase(type)) {
+            boolean matches = condition(step, variables);
+            Object key = matches ? step.get("steps") : step.get("elseSteps");
+            pushFront(pending, maps(key));
+            return;
+        }
+        List<Map<String, Object>> children = maps(step.get("steps"));
+        if (children.isEmpty()) {
+            return;
+        }
+        List<Map<String, Object>> iterations = new ArrayList<>();
+        List<Map<String, Object>> dataset = datasetRows(step, definition);
+        if (!dataset.isEmpty()) {
+            iterations.addAll(dataset);
+        } else {
+            List<Object> items = array(step.get("items"));
+            if (!items.isEmpty()) {
+                for (Object item : items) {
+                    iterations.add(mapOf("value", item));
+                }
+            } else {
+                int times = Math.max(0, Math.min(integer(step.get("times"), 0), 100));
+                for (int i = 0; i < times; i++) {
+                    iterations.add(mapOf("value", i));
+                }
+            }
+        }
+        int max = Math.min(iterations.size(), 100);
+        String indexVar = first(text(step.get("indexVar")), "index");
+        String itemVar = first(text(step.get("itemVar")), "item");
+        List<Map<String, Object>> expanded = new ArrayList<>();
+        for (int i = 0; i < max; i++) {
+            Map<String, Object> row = iterations.get(i);
+            Map<String, Object> setVariables = new LinkedHashMap<>();
+            setVariables.put(indexVar, i);
+            Object item = row.containsKey("value") ? row.get("value") : row;
+            setVariables.put(itemVar, item);
+            for (Map.Entry<String, Object> entry : row.entrySet()) {
+                if (!"value".equals(entry.getKey())) {
+                    setVariables.put(entry.getKey(), entry.getValue());
+                }
+            }
+            Map<String, Object> setStep = new LinkedHashMap<>();
+            setStep.put("type", "set");
+            setStep.put("name", "loop " + (i + 1));
+            setStep.put("variables", setVariables);
+            expanded.add(setStep);
+            for (Map<String, Object> child : children) {
+                expanded.add(new LinkedHashMap<>(child));
+            }
+        }
+        pushFront(pending, expanded);
+    }
+
+    private List<Map<String, Object>> datasetRows(Map<String, Object> step, ScenarioDefinition definition) {
+        String name = text(step.get("dataset"));
+        if (name == null) {
+            return List.of();
+        }
+        Object value = definition.datasets().get(name);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        if (value instanceof List<?> list) {
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    rows.add(map(map));
+                } else {
+                    rows.add(mapOf("value", item));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private void pushFront(Deque<Map<String, Object>> pending, List<Map<String, Object>> steps) {
+        for (int i = steps.size() - 1; i >= 0; i--) {
+            pending.addFirst(steps.get(i));
+        }
+    }
+
+    private boolean condition(Map<String, Object> step, Map<String, Object> variables) {
+        String left = interpolateText(text(step.get("left")), variables);
+        String right = interpolateText(text(step.get("right")), variables);
+        if (left != null) {
+            return compare(left, right, first(text(step.get("operator")), "EQ"));
+        }
+        String expression = interpolateText(text(step.get("condition")), variables);
+        if (expression == null || expression.isBlank()) {
+            return false;
+        }
+        java.util.regex.Matcher matcher = Pattern.compile("(?i)\\s*(==|!=|>=|<=|>|<|contains)\\s*")
+                .matcher(expression.trim());
+        if (!matcher.find()) {
+            return truthy(expression.trim());
+        }
+        String actual = expression.substring(0, matcher.start()).trim();
+        String operator = matcher.group(1);
+        String expected = expression.substring(matcher.end()).trim();
+        return compare(unquote(actual), unquote(expected), operator);
+    }
+
+    private static boolean truthy(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return !normalized.isEmpty() && !"false".equals(normalized) && !"0".equals(normalized)
+                && !"null".equals(normalized);
+    }
+
+    private static String unquote(String value) {
+        String text = value == null ? "" : value.trim();
+        if (text.length() >= 2 && ((text.startsWith("'") && text.endsWith("'"))
+                || (text.startsWith("\"") && text.endsWith("\"")))) {
+            return text.substring(1, text.length() - 1);
+        }
+        return text;
+    }
+
+    private static Map<String, Object> mapOf(String key, Object value) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put(key, value);
+        return map;
     }
 
     private void executeHttp(Map<String, Object> step, Map<String, Object> variables,
@@ -559,7 +696,16 @@ public class ScenarioExecutor {
         if (actual == null || expected == null) {
             return actual == null && expected == null;
         }
-        String op = operator == null ? "EQ" : operator.toUpperCase(Locale.ROOT);
+        String op = operator == null ? "EQ" : operator.trim().toUpperCase(Locale.ROOT);
+        op = switch (op) {
+            case "==" -> "EQ";
+            case "!=" -> "NE";
+            case ">" -> "GT";
+            case ">=" -> "GE";
+            case "<" -> "LT";
+            case "<=" -> "LE";
+            default -> op;
+        };
         if (op.equals("CONTAINS")) {
             return actual.contains(expected);
         }

@@ -84,6 +84,32 @@ steps:
 | `set` | 设置变量（支持模板） |
 | `assert` | 变量/值比较：EQ/NE/CONTAINS/NOT_CONTAINS/GT/GE/LT/LE |
 | `wait` | 等待毫秒 |
+| `if` | 条件分支：`condition: "${flag} == yes"`，`steps` / `elseSteps` |
+| `loop` | 循环：`times` / `items` / `dataset`，`indexVar` / `itemVar`，子 `steps` |
+
+### 数据驱动示例
+
+```yaml
+datasets:
+  users:
+    - { username: tester, password: test123 }
+    - { username: admin, password: admin123 }
+steps:
+  - name: iterate users
+    type: loop
+    dataset: users
+    indexVar: idx
+    itemVar: row
+    steps:
+      - name: login
+        type: http
+        method: POST
+        path: /api/v1/auth/login
+        body: { username: "${username}", password: "${password}" }
+        extract: { token: $.token }
+```
+
+控制器在运行时展开为普通步骤执行，报告会保留每次迭代的步骤明细（包括合成的 `loop N` 变量设置步骤）。
 
 ### 数据传递
 
