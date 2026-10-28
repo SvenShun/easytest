@@ -17,7 +17,7 @@
 - `./scripts/check.sh`：Java **179** + Python **48** = 227，前端构建通过（新增 ImageDiffServiceTest、KbApiTest、PlanTriggerTest 绑定设备用例）。
 - 通知：本地 mock webhook 收到 `RUN_COMPLETED`，字段 runId/planName/status/text 正确。
 - 计划绑定：API 保存/读取 deviceIds；触发实际创建对应运行项。
-- 知识库：API 创建 APP/页面/控件/操作成功，列表计数正确；截图上传/公开读取 200。
+- 知识库：API 创建 APP/页面/控件/操作成功，列表计数正确；批量导入 CRAWLER 控件 2 条成功（Demo 登录共 3 控件）；截图上传/公开读取 200。
 - 前端：KB/通知页面无 console error。
 - UIA2 生命周期：`Uia2ManagerTest` 用 fake adb + fake UIA2 `/status`/`/session` 验证安装跳过、forward、session 建立、驱动替换、stop 恢复。
 - 中文/多点触控：`SonicUnicodeMultiTouchTest` 捕获 UIA2 `/keys`（含中文）和 `/touch/perform`（finger0/finger1/pointerMove）请求。
