@@ -91,8 +91,26 @@ public class ApiScenarioService {
         return executionClient.validate(yaml);
     }
 
-    @Transactional
     public RunView run(String scenarioId, RunRequest request) {
+        String envId = request != null && request.environmentId() != null && !request.environmentId().isBlank()
+                ? request.environmentId().trim() : null;
+        Map<String, Object> variables = request == null || request.variables() == null
+                ? Map.of() : request.variables();
+        int timeout = request == null || request.timeoutSec() == null || request.timeoutSec() <= 0
+                ? 120 : Math.min(request.timeoutSec(), 3600);
+        RunHandle handle = start(scenarioId, envId, variables, timeout, CurrentUser.require().username(),
+                null, null, null);
+        return getRun(handle.runId());
+    }
+
+    /** Starts a scenario for a plan item; the scenario task reports back with planRunId/caseId. */
+    public RunHandle startForPlan(String scenarioId, String planId, String planRunId, int timeout, String actor) {
+        return start(scenarioId, null, Map.of(),
+                Math.max(1, Math.min(timeout, 3600)), actor, planId, planRunId, scenarioId);
+    }
+
+    private RunHandle start(String scenarioId, String envOverride, Map<String, Object> variables, int timeout,
+                            String actor, String planId, String planRunId, String caseId) {
         ApiScenario scenario = require(scenarioId);
         if (!scenario.isEnabled()) {
             throw ApiException.conflict("场景已禁用，不能运行");
@@ -101,15 +119,10 @@ public class ApiScenarioService {
         if (validation != null && validation.has("valid") && !validation.get("valid").asBoolean()) {
             throw ApiException.badRequest(validation.path("message").asText("YAML 校验失败"));
         }
-        String envId = request != null && request.environmentId() != null && !request.environmentId().isBlank()
-                ? request.environmentId().trim() : scenario.getEnvironmentId();
-        Map<String, Object> variables = request == null || request.variables() == null
-                ? Map.of() : request.variables();
-        int timeout = request == null || request.timeoutSec() == null || request.timeoutSec() <= 0
-                ? 120 : Math.min(request.timeoutSec(), 3600);
+        String envId = envOverride == null || envOverride.isBlank() ? scenario.getEnvironmentId() : envOverride;
         Instant now = Instant.now();
         ApiScenarioRun run = new ApiScenarioRun(Ids.newId("scenario-run"), scenario.getId(), scenario.getName(),
-                blank(envId), json(variables), CurrentUser.require().username(), now);
+                blank(envId), json(variables), actor, now);
         run = runs.save(run);
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
@@ -120,11 +133,15 @@ public class ApiScenarioService {
             payload.put("environment", environment(envId));
             payload.put("variables", variables);
             payload.put("timeoutSec", timeout);
-            payload.put("createdBy", run.getCreatedBy());
+            payload.put("createdBy", actor);
+            if (planId != null) payload.put("planId", planId);
+            if (planRunId != null) payload.put("planRunId", planRunId);
+            if (caseId != null) payload.put("caseId", caseId);
             JsonNode created = executionClient.create(payload);
             run.setTaskId(text(created, "taskId"));
             run.setStatus(textOrDefault(created, "status", "PENDING"));
             runs.save(run);
+            return new RunHandle(run.getId(), run.getTaskId(), run.getStatus(), scenario.getName());
         } catch (RuntimeException e) {
             run.setStatus("FAILED");
             run.setFailureReason("EXECUTION_UNAVAILABLE");
@@ -133,7 +150,6 @@ public class ApiScenarioService {
             runs.save(run);
             throw e;
         }
-        return runView(run);
     }
 
     public RunView getRun(String runId) {
@@ -163,6 +179,9 @@ public class ApiScenarioService {
             }
         }
         return runView(run);
+    }
+
+    public record RunHandle(String runId, String taskId, String status, String scenarioName) {
     }
 
     public PageResponse<RunView> runs(String scenarioId, Integer page, Integer size) {

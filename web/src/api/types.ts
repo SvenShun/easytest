@@ -3,7 +3,7 @@ export type Role = 'ADMIN' | 'TESTER' | 'BUSINESS' | 'OPS';
 export type ReviewStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export type CaseSource = 'MANUAL' | 'AI';
 export type ScriptType = 'TESTNG' | 'UIAUTOMATOR2' | 'PYTEST' | 'CUSTOM';
-export type ExecutorType = 'SCRIPT' | 'AI_RUNTIME' | 'API' | 'STEP';
+export type ExecutorType = 'SCRIPT' | 'AI_RUNTIME' | 'API' | 'STEP' | 'SCENARIO';
 export type TaskStatus =
   | 'PENDING'
   | 'DISPATCHED'
@@ -327,7 +327,7 @@ export interface PlanCase {
   executorTypeOverride?: ExecutorType | null;
   defaultExecutor?: ExecutorType | null;
   availableExecutors?: ExecutorType[];
-  caseType?: 'UI' | 'API';
+  caseType?: 'UI' | 'API' | 'SCENARIO';
   method?: string | null;
   path?: string | null;
 }

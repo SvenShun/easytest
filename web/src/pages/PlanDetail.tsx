@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { apiCasesApi, apiEnvironmentsApi, casesApi, plansApi, uiexecApi } from '../api';
+import { apiCasesApi, apiEnvironmentsApi, apiScenariosApi, casesApi, plansApi, uiexecApi } from '../api';
 import { MAIN_ONLY } from '../config';
 import type {
   CaseDetail,
@@ -103,6 +103,10 @@ export function PlanDetailPage() {
   const [apiCasesLoading, setApiCasesLoading] = useState(false);
   const [apiCasesError, setApiCasesError] = useState('');
   const [selectedApiCases, setSelectedApiCases] = useState<Set<string>>(new Set());
+  const [scenarios, setScenarios] = useState<Array<{ id: string; name: string; enabled: boolean; description?: string | null }>>([]);
+  const [scenariosLoading, setScenariosLoading] = useState(false);
+  const [scenariosError, setScenariosError] = useState('');
+  const [selectedScenarios, setSelectedScenarios] = useState<Set<string>>(new Set());
   const [addMode, setAddMode] = useState<AddCaseMode>('default');
   const [addSaving, setAddSaving] = useState(false);
   const [addError, setAddError] = useState('');
@@ -211,6 +215,7 @@ export function PlanDetailPage() {
     setAddOpen(true);
     setSelectedCases(new Set());
     setSelectedApiCases(new Set());
+    setSelectedScenarios(new Set());
     setCaseSearch('');
     setAddMode('default');
     setAddError('');
@@ -236,6 +241,15 @@ export function PlanDetailPage() {
     }
   };
 
+  const toggleScenario = (id: string) => {
+    setSelectedScenarios((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const toggleCase = (id: string) => {
     setSelectedCases((prev) => {
       const next = new Set(prev);
@@ -256,7 +270,7 @@ export function PlanDetailPage() {
 
   const saveAddCases = async () => {
     if (!planId) return;
-    const total = selectedCases.size + selectedApiCases.size;
+    const total = selectedCases.size + selectedApiCases.size + selectedScenarios.size;
     if (total === 0) {
       setAddError('请至少选择一条用例');
       return;
@@ -265,7 +279,8 @@ export function PlanDetailPage() {
     setAddError('');
     try {
       await plansApi.addCases(planId, Array.from(selectedCases),
-        addMode === 'default' ? null : addMode, Array.from(selectedApiCases));
+        addMode === 'default' ? null : addMode, Array.from(selectedApiCases),
+        Array.from(selectedScenarios));
       toastSuccess(`已添加 ${total} 条用例`);
       setAddOpen(false);
       await load(true);
@@ -550,31 +565,34 @@ export function PlanDetailPage() {
                 ) : (
                   planCases.map((item) => {
                     const isApi = item.caseType === 'API';
+                    const isScenario = item.caseType === 'SCENARIO';
                     return (
                     <tr key={item.caseId}>
                       <td>
                         <button
                           type="button"
                           className="cell-link"
-                          onClick={() => navigate(buildPath(isApi ? '/api-cases' : '/cases', { highlight: item.caseId }))}
+                          onClick={() => navigate(buildPath(isApi ? '/api-cases' : isScenario ? '/api-scenarios' : '/cases', { highlight: item.caseId }))}
                         >
                           {item.title}
                         </button>
                         <div className="cell-sub mono">{item.caseId}</div>
                       </td>
                       <td>
-                        <Pill tone={isApi ? 'purple' : 'blue'}>{isApi ? '接口' : 'UI'}</Pill>
+                        <Pill tone={isApi ? 'purple' : item.caseType === 'SCENARIO' ? 'orange' : 'blue'}>
+                          {isApi ? '接口' : item.caseType === 'SCENARIO' ? '场景' : 'UI'}
+                        </Pill>
                         {isApi && item.method ? <div className="cell-sub mono">{item.method} {item.path}</div> : null}
                       </td>
                       <td>
-                        {isApi ? (
+                        {isApi || isScenario ? (
                           <span className="text-muted">—</span>
                         ) : (
                           <StatusPill meta={metaOf(REVIEW_STATUS_META, item.reviewStatus)} />
                         )}
                       </td>
                       <td>
-                        {isApi ? (
+                        {isApi || isScenario ? (
                           <span className="text-muted">—</span>
                         ) : item.hasScript ? (
                           <Pill tone="blue">{item.scriptType || '有脚本'}</Pill>
@@ -588,6 +606,8 @@ export function PlanDetailPage() {
                       <td>
                         {isApi ? (
                           <span className="text-muted">固定 API</span>
+                        ) : item.caseType === 'SCENARIO' ? (
+                          <span className="text-muted">固定 SCENARIO</span>
                         ) : (
                           <div className="override-cell" title="V1 后端暂不提供单独修改覆盖执行器的接口">
                             <Select
@@ -830,7 +850,7 @@ export function PlanDetailPage() {
         footer={
           <>
             <span className="modal-foot-note">
-              已选择 {selectedCases.size + selectedApiCases.size} 条（UI {selectedCases.size} · 接口 {selectedApiCases.size}）
+              已选择 {selectedCases.size + selectedApiCases.size + selectedScenarios.size} 条（UI {selectedCases.size} · 接口 {selectedApiCases.size} · 场景 {selectedScenarios.size}）
             </span>
             <Button variant="secondary" onClick={() => setAddOpen(false)} disabled={addSaving}>
               取消
@@ -928,7 +948,27 @@ export function PlanDetailPage() {
               })
             )}
           </div>
-          <div className="field-hint">执行器覆盖只对 UI 用例生效；接口用例固定由 api-execution 执行。</div>
+          <div className="add-case-section-title">API 场景（YAML 多步骤步骤由 api-execution 执行）</div>
+          <div className="add-case-list add-case-list-api">
+            {scenariosLoading ? <LoadingPanel text="正在加载 API 场景…" /> : scenariosError ? (
+              <ErrorPanel message={scenariosError} compact onRetry={() => void openAddCases()} />
+            ) : scenarios.length === 0 ? (
+              <EmptyState compact icon="code" title="没有可添加的 API 场景" description="请先在「API 场景」页面创建并启用" />
+            ) : scenarios.map((scenario) => {
+              const checked = selectedScenarios.has(scenario.id);
+              return (
+                <label key={scenario.id} className={cx('add-case-row', checked && 'is-checked')}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleScenario(scenario.id)} />
+                  <span className="add-case-main">
+                    <span className="add-case-title">{scenario.name}</span>
+                    <span className="add-case-sub">{scenario.description || scenario.id}</span>
+                  </span>
+                  <Pill tone="purple">YAML 场景</Pill>
+                </label>
+              );
+            })}
+          </div>
+          <div className="field-hint">执行器覆盖只对 UI 用例生效；接口用例和 API 场景固定由 api-execution 执行。</div>
         </div>
       </Modal>
 

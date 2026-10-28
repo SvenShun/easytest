@@ -6,6 +6,8 @@ import com.testhub.common.util.Ids;
 import com.testhub.common.web.ApiException;
 import com.testhub.common.web.PageResponse;
 import com.testhub.core.feature.apicase.ApiCase;
+import com.testhub.core.feature.apiscenario.ApiScenario;
+import com.testhub.core.feature.apiscenario.ApiScenarioRepository;
 import com.testhub.core.feature.apienv.ApiEnvironmentRepository;
 import com.testhub.core.feature.apicase.ApiCaseRepository;
 import com.testhub.core.feature.casemgmt.CapabilityView;
@@ -44,11 +46,13 @@ public class PlanService {
     private final CaseService caseService;
     private final ApiCaseRepository apiCaseRepository;
     private final ApiEnvironmentRepository environmentRepository;
+    private final ApiScenarioRepository scenarioRepository;
 
     public PlanService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                        PlanRunRepository runRepository, ClientCaseRepository caseRepository,
                        ScriptService scriptService, CaseService caseService,
-                       ApiCaseRepository apiCaseRepository, ApiEnvironmentRepository environmentRepository) {
+                       ApiCaseRepository apiCaseRepository, ApiEnvironmentRepository environmentRepository,
+                       ApiScenarioRepository scenarioRepository) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -57,6 +61,7 @@ public class PlanService {
         this.caseService = caseService;
         this.apiCaseRepository = apiCaseRepository;
         this.environmentRepository = environmentRepository;
+        this.scenarioRepository = scenarioRepository;
     }
 
     public PageResponse<PlanView> list(String keyword, Integer page, Integer size) {
@@ -139,8 +144,9 @@ public class PlanService {
         TestPlan plan = require(planId);
         List<String> uiCaseIds = request == null || request.caseIds() == null ? List.of() : request.caseIds();
         List<String> apiCaseIds = request == null || request.apiCaseIds() == null ? List.of() : request.apiCaseIds();
-        if (uiCaseIds.isEmpty() && apiCaseIds.isEmpty()) {
-            throw ApiException.badRequest("caseIds 与 apiCaseIds 至少提供一个");
+        List<String> scenarioIds = request == null || request.scenarioIds() == null ? List.of() : request.scenarioIds();
+        if (uiCaseIds.isEmpty() && apiCaseIds.isEmpty() && scenarioIds.isEmpty()) {
+            throw ApiException.badRequest("caseIds、apiCaseIds 与 scenarioIds 至少提供一个");
         }
         ExecutorType override = ExecutorType.parseOverride(request.executorTypeOverride());
         Instant now = Instant.now();
@@ -179,6 +185,23 @@ public class PlanService {
             }
             planCaseRepository.save(mounted);
         }
+        for (String scenarioId : new LinkedHashSet<>(scenarioIds)) {
+            ApiScenario scenario = scenarioRepository.findById(scenarioId)
+                    .orElseThrow(() -> ApiException.notFound("API 场景不存在: " + scenarioId));
+            if (!scenario.isEnabled()) {
+                throw new ApiException(HttpStatus.CONFLICT, "CASE_DISABLED",
+                        "API 场景已禁用，无法挂载: " + scenario.getName());
+            }
+            PlanCase mounted = planCaseRepository.findByPlanIdAndCaseId(planId, scenarioId).orElse(null);
+            if (mounted == null) {
+                mounted = new PlanCase(Ids.newId("plan-case"), planId, scenarioId, CaseType.SCENARIO,
+                        null, now.plusMillis(index++));
+            } else {
+                mounted.setCaseType(CaseType.SCENARIO);
+                mounted.setExecutorTypeOverride(null);
+            }
+            planCaseRepository.save(mounted);
+        }
         plan.setUpdatedAt(Instant.now());
         planRepository.save(plan);
         return planCases(planId);
@@ -197,6 +220,16 @@ public class PlanService {
     public List<PlanCaseView> planCases(String planId) {
         List<PlanCaseView> views = new ArrayList<>();
         for (PlanCase mounted : planCaseRepository.findByPlanIdOrderByCreatedAtAscIdAsc(planId)) {
+            if (mounted.getCaseType() == CaseType.SCENARIO) {
+                ApiScenario scenario = scenarioRepository.findById(mounted.getCaseId()).orElse(null);
+                if (scenario == null) {
+                    continue;
+                }
+                views.add(new PlanCaseView(scenario.getId(), scenario.getName(), null, false, null,
+                        null, ExecutorType.SCENARIO, List.of(ExecutorType.SCENARIO),
+                        CaseType.SCENARIO, null, null));
+                continue;
+            }
             if (mounted.getCaseType() == CaseType.API) {
                 ApiCase apiCase = apiCaseRepository.findById(mounted.getCaseId()).orElse(null);
                 if (apiCase == null) {

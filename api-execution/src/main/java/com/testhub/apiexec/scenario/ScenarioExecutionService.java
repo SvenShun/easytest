@@ -242,7 +242,7 @@ public class ScenarioExecutionService {
                 base = base.substring(0, base.length() - 1);
             }
             callbackClient.postPlanItemResult(new PlanItemResultPayload(task.getPlanRunId(), task.getCaseId(),
-                    task.getId(), task.getStatus().name(), "API_SCENARIO", task.getFailureReason(),
+                    task.getId(), task.getStatus().name(), "SCENARIO", task.getFailureReason(),
                     base + "/api/v1/api-execution/scenarios/" + task.getId() + "/report", task.getSummary()));
         } catch (RuntimeException e) {
             log.warn("场景结果回调失败 taskId={}: {}", task.getId(), e.getMessage());

@@ -9,6 +9,8 @@ import com.testhub.core.feature.apicase.ApiCase;
 import com.testhub.core.feature.apienv.ApiEnvironment;
 import com.testhub.core.feature.apienv.ApiEnvironmentRepository;
 import com.testhub.core.feature.apienv.ApiEnvironmentResolver;
+import com.testhub.core.feature.apiscenario.ApiScenarioDtos;
+import com.testhub.core.feature.apiscenario.ApiScenarioService;
 import com.testhub.core.feature.notification.NotificationService;
 import com.testhub.core.feature.apicase.ApiCaseRepository;
 import com.testhub.core.feature.apicase.ApiCaseService;
@@ -59,6 +61,7 @@ public class PlanRunService {
     private final ApiEnvironmentRepository environmentRepository;
     private final ApiEnvironmentResolver environmentResolver;
     private final NotificationService notificationService;
+    private final ApiScenarioService apiScenarioService;
 
     public PlanRunService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                           PlanRunRepository runRepository, PlanRunItemRepository itemRepository,
@@ -68,7 +71,8 @@ public class PlanRunService {
                           ApiExecutionClient apiExecutionClient, ApiCaseRepository apiCaseRepository,
                           ApiCaseService apiCaseService, ApiEnvironmentRepository environmentRepository,
                           ApiEnvironmentResolver environmentResolver,
-                          NotificationService notificationService) {
+                          NotificationService notificationService,
+                          ApiScenarioService apiScenarioService) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -84,6 +88,7 @@ public class PlanRunService {
         this.environmentRepository = environmentRepository;
         this.environmentResolver = environmentResolver;
         this.notificationService = notificationService;
+        this.apiScenarioService = apiScenarioService;
     }
 
     public TriggerResponse trigger(String planId, TriggerRequest request) {
@@ -157,6 +162,47 @@ public class PlanRunService {
                     views.add(triggerView(item));
                 }
                 index += rows.size() - 1;
+                continue;
+            }
+
+            if (mount.getCaseType() == CaseType.SCENARIO) {
+                ApiScenarioDtos.ScenarioView scenario;
+                try {
+                    scenario = apiScenarioService.get(mount.getCaseId());
+                } catch (ApiException e) {
+                    PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), mount.getCaseId(),
+                            "(已删除 API 场景)", ExecutorType.SCENARIO, RunItemStatus.SKIPPED, itemTime);
+                    item.setError("API 场景已不存在，已跳过");
+                    item.setUpdatedAt(Instant.now());
+                    itemRepository.save(item);
+                    views.add(triggerView(item));
+                    continue;
+                }
+                if (!scenario.enabled()) {
+                    PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), scenario.id(),
+                            scenario.name(), ExecutorType.SCENARIO, RunItemStatus.SKIPPED, itemTime);
+                    item.setError("API 场景已禁用，已跳过");
+                    item.setUpdatedAt(Instant.now());
+                    itemRepository.save(item);
+                    views.add(triggerView(item));
+                    continue;
+                }
+                PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), scenario.id(),
+                        scenario.name(), ExecutorType.SCENARIO, RunItemStatus.PENDING, itemTime);
+                itemRepository.save(item);
+                try {
+                    ApiScenarioService.RunHandle handle = apiScenarioService.startForPlan(
+                            scenario.id(), planId, run.getId(), timeoutSec, actor);
+                    item.setTaskId(handle.taskId());
+                    RunItemStatus status = RunItemStatus.parse(handle.status());
+                    item.setStatus(status == null ? RunItemStatus.PENDING : status);
+                } catch (Exception e) {
+                    item.setStatus(RunItemStatus.FAILED);
+                    item.setError(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                }
+                item.setUpdatedAt(Instant.now());
+                itemRepository.save(item);
+                views.add(triggerView(item));
                 continue;
             }
 
@@ -340,7 +386,8 @@ public class PlanRunService {
         }
         Map<String, Snapshot> byTask = new LinkedHashMap<>();
         boolean hasUi = items.stream().anyMatch(item -> !item.getStatus().isTerminal()
-                && !isBlank(item.getTaskId()) && item.getExecutorType() != ExecutorType.API);
+                && !isBlank(item.getTaskId()) && item.getExecutorType() != ExecutorType.API
+                && item.getExecutorType() != ExecutorType.SCENARIO);
         boolean hasApi = items.stream().anyMatch(item -> !item.getStatus().isTerminal()
                 && !isBlank(item.getTaskId()) && item.getExecutorType() == ExecutorType.API);
         try {
@@ -490,6 +537,13 @@ public class PlanRunService {
     }
 
     private boolean isExecutable(PlanCase mount) {
+        if (mount.getCaseType() == CaseType.SCENARIO) {
+            try {
+                return apiScenarioService.get(mount.getCaseId()).enabled();
+            } catch (ApiException e) {
+                return false;
+            }
+        }
         if (mount.getCaseType() == CaseType.API) {
             return apiCaseRepository.findById(mount.getCaseId())
                     .map(ApiCase::isEnabled)

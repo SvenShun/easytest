@@ -22,6 +22,8 @@
 - 运行 `scenario-run_3a...`（task `scenario-task_a970...`）→ **SUCCESS，4/4 steps passed**
 - 前端运行弹窗显示 `SUCCESS`、4 个步骤、每步状态/耗时；截图 `data/page-api-scenario-run.png`
 - 队列恢复：重启 api-execution 后 PENDING 任务被重新入队并成功执行
+- 计划集成：计划 `plan_e47e7aa2a78045179a2d` 挂载场景后触发 → 运行 `run_b7d958a6439643d5bef8` → 运行项 `SCENARIO` **SUCCESS**，计划 `COMPLETED`
+- 前端：API 场景页面、计划详情场景条目/运行弹窗无 console error
 
 ## 测试
 
