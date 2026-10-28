@@ -25,6 +25,17 @@
 - 通知：本地 Webhook 收到 RUN_COMPLETED（runId/planName/status/text/url 完整）。
 - 计划绑定：API 保存/读取绑定设备，触发按绑定设备生成运行项（单元测试）。
 
+## 真机一键验收
+
+设备恢复后运行：
+
+```bash
+make part6
+# 或 python3 scripts/part6_device_check.py --device f04af072
+```
+
+覆盖 UIA2 启动、中文输入（UI 树回读）、双指缩放、性能采样/历史、录屏产物、截图对比、UIA2 停止恢复；报告写入 `data/part6-device-report.json`。
+
 ## 受限
 
 当前真机 `f04af072` 在开发过程中断开（`adb devices` 为空），因此 UIA2 启停/中文输入、录屏、性能曲线、截图对比的**真机**端到端验证待设备重新连接后补跑；相关接口、单元测试与 UI 已完成。
