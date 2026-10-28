@@ -14,7 +14,7 @@
 
 ## 验证
 
-- `./scripts/check.sh`：Java **177** + Python **48** = 225，前端构建通过（新增 ImageDiffServiceTest、KbApiTest、PlanTriggerTest 绑定设备用例）。
+- `./scripts/check.sh`：Java **179** + Python **48** = 227，前端构建通过（新增 ImageDiffServiceTest、KbApiTest、PlanTriggerTest 绑定设备用例）。
 - 通知：本地 mock webhook 收到 `RUN_COMPLETED`，字段 runId/planName/status/text 正确。
 - 计划绑定：API 保存/读取 deviceIds；触发实际创建对应运行项。
 - 知识库：API 创建 APP/页面/控件/操作成功，列表计数正确；截图上传/公开读取 200。
