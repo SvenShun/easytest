@@ -32,15 +32,18 @@ public class TaskWorkerPool implements ApplicationRunner, DisposableBean {
     private static final long ERROR_BACKOFF_MS = 1_000L;
 
     private final ApiExecutionService executionService;
+    private final com.testhub.apiexec.scenario.ScenarioExecutionService scenarioService;
     private final TaskQueue taskQueue;
     private final ApiExecProperties properties;
     private final List<Thread> threads = new ArrayList<>();
 
     private volatile boolean running;
 
-    public TaskWorkerPool(ApiExecutionService executionService, TaskQueue taskQueue,
-                          ApiExecProperties properties) {
+    public TaskWorkerPool(ApiExecutionService executionService,
+                          com.testhub.apiexec.scenario.ScenarioExecutionService scenarioService,
+                          TaskQueue taskQueue, ApiExecProperties properties) {
         this.executionService = executionService;
+        this.scenarioService = scenarioService;
         this.taskQueue = taskQueue;
         this.properties = properties;
     }
@@ -91,11 +94,21 @@ public class TaskWorkerPool implements ApplicationRunner, DisposableBean {
                 continue;
             }
             try {
-                executionService.execute(taskId, workerId);
+                if (taskId.startsWith(com.testhub.apiexec.scenario.ScenarioExecutionService.QUEUE_PREFIX)) {
+                    scenarioService.execute(taskId.substring(
+                            com.testhub.apiexec.scenario.ScenarioExecutionService.QUEUE_PREFIX.length()), workerId);
+                } else {
+                    executionService.execute(taskId, workerId);
+                }
             } catch (RuntimeException e) {
                 log.error("worker 执行任务异常 taskId={} workerId={}", taskId, workerId, e);
                 try {
-                    executionService.failUnexpected(taskId, e);
+                    if (taskId.startsWith(com.testhub.apiexec.scenario.ScenarioExecutionService.QUEUE_PREFIX)) {
+                        scenarioService.failUnexpected(taskId.substring(
+                                com.testhub.apiexec.scenario.ScenarioExecutionService.QUEUE_PREFIX.length()), e);
+                    } else {
+                        executionService.failUnexpected(taskId, e);
+                    }
                 } catch (RuntimeException failure) {
                     log.error("worker 标记任务失败异常 taskId={} workerId={}", taskId, workerId, failure);
                 }

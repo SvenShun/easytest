@@ -593,3 +593,5 @@ export interface AuditLog {
   detail?: unknown;
   createdAt?: string;
 }
+
+export type JsonNode = unknown;

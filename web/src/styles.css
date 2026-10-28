@@ -4974,3 +4974,10 @@ a.btn:hover {
 .kb-form-shot { display: block; max-width: 220px; max-height: 140px; margin-top: 6px; border: 1px solid var(--border); border-radius: 6px; }
 .kb-action-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow: auto; }
 .kb-action-row { display: grid; grid-template-columns: 100px 1fr 1fr auto; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid rgba(148,163,184,.12); }
+
+.yaml-editor { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; }
+.scenario-step { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.scenario-step summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.scenario-step summary::-webkit-details-marker { display: none; }
+.scenario-step-body { padding-top: 8px; }
+.scenario-step-body pre { max-height: 260px; overflow: auto; background: #0b1220; color: #dbeafe; border-radius: 6px; padding: 8px; font-size: 11px; }

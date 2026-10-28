@@ -235,12 +235,12 @@ public class AssertionEvaluator {
     }
 
     /** Minimal JSON-path reader supporting {@code $.a.b[0]['c']}. */
-    static final class JsonPathReader {
+    public static final class JsonPathReader {
 
         private JsonPathReader() {
         }
 
-        static JsonNode read(JsonNode root, String path) {
+        public static JsonNode read(JsonNode root, String path) {
             if (root == null) {
                 return null;
             }

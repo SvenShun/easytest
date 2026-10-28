@@ -37,6 +37,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/requirements', label: '需求管理', icon: 'cases', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
       { path: '/cases', label: '用例管理', icon: 'cases', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
       { path: '/api-cases', label: '接口用例', icon: 'api', roles: ['ADMIN', 'TESTER'] },
+      { path: '/api-scenarios', label: 'API 场景', icon: 'code', roles: ['ADMIN', 'TESTER'] },
       { path: '/environments', label: '环境管理', icon: 'server', roles: ['ADMIN', 'TESTER'] },
       { path: '/ui-elements', label: '元素库', icon: 'cases', roles: ['ADMIN', 'TESTER'] },
       { path: '/kb', label: 'UI 知识库', icon: 'devices', roles: ['ADMIN', 'TESTER'] },

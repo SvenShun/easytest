@@ -1,0 +1,134 @@
+# 接口自动化场景（YAML 驱动）
+
+## 背景与 MeterSphere 对照
+
+MeterSphere 的场景能力基于 JMeter：
+
+- 场景（`ApiScenario`）+ 有序步骤（`ApiScenarioStep`/`StepBlob`）
+- 步骤类型：接口/接口用例/自定义请求/子场景、循环控制器、条件控制器、一次控制器、等待、脚本、JMeter 组件
+- 前后置处理器：SQL、BeanShell/Groovy/JSR223 脚本
+- 变量/CSV、断言、报告/通知
+- 执行引擎是 JMeter，TestHub 不适合直接嵌入这套引擎。
+
+TestHub 采用 **YAML 作为用例载体 + 自研轻量驱动器**，复用现有 `api-execution` 的队列、HTTP 客户端、断言引擎和计划回调；支持同样的核心能力（HTTP/SQL/脚本/变量/断言），但更易读、易 diff、易生成。
+
+## YAML 格式
+
+```yaml
+name: login-and-query
+timeoutSec: 120
+continueOnFailure: false
+variables:
+  username: tester
+  password: test123
+environment:
+  baseUrl: http://127.0.0.1:8080
+  headers: {}
+  variables: {}
+  datasources:
+    main:
+      url: jdbc:mysql://127.0.0.1:3306/demo?useSSL=false
+      username: root
+      password: testhub
+steps:
+  - name: 登录
+    type: http
+    method: POST
+    path: /api/v1/auth/login
+    headers: { Content-Type: application/json }
+    body: { username: "${username}", password: "${password}" }
+    extract:
+      token: $.token
+      userId: $.user.id
+    assertions:
+      - { type: STATUS_CODE, operator: EQ, expected: 200 }
+      - { type: JSON_PATH, path: $.user.username, operator: EQ, expected: tester }
+
+  - name: 查询数据库
+    type: sql
+    datasource: main
+    query: SELECT id, name FROM users WHERE name = ?
+    params: ["${username}"]
+    extract: { dbId: "rows[0].id" }
+    assertions:
+      - { type: SQL_ROW_COUNT, operator: GT, expected: 0 }
+      - { type: SQL_VALUE, path: rows[0].name, operator: EQ, expected: tester }
+
+  - name: 自定义脚本
+    type: groovy
+    script: |
+      vars.put("combined", vars.get("token") + "-" + vars.get("dbId"))
+      log.info("combined=" + vars.get("combined"))
+
+  - name: 校验变量
+    type: assert
+    assertions:
+      - { type: VARIABLE, path: combined, operator: CONTAINS, expected: "-" }
+
+  - name: 调用业务接口
+    type: http
+    method: GET
+    path: /api/v1/profile
+    headers: { Authorization: "Bearer ${token}" }
+    assertions:
+      - { type: STATUS_CODE, operator: EQ, expected: 200 }
+```
+
+### 步骤类型
+
+| type | 能力 |
+|---|---|
+| `http` | method/path/url、headers、query、body、timeout、extract、assertions |
+| `sql` | datasource、query、params、extract（rows/rowCount/updateCount）、SQL 断言 |
+| `groovy` | `vars`、`env`、`log`、`json` 绑定；可读写变量 |
+| `set` | 设置变量（支持模板） |
+| `assert` | 变量/值比较：EQ/NE/CONTAINS/NOT_CONTAINS/GT/GE/LT/LE |
+| `wait` | 等待毫秒 |
+
+### 数据传递
+
+- `${var}`、`{{ var }}` 在请求、SQL、断言、脚本前后文生效。
+- HTTP `extract` 支持 JSONPath、`header:Name`、`status`、`body`。
+- SQL `extract` 支持 `rows[0].id`、`rowCount`、`updateCount`。
+- 提取结果写入变量，后续步骤直接引用。
+- `report` 中会输出 `extracted` 和步骤级变量；`env` 不写入报告，避免泄漏 datasource 密码。
+
+### 断言
+
+HTTP 复用现有五种断言：`STATUS_CODE / JSON_PATH / BODY_CONTAINS / RESPONSE_TIME_MS / HEADER_CONTAINS`。
+SQL：`SQL_ROW_COUNT`、`SQL_VALUE`。变量：`VARIABLE`。任一断言失败默认终止场景；可设置 `continueOnFailure: true` 或步骤级覆盖。
+
+## 执行链路
+
+```
+POST /api/v1/api-scenarios/{id}/run
+  → core 解析环境/baseUrl/headers/variables
+  → api-execution POST /scenarios
+  → Redis/内存队列 scenario:<taskId>
+  → worker 认领 → YAML 解析 → 顺序执行 → 报告
+  → core 轮询 /api-scenarios/runs/{runId}
+```
+
+API：
+
+```
+POST /api/v1/api-scenarios/validate
+POST /api/v1/api-scenarios
+GET  /api/v1/api-scenarios
+POST /api/v1/api-scenarios/{id}/run
+GET  /api/v1/api-scenarios/runs/{runId}
+GET  /api/v1/api-scenarios/{id}/runs
+```
+
+## 与 JMeter 的差异
+
+- 没有 JMeter 线程组/监听器/控制器树；当前是顺序步骤 + 步骤级失败策略。
+- 无 CSV 数据集、循环/条件控制器、分布式压测；后续按需增加。
+- Groovy 为本地脚本执行，非沙箱；仅 ADMIN/TESTER 可运行。
+- 测试计划集成暂未接入；当前从「API 场景」页面单独运行并保留历史报告。
+
+## 安全
+
+- 场景编辑器仅 ADMIN/TESTER 可写/运行。
+- SQL 使用 `PreparedStatement` 参数绑定；`query` 仍由作者提供，平台按测试代码信任。
+- 报告脱敏环境 datasource，不返回 `env`。

@@ -14,6 +14,7 @@ export { uiElementsApi } from './uielements';
 export { deviceGroupsApi } from './deviceGroups';
 export { notificationsApi } from './notifications';
 export { kbApi } from './kb';
+export { apiScenariosApi } from './scenarios';
 export { uiexecApi } from './uiexec';
 export type { TaskListParams } from './uiexec';
 export { ApiError, TOKEN_KEY, USER_KEY, clearToken, getToken, saveToken, request } from './client';

@@ -19,15 +19,19 @@ public class StartupRecovery implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(StartupRecovery.class);
 
     private final ApiExecutionService executionService;
+    private final com.testhub.apiexec.scenario.ScenarioExecutionService scenarioService;
 
-    public StartupRecovery(ApiExecutionService executionService) {
+    public StartupRecovery(ApiExecutionService executionService,
+                           com.testhub.apiexec.scenario.ScenarioExecutionService scenarioService) {
         this.executionService = executionService;
+        this.scenarioService = scenarioService;
     }
 
     @Override
     public void run(ApplicationArguments args) {
         try {
             executionService.recoverInterrupted();
+            scenarioService.recoverInterrupted();
         } catch (RuntimeException e) {
             log.warn("启动恢复未完成任务失败（忽略）: {}", e.getMessage());
         }
