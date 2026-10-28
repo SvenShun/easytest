@@ -19,6 +19,8 @@
 - 计划绑定：API 保存/读取 deviceIds；触发实际创建对应运行项。
 - 知识库：API 创建 APP/页面/控件/操作成功，列表计数正确；截图上传/公开读取 200。
 - 前端：KB/通知页面无 console error。
+- UIA2 生命周期：`Uia2ManagerTest` 用 fake adb + fake UIA2 `/status`/`/session` 验证安装跳过、forward、session 建立、驱动替换、stop 恢复。
+- 中文/多点触控：`SonicUnicodeMultiTouchTest` 捕获 UIA2 `/keys`（含中文）和 `/touch/perform`（finger0/finger1/pointerMove）请求。
 - 假 Agent HTTP 全链路：设备注册 → 性能采样 `cpuPercent=12.5/memUsedPercent=48.2` → 历史查询 → 截图对比 `mismatchPercent=0`（三张产物 URL）→ 录屏开始/停止（22 字节 mp4 产物 URL），全部成功。
 - 通知：本地 Webhook 收到 RUN_COMPLETED（runId/planName/status/text/url 完整）。
 - 计划绑定：API 保存/读取绑定设备，触发按绑定设备生成运行项（单元测试）。

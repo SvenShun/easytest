@@ -179,6 +179,10 @@ public class Uia2Manager {
     }
 
     private int freePort() {
+        int configured = Integer.getInteger("testhub.agent.uia2-port", 0);
+        if (configured > 0) {
+            return configured;
+        }
         try (ServerSocket socket = new ServerSocket(0)) {
             socket.setReuseAddress(true);
             return socket.getLocalPort();
