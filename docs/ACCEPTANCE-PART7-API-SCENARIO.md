@@ -28,4 +28,4 @@
 ## 测试
 
 - `ScenarioExecutorTest`：HTTP+SQL+Groovy+变量传递成功；断言失败默认终止。
-- `./scripts/check.sh` 待最终全量运行。
+- `./scripts/check.sh`：Java **181** + Python **48** = 229，前端构建通过。
