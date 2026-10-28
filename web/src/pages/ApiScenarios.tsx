@@ -103,6 +103,25 @@ const EMPTY_EDITOR: EditorState = {
   name: '', description: '', yaml: DEFAULT_YAML, environmentId: '', enabled: true,
 };
 
+const STEP_SNIPPETS: Array<{ label: string; group: string; yaml: string }> = [
+  { label: 'HTTP', group: '步骤', yaml: '- name: http-step\n  type: http\n  method: GET\n  path: /api/health\n  headers: {}\n  assertions:\n    - {type: STATUS_CODE, operator: EQ, expected: 200}' },
+  { label: 'SQL', group: '步骤', yaml: '- name: sql-step\n  type: sql\n  datasource: main\n  query: SELECT 1 AS n\n  extract: {n: rows[0].n}\n  assertions:\n    - {type: SQL_ROW_COUNT, operator: GT, expected: 0}' },
+  { label: 'Groovy', group: '步骤', yaml: '- name: script-step\n  type: groovy\n  script: |\n    vars.put("computed", "ok")' },
+  { label: 'set', group: '步骤', yaml: '- name: set-step\n  type: set\n  variables:\n    key: value' },
+  { label: 'assert', group: '步骤', yaml: '- name: assert-step\n  type: assert\n  assertions:\n    - {type: VARIABLE, path: key, operator: EQ, expected: value}' },
+  { label: 'wait', group: '步骤', yaml: '- name: wait-step\n  type: wait\n  ms: 500' },
+  { label: 'if / else', group: '控制器', yaml: '- name: branch\n  type: if\n  condition: "${flag} == yes"\n  steps:\n    - {name: then-step, type: set, variables: {branch: yes}}\n  elseSteps:\n    - {name: else-step, type: set, variables: {branch: no}}' },
+  { label: 'loop / dataset', group: '控制器', yaml: '- name: iterate\n  type: loop\n  dataset: users\n  indexVar: idx\n  itemVar: row\n  steps:\n    - {name: use-row, type: set, variables: {current: "${username}"}}' },
+  { label: 'once', group: '控制器', yaml: '- name: once\n  type: once\n  steps:\n    - {name: once-set, type: set, variables: {once: ok}}' },
+  { label: 'while', group: '控制器', yaml: '- name: retry\n  type: while\n  condition: "${i} < 3"\n  maxIterations: 10\n  steps:\n    - name: increase\n      type: groovy\n      script: |\n        vars.put("i", ((Number) vars.get("i")).intValue() + 1)' },
+  { label: '前置 / 后置', group: '钩子', yaml: '- name: step-with-hooks\n  type: http\n  method: GET\n  path: /api/health\n  before:\n    - {name: prepare, type: set, variables: {marker: before-ok}}\n  after:\n    - {name: verify, type: assert, assertions: [{type: VARIABLE, path: marker, operator: EQ, expected: before-ok}]}' },
+];
+
+const DATASET_SNIPPET = `datasets:
+  users:
+    - {username: tester, password: test123}
+    - {username: admin, password: admin123}`;
+
 export function ApiScenariosPage() {
   const { user } = useAuth();
   const canWrite = canManageCases(user);
@@ -144,6 +163,7 @@ export function ApiScenariosPage() {
   const [importEnv, setImportEnv] = useState('');
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState('');
+  const [capabilitiesOpen, setCapabilitiesOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -246,6 +266,19 @@ export function ApiScenariosPage() {
     } finally {
       setImportBusy(false);
     }
+  };
+
+  const insertSnippet = (snippet: string) => {
+    if (!editorOpen) {
+      setEditing(null);
+      setEditor({ ...EMPTY_EDITOR, name: '新场景' });
+      setEditorOpen(true);
+    }
+    setEditor((prev) => ({
+      ...prev,
+      yaml: `${prev.yaml.trimEnd()}${prev.yaml.trim() ? '\n\n' : ''}${snippet}`,
+    }));
+    toastSuccess('已插入模板到 YAML 编辑器');
   };
 
   const openCreate = () => {
@@ -418,6 +451,34 @@ export function ApiScenariosPage() {
         ) : undefined}
       />
       <Card>
+        <CardHead title="YAML 能力入口" description="所有步骤/控制器都在 YAML 中；点击按钮可直接插入模板，再编辑成你的场景" icon="code"
+          actions={<Button size="sm" variant="ghost" onClick={() => setCapabilitiesOpen(true)}>语法说明</Button>} />
+        <div className="card-body">
+          <div className="capability-row">
+            {['步骤', '控制器', '钩子'].map((group) => (
+              <div key={group} className="capability-row" style={{ flexWrap: 'wrap' }}>
+                <span className="capability-label">{group}</span>
+                <div className="pill-row">
+                  {STEP_SNIPPETS.filter((item) => item.group === group).map((item) => (
+                    <Button key={item.label} size="sm" variant="ghost" onClick={() => insertSnippet(item.yaml)}>
+                      + {item.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="row-actions">
+            <Button size="sm" variant="secondary" onClick={() => insertSnippet(DATASET_SNIPPET)}>+ 数据集 datasets</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setEditor({ ...EMPTY_EDITOR, name: '新场景' }); setEditing(null); setEditorOpen(true); }}>打开 YAML 编辑器</Button>
+            <Button size="sm" variant="secondary" onClick={openBatch}>批量运行</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setImportName(''); setImportDescription(''); setImportYaml(''); setImportEnv(''); setImportError(''); setImportOpen(true); }}>导入 YAML</Button>
+          </div>
+          <div className="field-hint">支持 HTTP / SQL / Groovy / set / assert / wait / if-else / loop(times/items/dataset) / once / while / before-after / 变量提取；CSV 导入按钮在编辑器内。</div>
+        </div>
+      </Card>
+
+      <Card>
         <CardHead title="场景列表" description="YAML 是唯一事实来源；运行报告包含每步请求/响应/断言/提取变量" icon="code"
           actions={<Button size="sm" variant="ghost" icon="refresh" loading={loading} onClick={() => void load()}>刷新</Button>} />
         <div className="table-wrap">
@@ -469,7 +530,14 @@ export function ApiScenariosPage() {
             </Select></Field>
           </div>
           <Field label="描述" htmlFor="scenario-desc"><Input id="scenario-desc" value={editor.description} onChange={(e) => setEditor({ ...editor, description: e.target.value })} /></Field>
-          <Field label="YAML" htmlFor="scenario-yaml" hint="支持 http / sql / groovy / set / assert / wait；变量用 ${var} 或 {{var}}">
+          <div className="row-actions" style={{ flexWrap: 'wrap' }}>
+            <span className="capability-label">插入：</span>
+            {STEP_SNIPPETS.map((item) => (
+              <Button key={item.label} size="sm" variant="ghost" onClick={() => insertSnippet(item.yaml)}>{item.label}</Button>
+            ))}
+            <Button size="sm" variant="ghost" onClick={() => insertSnippet(DATASET_SNIPPET)}>datasets</Button>
+          </div>
+          <Field label="YAML" htmlFor="scenario-yaml" hint="支持 HTTP/SQL/Groovy/set/assert/wait、if/loop/once/while、before/after、变量 ${var} 或 {{var}}">
             <Textarea id="scenario-yaml" className="yaml-editor" rows={26} value={editor.yaml} onChange={(e) => setEditor({ ...editor, yaml: e.target.value })} />
           </Field>
           <div className="row-actions">
@@ -532,6 +600,29 @@ export function ApiScenariosPage() {
               ))}
             </>
           )}
+        </div>
+      </Modal>
+
+      <Modal open={capabilitiesOpen} title="YAML 场景语法说明" size="lg"
+        onClose={() => setCapabilitiesOpen(false)} footer={<Button variant="secondary" onClick={() => setCapabilitiesOpen(false)}>关闭</Button>}>
+        <div className="form-stack">
+          <Callout tone="info" title="入口说明">
+            「API 场景」页 → 新建/编辑 → YAML 编辑器。批量运行/导入在页面顶部，CSV 导入在编辑器内。
+          </Callout>
+          <table className="table">
+            <thead><tr><th>能力</th><th>写法</th></tr></thead>
+            <tbody>
+              <tr><td>HTTP</td><td><code>type: http</code> + method/path/headers/body/extract/assertions</td></tr>
+              <tr><td>SQL</td><td><code>type: sql</code> + datasource/query/params/extract</td></tr>
+              <tr><td>Groovy</td><td><code>type: groovy</code> + script；使用 vars/env/log</td></tr>
+              <tr><td>变量传递</td><td><code>{'${var}'}</code> 或 <code>{'{{var}}'}</code>；extract 写入后续步骤</td></tr>
+              <tr><td>控制器</td><td><code>type: if/loop/once/while</code> + steps；loop 支持 times/items/dataset</td></tr>
+              <tr><td>数据集</td><td>根节点 <code>datasets:</code>；编辑器「导入 CSV 数据集」自动生成</td></tr>
+              <tr><td>前置/后置</td><td>任意步骤加 <code>before:</code> / <code>after:</code> 子步骤</td></tr>
+              <tr><td>断言</td><td>STATUS_CODE / JSON_PATH / XML_PATH / JSON_SCHEMA / SQL_ROW_COUNT / SQL_VALUE / VARIABLE</td></tr>
+            </tbody>
+          </table>
+          <div className="field-hint">完整格式见 docs/API-SCENARIO.md。</div>
         </div>
       </Modal>
 
