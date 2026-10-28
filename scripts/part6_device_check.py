@@ -94,7 +94,8 @@ def main() -> int:
     device = next((item for item in devices if item.get("serial") == args.device), None)
     if device is None:
         print(f"device {args.device} not found; adb devices:")
-        os.system("adb devices -l")
+        adb = os.environ.get("ADB") or ("tools/platform-tools/adb" if os.path.exists("tools/platform-tools/adb") else "adb")
+        os.system(f"{adb} devices -l")
         return 2
     device_id = device["deviceId"]
     print(f"== device {args.device} ({device_id}) status={device.get('status')} ==")

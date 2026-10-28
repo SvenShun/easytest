@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 ROOT  := $(shell pwd)
 
-.PHONY: help setup build test e2e part2 part3 part4 device-check scrcpy-setup scrcpy-up scrcpy-down apiexec-scale apiexec-scale-down main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
+.PHONY: help setup build test e2e part2 part3 part4 part6 device-check scrcpy-setup scrcpy-up scrcpy-down apiexec-scale apiexec-scale-down main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
 
 help:
 	@echo "TestHub V1"
@@ -23,6 +23,7 @@ help:
 	@echo "  make part2   run the Part 2 API-execution acceptance script"
 	@echo "  make part3   run the Part 3 env/data/shared-queue acceptance script"
 	@echo "  make part4   run the device-agent ADB acceptance (fake adb)"
+	@echo "  make part6   real-device UIA2/Unicode/pinch/metrics/recording/diff"
 	@echo "  make device-check  preflight a physical Android device (input/install gates)"
 	@echo "  make scrcpy-setup  clone/build ws-scrcpy (browser real-time stream)"
 	@echo "  make scrcpy-up     start ws-scrcpy on :8000"
@@ -96,6 +97,9 @@ part3:
 
 part4:
 	python3 scripts/part4_smoke.py
+
+part6:
+	python3 scripts/part6_device_check.py
 
 device-check:
 	python3 scripts/real-device-check.py
