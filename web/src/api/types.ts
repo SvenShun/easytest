@@ -293,8 +293,10 @@ export interface ApiEnvironmentInput {
 export interface TestJob {
   id: string;
   name: string;
-  planId: string;
+  planId?: string | null;
   planName?: string;
+  scenarioId?: string | null;
+  scenarioName?: string;
   cronExpression: string;
   deviceId?: string | null;
   deviceTags?: string | null;
@@ -310,7 +312,8 @@ export interface TestJob {
 
 export interface TestJobInput {
   name: string;
-  planId: string;
+  planId?: string | null;
+  scenarioId?: string | null;
   cronExpression: string;
   deviceId?: string | null;
   deviceTags?: string | null;

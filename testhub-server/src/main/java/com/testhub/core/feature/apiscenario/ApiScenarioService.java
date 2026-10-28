@@ -104,6 +104,11 @@ public class ApiScenarioService {
     }
 
     /** Starts a scenario for a plan item; the scenario task reports back with planRunId/caseId. */
+    /** Starts a scenario from a scheduler/automation without a plan item. */
+    public RunHandle startScheduled(String scenarioId, String actor) {
+        return start(scenarioId, null, Map.of(), 120, actor, null, null, null);
+    }
+
     public RunHandle startForPlan(String scenarioId, String planId, String planRunId, int timeout, String actor) {
         return start(scenarioId, null, Map.of(),
                 Math.max(1, Math.min(timeout, 3600)), actor, planId, planRunId, scenarioId);

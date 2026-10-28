@@ -152,6 +152,10 @@ GET  /api/v1/api-scenarios/runs/{runId}
 GET  /api/v1/api-scenarios/{id}/runs
 ```
 
+## 直接定时
+
+「定时任务」页新增 **API 场景** 目标选择，可直接按 Cron 运行 YAML 场景，无需先挂计划；运行 ID 指向场景运行历史。
+
 ## 与 JMeter 的差异
 
 - 没有 JMeter 线程组/监听器/控制器树；当前是顺序步骤 + 步骤级失败策略。

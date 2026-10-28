@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { jobsApi, plansApi, uiexecApi } from '../api';
+import { apiScenariosApi, jobsApi, plansApi, uiexecApi } from '../api';
 import type { Device, Plan, TestJob } from '../api/types';
 import { canManageCases, useAuth } from '../auth';
 import { formatDateTime, safeErrorMessage } from '../utils';
@@ -30,6 +30,7 @@ const PRESETS = [
 interface FormState {
   name: string;
   planId: string;
+  scenarioId: string;
   cronExpression: string;
   deviceId: string;
   deviceTags: string;
@@ -40,6 +41,7 @@ interface FormState {
 const EMPTY: FormState = {
   name: '',
   planId: '',
+  scenarioId: '',
   cronExpression: '0 0 2 * * *',
   deviceId: '',
   deviceTags: '',
@@ -52,6 +54,7 @@ export function JobsPage() {
   const canWrite = canManageCases(user);
   const [items, setItems] = useState<TestJob[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [scenarios, setScenarios] = useState<Array<{ id: string; name: string; enabled: boolean }>>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -80,6 +83,7 @@ export function JobsPage() {
   useEffect(() => {
     void load();
     void plansApi.list('', 1, 200).then((data) => setPlans(data.items)).catch(() => setPlans([]));
+    void apiScenariosApi.list('', 1, 200).then((data) => setScenarios(data.items)).catch(() => setScenarios([]));
     void uiexecApi.devices().then((data) => setDevices(data.items)).catch(() => setDevices([]));
   }, [load]);
 
@@ -94,7 +98,8 @@ export function JobsPage() {
     setEditing(job);
     setForm({
       name: job.name,
-      planId: job.planId,
+      planId: job.planId || '',
+      scenarioId: job.scenarioId || '',
       cronExpression: job.cronExpression,
       deviceId: job.deviceId || '',
       deviceTags: job.deviceTags || '',
@@ -106,8 +111,8 @@ export function JobsPage() {
   };
 
   const save = async () => {
-    if (!form.name.trim() || !form.planId || !form.cronExpression.trim()) {
-      setFormError('名称、计划、Cron 均不能为空');
+    if (!form.name.trim() || (!form.planId && !form.scenarioId) || !form.cronExpression.trim()) {
+      setFormError('名称、测试计划/API 场景、Cron 均不能为空');
       return;
     }
     setSaving(true);
@@ -115,7 +120,8 @@ export function JobsPage() {
     try {
       const input = {
         name: form.name.trim(),
-        planId: form.planId,
+        planId: form.planId || null,
+        scenarioId: form.scenarioId || null,
         cronExpression: form.cronExpression.trim(),
         deviceId: form.deviceId || null,
         deviceTags: form.deviceTags.trim() || null,
@@ -144,8 +150,10 @@ export function JobsPage() {
       const updated = await jobsApi.run(job.id);
       toastSuccess('任务已触发');
       await load();
-      if (updated.lastRunId) {
+      if (updated.lastRunId && !job.scenarioId) {
         window.location.hash = `#/runs/${updated.lastRunId}`;
+      } else if (updated.lastRunId) {
+        toastSuccess('场景运行已创建', updated.lastRunId);
       }
     } catch (err) {
       toastError(safeErrorMessage(err));
@@ -219,7 +227,7 @@ export function JobsPage() {
                 items.map((job) => (
                   <tr key={job.id}>
                     <td>{job.name}<div className="cell-sub mono">{job.id}</div></td>
-                    <td>{job.planName || job.planId}</td>
+                    <td>{job.scenarioName || job.planName || job.scenarioId || job.planId}</td>
                     <td className="mono">{job.cronExpression}</td>
                     <td className="mono">
                       {job.deviceIds && job.deviceIds.length > 0
@@ -268,10 +276,18 @@ export function JobsPage() {
           <Field label="任务名称" htmlFor="job-name" required>
             <Input id="job-name" value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
           </Field>
-          <Field label="测试计划" htmlFor="job-plan" required>
-            <Select id="job-plan" value={form.planId} onChange={(event) => setForm((prev) => ({ ...prev, planId: event.target.value }))}>
-              <option value="">选择计划</option>
+          <Field label="测试计划" htmlFor="job-plan" hint="计划任务与 API 场景任务二选一">
+            <Select id="job-plan" value={form.planId} onChange={(event) => setForm((prev) => ({ ...prev, planId: event.target.value, scenarioId: event.target.value ? '' : prev.scenarioId }))}>
+              <option value="">不选择计划</option>
               {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+            </Select>
+          </Field>
+          <Field label="API 场景" htmlFor="job-scenario" hint="直接定时运行 YAML API 场景">
+            <Select id="job-scenario" value={form.scenarioId} onChange={(event) => setForm((prev) => ({ ...prev, scenarioId: event.target.value, planId: event.target.value ? '' : prev.planId }))}>
+              <option value="">不选择场景</option>
+              {scenarios.filter((scenario) => scenario.enabled).map((scenario) => (
+                <option key={scenario.id} value={scenario.id}>{scenario.name}</option>
+              ))}
             </Select>
           </Field>
           <Field label="Cron" htmlFor="job-cron" required hint="例如 0 0 2 * * * 表示每天 02:00">
@@ -285,7 +301,7 @@ export function JobsPage() {
               </Button>
             ))}
           </div>
-          <div className="form-grid-2">
+          {!form.scenarioId ? <div className="form-grid-2">
             <Field label="目标设备" htmlFor="job-device" hint="留空则由执行器选设备">
               <Select id="job-device" value={form.deviceId} onChange={(event) => setForm((prev) => ({ ...prev, deviceId: event.target.value }))}>
                 <option value="">任意在线设备</option>
@@ -297,8 +313,8 @@ export function JobsPage() {
             <Field label="设备标签" htmlFor="job-tags" hint="逗号分隔，作为设备选择条件">
               <Input id="job-tags" value={form.deviceTags} onChange={(event) => setForm((prev) => ({ ...prev, deviceTags: event.target.value }))} />
             </Field>
-          </div>
-          <Field label="矩阵设备（可多选）" htmlFor="job-devices"
+          </div> : null}
+          {!form.scenarioId ? <Field label="矩阵设备（可多选）" htmlFor="job-devices"
                  hint="选中多台时每个 UI 用例按设备生成运行项；留空使用上方单设备">
             <select
               id="job-devices"
@@ -315,7 +331,7 @@ export function JobsPage() {
                 <option key={device.deviceId} value={device.deviceId}>{device.serial} · {device.name || device.model}</option>
               ))}
             </select>
-          </Field>
+          </Field> : null}
           <Field label="状态" htmlFor="job-enabled">
             <Select id="job-enabled" value={form.enabled ? '1' : '0'} onChange={(event) => setForm((prev) => ({ ...prev, enabled: event.target.value === '1' }))}>
               <option value="1">启用</option>

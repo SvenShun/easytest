@@ -7,6 +7,8 @@ import com.testhub.common.web.ApiException;
 import com.testhub.common.web.PageResponse;
 import com.testhub.core.feature.job.JobDtos.JobRequest;
 import com.testhub.core.feature.job.JobDtos.JobView;
+import com.testhub.core.feature.apiscenario.ApiScenarioDtos;
+import com.testhub.core.feature.apiscenario.ApiScenarioService;
 import com.testhub.core.feature.plan.PlanRunService;
 import com.testhub.core.feature.plan.TestPlan;
 import com.testhub.core.feature.plan.TestPlanRepository;
@@ -44,12 +46,20 @@ public class JobService {
     private final TestJobRepository jobs;
     private final TestPlanRepository plans;
     private final PlanRunService planRunService;
+    private final ApiScenarioService apiScenarioService;
     private final Map<String, Object> running = new ConcurrentHashMap<>();
 
     public JobService(TestJobRepository jobs, TestPlanRepository plans, PlanRunService planRunService) {
+        this(jobs, plans, planRunService, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public JobService(TestJobRepository jobs, TestPlanRepository plans, PlanRunService planRunService,
+                      ApiScenarioService apiScenarioService) {
         this.jobs = jobs;
         this.plans = plans;
         this.planRunService = planRunService;
+        this.apiScenarioService = apiScenarioService;
     }
 
     public PageResponse<JobView> list(String keyword, Integer page, Integer size) {
@@ -72,6 +82,7 @@ public class JobService {
                 request.cronExpression().trim(), blankToNull(request.deviceId()),
                 blankToNull(request.deviceTags()), join(request.deviceIds()), request.enabled() == null || request.enabled(),
                 principal.username(), now, now);
+        job.setScenarioId(blankToNull(request.scenarioId()));
         job.setNextRunAt(next(request.cronExpression(), now));
         return view(jobs.save(job));
     }
@@ -86,6 +97,7 @@ public class JobService {
         job.setDeviceId(blankToNull(request.deviceId()));
         job.setDeviceTags(blankToNull(request.deviceTags()));
         job.setDeviceIds(join(request.deviceIds()));
+        job.setScenarioId(blankToNull(request.scenarioId()));
         job.setEnabled(request.enabled() == null || request.enabled());
         job.setUpdatedAt(Instant.now());
         job.setNextRunAt(next(job.getCronExpression(), Instant.now()));
@@ -131,7 +143,8 @@ public class JobService {
                 job.setNextRunAt(next(job.getCronExpression(), now));
                 job.setUpdatedAt(now);
                 jobs.save(job);
-                log.info("scheduled job {} triggered plan {} run {}", job.getId(), job.getPlanId(), run.runId());
+                log.info("scheduled job {} triggered target {} run {}", job.getId(),
+                        job.getScenarioId() != null ? job.getScenarioId() : job.getPlanId(), run.runId());
             } catch (RuntimeException e) {
                 log.warn("scheduled job {} failed: {}", job.getId(), e.getMessage());
                 job.setNextRunAt(next(job.getCronExpression(), now));
@@ -143,6 +156,14 @@ public class JobService {
     }
 
     private TriggerResponse trigger(TestJob job) {
+        if (job.getScenarioId() != null && !job.getScenarioId().isBlank()) {
+            if (apiScenarioService == null) {
+                throw ApiException.internal("场景调度器未配置");
+            }
+            ApiScenarioService.RunHandle handle = apiScenarioService.startScheduled(
+                    job.getScenarioId(), job.getCreatedBy() == null ? "scheduler" : job.getCreatedBy());
+            return new TriggerResponse(handle.runId(), List.of());
+        }
         TestPlan plan = plans.findById(job.getPlanId())
                 .orElseThrow(() -> ApiException.notFound("计划不存在: " + job.getPlanId()));
         List<String> tags = job.getDeviceTags() == null || job.getDeviceTags().isBlank()
@@ -158,8 +179,21 @@ public class JobService {
         if (request == null || request.name() == null || request.name().isBlank()) {
             throw ApiException.badRequest("任务名称不能为空");
         }
-        if (request.planId() == null || !plans.existsById(request.planId())) {
+        boolean hasPlan = request.planId() != null && !request.planId().isBlank();
+        boolean hasScenario = request.scenarioId() != null && !request.scenarioId().isBlank();
+        if (!hasPlan && !hasScenario) {
+            throw ApiException.badRequest("必须指定测试计划或 API 场景");
+        }
+        if (hasPlan && !plans.existsById(request.planId())) {
             throw ApiException.notFound("测试计划不存在: " + request.planId());
+        }
+        if (hasScenario) {
+            if (apiScenarioService == null) {
+                throw ApiException.internal("场景调度器未配置");
+            }
+            if (!apiScenarioService.get(request.scenarioId()).enabled()) {
+                throw ApiException.conflict("API 场景已禁用: " + request.scenarioId());
+            }
         }
         if (request.cronExpression() == null || !CronExpression.isValidExpression(request.cronExpression().trim())) {
             throw ApiException.badRequest("Cron 表达式无效（Spring 6 段格式，如 0 0 2 * * *）");
@@ -176,8 +210,19 @@ public class JobService {
     }
 
     private JobView view(TestJob job) {
-        String planName = plans.findById(job.getPlanId()).map(TestPlan::getName).orElse("(已删除)");
-        return new JobView(job.getId(), job.getName(), job.getPlanId(), planName, job.getCronExpression(),
+        String planName = job.getPlanId() == null ? null
+                : plans.findById(job.getPlanId()).map(TestPlan::getName).orElse("(已删除)");
+        String scenarioName = null;
+        if (job.getScenarioId() != null) {
+            try {
+                ApiScenarioDtos.ScenarioView scenario = apiScenarioService.get(job.getScenarioId());
+                scenarioName = scenario.name();
+            } catch (RuntimeException e) {
+                scenarioName = "(已删除)";
+            }
+        }
+        return new JobView(job.getId(), job.getName(), job.getPlanId(), planName,
+                job.getScenarioId(), scenarioName, job.getCronExpression(),
                 job.getDeviceId(), job.getDeviceTags(), split(job.getDeviceIds()), job.isEnabled(), job.getLastRunId(),
                 job.getLastRunAt(), job.getNextRunAt(), job.getCreatedBy(), job.getCreatedAt(),
                 job.getUpdatedAt());

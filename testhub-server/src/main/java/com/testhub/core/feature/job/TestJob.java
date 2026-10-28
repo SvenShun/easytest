@@ -19,8 +19,12 @@ public class TestJob {
     @Column(name = "name", length = 255, nullable = false)
     private String name;
 
-    @Column(name = "plan_id", length = 64, nullable = false)
+    @Column(name = "plan_id", length = 64)
     private String planId;
+
+    /** Alternative target: a YAML API scenario scheduled directly. */
+    @Column(name = "scenario_id", length = 64)
+    private String scenarioId;
 
     /** Spring 6-field cron expression. */
     @Column(name = "cron_expression", length = 128, nullable = false)
@@ -85,6 +89,7 @@ public class TestJob {
     public String getId() { return id; }
     public String getName() { return name; }
     public String getPlanId() { return planId; }
+    public String getScenarioId() { return scenarioId; }
     public String getCronExpression() { return cronExpression; }
     public String getDeviceId() { return deviceId; }
     public String getDeviceTags() { return deviceTags; }
@@ -99,6 +104,7 @@ public class TestJob {
 
     public void setName(String name) { this.name = name; }
     public void setPlanId(String planId) { this.planId = planId; }
+    public void setScenarioId(String scenarioId) { this.scenarioId = scenarioId; }
     public void setCronExpression(String cronExpression) { this.cronExpression = cronExpression; }
     public void setDeviceId(String deviceId) { this.deviceId = deviceId; }
     public void setDeviceTags(String deviceTags) { this.deviceTags = deviceTags; }
