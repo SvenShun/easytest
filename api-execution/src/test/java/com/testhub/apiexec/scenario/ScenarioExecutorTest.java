@@ -230,6 +230,39 @@ class ScenarioExecutorTest {
         assertThat(result.variables().get("onceValue")).isEqualTo("ok");
     }
 
+
+    @Test
+    void executesBeforeAndAfterHooks() {
+        ScenarioExecutor executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),
+                new AssertionEvaluator(new ObjectMapper()), new ObjectMapper());
+        String yaml = """
+                name: hooks
+                environment:
+                  baseUrl: http://127.0.0.1:%d
+                steps:
+                  - name: login with hooks
+                    type: http
+                    method: POST
+                    path: /login
+                    body: {username: tester}
+                    before:
+                      - name: prepare
+                        type: set
+                        variables:
+                          marker: before-ok
+                    after:
+                      - name: verify-before
+                        type: assert
+                        assertions:
+                          - {type: VARIABLE, path: marker, operator: EQ, expected: before-ok}
+                """.formatted(port);
+        ScenarioRunResult result = executor.execute(yaml, Map.of(), Map.of(), 30, () -> false);
+        assertThat(result.status()).isEqualTo("SUCCESS");
+        assertThat(result.steps()).hasSize(3);
+        assertThat(result.steps().get(0).name()).isEqualTo("prepare");
+        assertThat(result.steps().get(2).name()).isEqualTo("verify-before");
+    }
+
     @Test
     void assertionFailureStopsScenarioByDefault() {
         ScenarioExecutor executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),

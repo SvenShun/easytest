@@ -11,6 +11,7 @@ import com.testhub.core.feature.apienv.ApiEnvironment;
 import com.testhub.core.feature.apienv.ApiEnvironmentRepository;
 import com.testhub.core.feature.apienv.ApiEnvironmentResolver;
 import com.testhub.core.feature.apiscenario.ApiScenarioDtos.*;
+import com.testhub.core.feature.notification.NotificationService;
 import com.testhub.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -36,16 +38,19 @@ public class ApiScenarioService {
     private final ApiEnvironmentResolver environmentResolver;
     private final ScenarioExecutionClient executionClient;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
 
     public ApiScenarioService(ApiScenarioRepository scenarios, ApiScenarioRunRepository runs,
                               ApiEnvironmentRepository environments, ApiEnvironmentResolver environmentResolver,
-                              ScenarioExecutionClient executionClient, ObjectMapper objectMapper) {
+                              ScenarioExecutionClient executionClient, ObjectMapper objectMapper,
+                              NotificationService notificationService) {
         this.scenarios = scenarios;
         this.runs = runs;
         this.environments = environments;
         this.environmentResolver = environmentResolver;
         this.executionClient = executionClient;
         this.objectMapper = objectMapper;
+        this.notificationService = notificationService;
     }
 
     public PageResponse<ScenarioView> list(String keyword, Integer page, Integer size) {
@@ -178,6 +183,11 @@ public class ApiScenarioService {
                         run.setFinishedAt(Instant.now());
                     }
                     runs.save(run);
+                    if (terminal(status) && !run.isNotificationSent()) {
+                        notificationService.onScenarioFinished(run);
+                        run.setNotificationSent(true);
+                        runs.save(run);
+                    }
                 }
             } catch (RuntimeException ignored) {
                 // Keep the last known state; the report page can retry.
@@ -187,6 +197,18 @@ public class ApiScenarioService {
     }
 
     public record RunHandle(String runId, String taskId, String status, String scenarioName) {
+    }
+
+    /** Keeps standalone/job scenario runs in sync and emits completion notifications without a UI poll. */
+    @Scheduled(fixedDelay = 5_000)
+    public void pollRunningRuns() {
+        for (ApiScenarioRun run : runs.findByStatusIn(List.of("PENDING", "RUNNING", "DISPATCHED"))) {
+            try {
+                getRun(run.getId());
+            } catch (RuntimeException ignored) {
+                // api-execution may be temporarily unavailable; retry next tick.
+            }
+        }
     }
 
     public BatchRunView batchRun(BatchRunRequest request) {

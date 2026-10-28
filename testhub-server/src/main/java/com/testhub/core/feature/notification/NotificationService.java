@@ -9,6 +9,7 @@ import com.testhub.core.feature.notification.NotificationDtos.ChannelView;
 import com.testhub.core.feature.notification.NotificationDtos.TestResult;
 import com.testhub.core.feature.plan.PlanRun;
 import com.testhub.core.feature.plan.RunStatus;
+import com.testhub.core.feature.apiscenario.ApiScenarioRun;
 import com.testhub.core.feature.plan.TestPlan;
 import com.testhub.core.feature.plan.TestPlanRepository;
 import org.slf4j.Logger;
@@ -154,6 +155,36 @@ public class NotificationService {
         payload.put("url", publicBaseUrl + "/#/runs/" + run.getId());
         payload.put("text", text);
 
+        dispatch(payload, text);
+    }
+
+    /** Sends a notification for a standalone scenario run (no plan item). */
+    public void onScenarioFinished(ApiScenarioRun run) {
+        if (run == null || run.isNotificationSent() || run.getFinishedAt() == null) {
+            return;
+        }
+        String status = scenarioStatusText(run.getStatus());
+        String text = String.format("[TestHub] API 场景「%s」执行%s\n运行：%s\n摘要：%s\n%s",
+                run.getScenarioName(), status, run.getId(),
+                run.getSummary() == null ? "—" : run.getSummary(),
+                publicBaseUrl + "/#/api-scenarios");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("event", EVENT);
+        payload.put("kind", "SCENARIO");
+        payload.put("runId", run.getId());
+        payload.put("scenarioId", run.getScenarioId());
+        payload.put("scenarioName", run.getScenarioName());
+        payload.put("status", run.getStatus());
+        payload.put("summary", run.getSummary());
+        payload.put("failureReason", run.getFailureReason());
+        payload.put("durationMs", run.getDurationMs());
+        payload.put("finishedAt", run.getFinishedAt().toString());
+        payload.put("url", publicBaseUrl + "/#/api-scenarios");
+        payload.put("text", text);
+        dispatch(payload, text);
+    }
+
+    private void dispatch(Map<String, Object> payload, String text) {
         for (NotificationChannel channel : channels.findByEnabledTrue()) {
             if (channel.getEvents() != null && !channel.getEvents().contains(EVENT)) {
                 continue;
@@ -167,6 +198,16 @@ public class NotificationService {
                 }
             });
         }
+    }
+
+    private String scenarioStatusText(String status) {
+        return switch (status == null ? "" : status) {
+            case "SUCCESS" -> "成功";
+            case "FAILED" -> "失败";
+            case "TIMEOUT" -> "超时";
+            case "CANCELLED" -> "已取消";
+            default -> status;
+        };
     }
 
     private void send(NotificationChannel channel, Map<String, Object> genericPayload, String text) throws Exception {

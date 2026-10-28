@@ -113,6 +113,24 @@ steps:
 
 控制器在运行时展开为普通步骤执行，报告会保留每次迭代的步骤明细（包括合成的 `loop N` 变量设置步骤）。
 
+### 前置/后置处理器
+
+任意步骤可带 `before` / `after` 子步骤，按顺序在主体步骤前/后执行，共享变量：
+
+```yaml
+- name: login
+  type: http
+  method: POST
+  path: /api/v1/auth/login
+  before:
+    - {name: prepare, type: set, variables: {marker: before-ok}}
+  after:
+    - name: verify
+      type: assert
+      assertions:
+        - {type: VARIABLE, path: marker, operator: EQ, expected: before-ok}
+```
+
 ### CSV 导入
 
 API 场景编辑器提供「导入 CSV 数据集」：选择 CSV 后自动写入 YAML 的 `datasets:` 段，loop 用 `dataset: 名称` 引用。支持带引号的 CSV 单元格。
@@ -158,6 +176,10 @@ GET  /api/v1/api-scenarios/{id}/runs
 - 前端「批量运行」弹窗支持多选、环境覆盖、超时。
 - `GET /api/v1/api-scenarios/{id}/export`：导出 YAML；前端「导出」直接下载 `.yaml`。
 - `POST /api/v1/api-scenarios/import`：导入 YAML 场景；前端「导入」支持文件或粘贴。
+
+## 场景通知
+
+独立场景/定时场景运行会在 core 后台轮询并发送通知机器人消息（event `RUN_COMPLETED`, `kind=SCENARIO`），无需打开页面。计划中的场景仍由计划运行通知。
 
 ## 直接定时
 

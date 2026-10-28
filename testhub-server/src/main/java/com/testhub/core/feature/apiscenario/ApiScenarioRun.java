@@ -57,6 +57,9 @@ public class ApiScenarioRun {
     @Column(name = "finished_at")
     private Instant finishedAt;
 
+    @Column(name = "notification_sent", nullable = false)
+    private boolean notificationSent;
+
     protected ApiScenarioRun() {
     }
 
@@ -86,6 +89,8 @@ public class ApiScenarioRun {
     public String getCreatedBy() { return createdBy; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getFinishedAt() { return finishedAt; }
+    public boolean isNotificationSent() { return notificationSent; }
+    public void setNotificationSent(boolean notificationSent) { this.notificationSent = notificationSent; }
 
     public void setTaskId(String taskId) { this.taskId = taskId; }
     public void setStatus(String status) { this.status = status; }

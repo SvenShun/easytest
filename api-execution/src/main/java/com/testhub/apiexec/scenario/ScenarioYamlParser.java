@@ -65,7 +65,7 @@ public class ScenarioYamlParser {
     }
 
     private void validateChildren(Map<String, Object> step, int index) {
-        for (String key : List.of("steps", "elseSteps")) {
+        for (String key : List.of("steps", "elseSteps", "before", "after")) {
             Object value = step.get(key);
             if (value == null) {
                 continue;

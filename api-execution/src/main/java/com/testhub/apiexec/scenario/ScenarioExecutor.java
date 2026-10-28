@@ -88,6 +88,10 @@ public class ScenarioExecutor {
         Deque<Map<String, Object>> pending = new ArrayDeque<>(definition.steps());
         while (!pending.isEmpty()) {
             Map<String, Object> step = pending.removeFirst();
+            if (step.get("before") != null || step.get("after") != null) {
+                expandHooks(step, pending);
+                continue;
+            }
             if (controller(step)) {
                 expandController(step, pending, variables, definition);
                 continue;
@@ -156,6 +160,19 @@ public class ScenarioExecutor {
         }
         return result("SUCCESS", null, passed + "/" + results.size() + " steps passed",
                 results, variables, started);
+    }
+
+    private void expandHooks(Map<String, Object> step, Deque<Map<String, Object>> pending) {
+        List<Map<String, Object>> before = maps(step.get("before"));
+        List<Map<String, Object>> after = maps(step.get("after"));
+        Map<String, Object> core = new LinkedHashMap<>(step);
+        core.remove("before");
+        core.remove("after");
+        List<Map<String, Object>> sequence = new ArrayList<>();
+        sequence.addAll(before);
+        sequence.add(core);
+        sequence.addAll(after);
+        pushFront(pending, sequence);
     }
 
     private boolean controller(Map<String, Object> step) {

@@ -7,6 +7,7 @@
 - YAML 场景模型、核心 CRUD/运行历史/校验
 - api-execution 场景任务队列（`scenario:` 前缀）与 worker 分发、启动恢复
 - 步骤：HTTP、SQL、Groovy、set、assert、wait、if/else、loop（times/items/dataset）、once、while
+- 任意步骤 before/after 前置/后置处理器
 - CSV 数据集导入（编辑器写入 YAML datasets）
 - 变量插值（`${}`/`{{}}`）、HTTP JSONPath/Header 提取、SQL 行提取、步骤间数据传递
 - HTTP/SQL/变量断言；步骤级/场景级失败策略
@@ -29,4 +30,4 @@
 ## 测试
 
 - `ScenarioExecutorTest`：HTTP+SQL+Groovy+变量传递成功；断言失败默认终止；if/else + dataset loop 成功（9 个展开步骤，最后一行变量 admin）；once/while 成功。
-- `./scripts/check.sh`：Java **183** + Python **48** = 231，前端构建通过。
+- `./scripts/check.sh`：Java **184** + Python **48** = 232，前端构建通过。
