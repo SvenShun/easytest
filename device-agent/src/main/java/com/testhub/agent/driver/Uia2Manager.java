@@ -142,6 +142,14 @@ public class Uia2Manager {
         if (candidate.isAbsolute()) {
             return candidate;
         }
+        Path base = Paths.get(System.getProperty("user.dir")).toAbsolutePath();
+        for (int i = 0; i < 4 && base != null; i++) {
+            Path resolved = base.resolve(candidate).normalize();
+            if (Files.exists(resolved)) {
+                return resolved;
+            }
+            base = base.getParent();
+        }
         return Paths.get(System.getProperty("user.dir")).resolve(candidate).normalize();
     }
 
