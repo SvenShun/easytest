@@ -419,7 +419,7 @@ export function ApiCasesPage() {
           <Field
             label="断言 (JSON)"
             htmlFor="api-assertions"
-            hint="支持 STATUS_CODE / JSON_PATH / BODY_CONTAINS / RESPONSE_TIME_MS / HEADER_CONTAINS"
+            hint="支持 STATUS_CODE / JSON_PATH / XML_PATH / JSON_SCHEMA / BODY_CONTAINS / RESPONSE_TIME_MS / HEADER_CONTAINS"
           >
             <Textarea
               id="api-assertions"

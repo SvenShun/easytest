@@ -43,7 +43,7 @@ MeterSphere 的 API 测试不是“单接口 + 断言”：
 6. ~~导入导出~~：YAML 导出/导入已支持。
 7. **变量作用域/优先级**：环境、场景、步骤、提取变量的覆盖规则可更细。
 8. **JMeter XML 导入导出**：目前是 YAML 导入导出，不兼容 JMeter XML。
-8. **断言脚本/JSON Schema/XML**：当前 HTTP 5 类 + SQL/变量。
+8. **断言脚本/JSON Schema/XML**：已增加 XML_PATH 与 JSON_SCHEMA；脚本断言待补。
 9. ~~场景报告通知~~：已支持独立场景/定时场景的通知机器人。
 10. **JMeter 生态组件**：不计划引入 JMeter。
 

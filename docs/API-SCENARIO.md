@@ -145,7 +145,8 @@ API 场景编辑器提供「导入 CSV 数据集」：选择 CSV 后自动写入
 
 ### 断言
 
-HTTP 复用现有五种断言：`STATUS_CODE / JSON_PATH / BODY_CONTAINS / RESPONSE_TIME_MS / HEADER_CONTAINS`。
+HTTP 复用现有断言：`STATUS_CODE / JSON_PATH / XML_PATH / JSON_SCHEMA / BODY_CONTAINS / RESPONSE_TIME_MS / HEADER_CONTAINS`。
+XML_PATH 的 `path` 是 XPath，`JSON_SCHEMA` 的 `expected` 是 JSON Schema 文本、`operator` 用 `VALID`/`INVALID`。
 SQL：`SQL_ROW_COUNT`、`SQL_VALUE`。变量：`VARIABLE`。任一断言失败默认终止场景；可设置 `continueOnFailure: true` 或步骤级覆盖。
 
 ## 执行链路

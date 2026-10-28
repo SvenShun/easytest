@@ -1,6 +1,10 @@
 package com.testhub.apiexec.assertion;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import com.networknt.schema.ValidationMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.testhub.apiexec.execution.HttpExchangeResult;
 import org.springframework.stereotype.Component;
@@ -10,6 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPathFactory;
 
 /**
  * Evaluates the five assertion types from docs/API-EXECUTION-CONTRACT.md §4.
@@ -24,6 +32,8 @@ public class AssertionEvaluator {
     private static final String BODY_CONTAINS = "BODY_CONTAINS";
     private static final String RESPONSE_TIME_MS = "RESPONSE_TIME_MS";
     private static final String HEADER_CONTAINS = "HEADER_CONTAINS";
+    private static final String XML_PATH = "XML_PATH";
+    private static final String JSON_SCHEMA = "JSON_SCHEMA";
 
     private final ObjectMapper objectMapper;
 
@@ -63,6 +73,8 @@ public class AssertionEvaluator {
                         response == null ? null : String.valueOf(response.durationMs()),
                         response == null ? null : response.durationMs());
                 case HEADER_CONTAINS -> evalHeader(assertion, type, operator, response);
+                case XML_PATH -> evalXmlPath(assertion, type, operator, response);
+                case JSON_SCHEMA -> evalJsonSchema(assertion, type, operator, response);
                 default -> fail(assertion, type, null, "unsupported assertion type: " + assertion.type());
             };
         } catch (RuntimeException e) {
@@ -135,6 +147,58 @@ public class AssertionEvaluator {
                     "response header not found: " + headerName);
         }
         return compareText(assertion, type, operator, actual, headerName);
+    }
+
+    private AssertionResult evalXmlPath(ApiAssertion assertion, String type, String operator,
+                                        HttpExchangeResult response) {
+        String path = assertion.path();
+        if (path == null || path.isBlank()) {
+            return fail(assertion, type, null, "path is required for XML_PATH");
+        }
+        if (response == null || response.body() == null || response.body().isBlank()) {
+            return fail(assertion, type, null, "response body is empty");
+        }
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+            var document = factory.newDocumentBuilder().parse(
+                    new java.io.ByteArrayInputStream(response.body().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            String actual = XPathFactory.newInstance().newXPath().compile(path).evaluate(document);
+            return compareText(assertion, type, operator, actual, path);
+        } catch (Exception e) {
+            return fail(assertion, type, null, "XML/XPath error: " + e.getMessage());
+        }
+    }
+
+    private AssertionResult evalJsonSchema(ApiAssertion assertion, String type, String operator,
+                                           HttpExchangeResult response) {
+        String schemaText = assertion.expected();
+        if (schemaText == null || schemaText.isBlank()) {
+            return fail(assertion, type, null, "expected (JSON Schema) is required");
+        }
+        if (response == null || response.body() == null || response.body().isBlank()) {
+            return fail(assertion, type, null, "response body is empty");
+        }
+        try {
+            JsonNode schemaNode = objectMapper.readTree(schemaText);
+            JsonNode body = objectMapper.readTree(response.body());
+            JsonSchema schema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7).getSchema(schemaNode);
+            Set<ValidationMessage> errors = schema.validate(body);
+            boolean expectInvalid = "INVALID".equalsIgnoreCase(operator);
+            boolean passed = expectInvalid ? !errors.isEmpty() : errors.isEmpty();
+            String actual = errors.isEmpty() ? "valid" : errors.stream().map(ValidationMessage::getMessage)
+                    .limit(5).reduce((a, b) -> a + "; " + b).orElse("invalid");
+            return passed
+                    ? AssertionResult.pass(type, null, operator, expectInvalid ? "invalid" : "valid", actual)
+                    : AssertionResult.fail(type, null, operator, expectInvalid ? "invalid" : "valid", actual,
+                    "JSON Schema validation failed: " + actual);
+        } catch (Exception e) {
+            return fail(assertion, type, null, "JSON Schema error: " + e.getMessage());
+        }
     }
 
     // -------------------------------------------------------------- comparison
