@@ -48,7 +48,8 @@ public class ScenarioYamlParser {
                 throw ApiException.badRequest("steps[" + index + "].type 不能为空");
             }
             switch (type.toLowerCase()) {
-                case "http", "sql", "groovy", "set", "assert", "wait", "if", "loop" -> {
+                case "http", "sql", "groovy", "set", "assert", "wait",
+                        "if", "loop", "once", "while" -> {
                 }
                 default -> throw ApiException.badRequest("不支持的步骤类型: " + type);
             }
@@ -81,8 +82,8 @@ public class ScenarioYamlParser {
                 if (childType == null) {
                     throw ApiException.badRequest("steps[" + index + "]." + key + " 子步骤 type 不能为空");
                 }
-                if (!java.util.Set.of("http", "sql", "groovy", "set", "assert", "wait", "if", "loop")
-                        .contains(childType.toLowerCase())) {
+                if (!java.util.Set.of("http", "sql", "groovy", "set", "assert", "wait",
+                                "if", "loop", "once", "while").contains(childType.toLowerCase())) {
                     throw ApiException.badRequest("不支持的子步骤类型: " + childType);
                 }
             }

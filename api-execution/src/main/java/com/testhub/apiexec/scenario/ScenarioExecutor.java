@@ -160,7 +160,8 @@ public class ScenarioExecutor {
 
     private boolean controller(Map<String, Object> step) {
         String type = text(step.get("type"));
-        return "if".equalsIgnoreCase(type) || "loop".equalsIgnoreCase(type);
+        return "if".equalsIgnoreCase(type) || "loop".equalsIgnoreCase(type)
+                || "once".equalsIgnoreCase(type) || "while".equalsIgnoreCase(type);
     }
 
     private void expandController(Map<String, Object> step, Deque<Map<String, Object>> pending,
@@ -170,6 +171,23 @@ public class ScenarioExecutor {
             boolean matches = condition(step, variables);
             Object key = matches ? step.get("steps") : step.get("elseSteps");
             pushFront(pending, maps(key));
+            return;
+        }
+        if ("once".equalsIgnoreCase(type)) {
+            pushFront(pending, maps(step.get("steps")));
+            return;
+        }
+        if ("while".equalsIgnoreCase(type)) {
+            int iteration = integer(step.get("_iteration"), 0);
+            int max = Math.max(1, Math.min(integer(step.get("maxIterations"), 20), 100));
+            if (iteration >= max || !condition(step, variables)) {
+                return;
+            }
+            List<Map<String, Object>> sequence = new ArrayList<>(maps(step.get("steps")));
+            Map<String, Object> again = new LinkedHashMap<>(step);
+            again.put("_iteration", iteration + 1);
+            sequence.add(again);
+            pushFront(pending, sequence);
             return;
         }
         List<Map<String, Object>> children = maps(step.get("steps"));

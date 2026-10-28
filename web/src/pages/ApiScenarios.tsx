@@ -11,6 +11,31 @@ import {
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { toastError, toastSuccess } from '../components/Toast';
 
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') {
+      quoted = true;
+    } else if (ch === ',') {
+      row.push(cell); cell = '';
+    } else if (ch === '\n') {
+      row.push(cell); rows.push(row); row = []; cell = '';
+    } else if (ch !== '\r') {
+      cell += ch;
+    }
+  }
+  if (cell !== '' || row.length > 0) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
 const DEFAULT_YAML = `name: login-and-query
 variables:
   username: tester
@@ -92,6 +117,7 @@ export function ApiScenariosPage() {
   const [editorError, setEditorError] = useState('');
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<{ valid: boolean; message: string; stepCount: number; stepTypes: string[] } | null>(null);
+  const [datasetName, setDatasetName] = useState('rows');
   const [runOpen, setRunOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [run, setRun] = useState<ScenarioRun | null>(null);
@@ -152,6 +178,33 @@ export function ApiScenariosPage() {
     setValidation(null);
     setEditorError('');
     setEditorOpen(true);
+  };
+
+  const importCsv = async (file: File) => {
+    const text = await file.text();
+    const rows = parseCsv(text);
+    if (rows.length < 2) {
+      setEditorError('CSV 至少需要表头和一行数据');
+      return;
+    }
+    const headers = rows[0].map((header) => header.trim()).filter(Boolean);
+    const objects = rows.slice(1).filter((row) => row.some((cell) => cell.trim() !== '')).map((row) => {
+      const object: Record<string, string> = {};
+      headers.forEach((header, index) => { object[header] = row[index] ?? ''; });
+      return object;
+    });
+    const name = (datasetName.trim() || 'rows').replace(/[^A-Za-z0-9_]/g, '_');
+    const block = `datasets:\n  ${name}:\n${objects.map((row) => `    - ${JSON.stringify(row)}`).join('\n')}\n`;
+    let yaml = editor.yaml;
+    if (/^datasets:/m.test(yaml)) {
+      yaml = yaml.replace(/^datasets:[\s\S]*?(?=^steps:)/m, block);
+    } else if (/^steps:/m.test(yaml)) {
+      yaml = yaml.replace(/^steps:/m, `${block}steps:`);
+    } else {
+      yaml = `${block}${yaml}`;
+    }
+    setEditor({ ...editor, yaml });
+    toastSuccess(`已导入 ${objects.length} 行到 dataset "${name}"`);
   };
 
   const validate = async () => {
@@ -322,6 +375,21 @@ export function ApiScenariosPage() {
           <Field label="YAML" htmlFor="scenario-yaml" hint="支持 http / sql / groovy / set / assert / wait；变量用 ${var} 或 {{var}}">
             <Textarea id="scenario-yaml" className="yaml-editor" rows={26} value={editor.yaml} onChange={(e) => setEditor({ ...editor, yaml: e.target.value })} />
           </Field>
+          <div className="row-actions">
+            <Field label="CSV dataset 名称" htmlFor="scenario-dataset">
+              <Input id="scenario-dataset" value={datasetName} onChange={(e) => setDatasetName(e.target.value)} />
+            </Field>
+            <label className="button button-secondary" style={{ cursor: 'pointer' }}>
+              导入 CSV 数据集
+              <input type="file" accept=".csv,text/csv" hidden
+                     onChange={(event) => {
+                       const file = event.target.files?.[0];
+                       if (file) void importCsv(file);
+                       event.currentTarget.value = '';
+                     }} />
+            </label>
+          </div>
+          <div className="field-hint">CSV 会写入 YAML 的 datasets 段；loop 步骤用 <code>dataset: 名称</code> 引用。</div>
           <Field label="状态" htmlFor="scenario-enabled"><Select id="scenario-enabled" value={editor.enabled ? '1' : '0'} onChange={(e) => setEditor({ ...editor, enabled: e.target.value === '1' })}><option value="1">启用</option><option value="0">停用</option></Select></Field>
         </div>
       </Modal>

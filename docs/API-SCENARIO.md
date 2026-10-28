@@ -86,6 +86,8 @@ steps:
 | `wait` | 等待毫秒 |
 | `if` | 条件分支：`condition: "${flag} == yes"`，`steps` / `elseSteps` |
 | `loop` | 循环：`times` / `items` / `dataset`，`indexVar` / `itemVar`，子 `steps` |
+| `once` | 只执行一次的子步骤组 |
+| `while` | 每轮后重新计算条件；`maxIterations` 默认 20 |
 
 ### 数据驱动示例
 
@@ -110,6 +112,10 @@ steps:
 ```
 
 控制器在运行时展开为普通步骤执行，报告会保留每次迭代的步骤明细（包括合成的 `loop N` 变量设置步骤）。
+
+### CSV 导入
+
+API 场景编辑器提供「导入 CSV 数据集」：选择 CSV 后自动写入 YAML 的 `datasets:` 段，loop 用 `dataset: 名称` 引用。支持带引号的 CSV 单元格。
 
 ### 数据传递
 

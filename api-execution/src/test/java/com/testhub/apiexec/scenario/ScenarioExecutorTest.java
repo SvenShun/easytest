@@ -190,6 +190,46 @@ class ScenarioExecutorTest {
         assertThat(result.variables().get("current")).isEqualTo("admin");
     }
 
+
+    @Test
+    void executesOnceAndWhileControllers() {
+        ScenarioExecutor executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),
+                new AssertionEvaluator(new ObjectMapper()), new ObjectMapper());
+        String yaml = """
+                name: loop-controllers
+                steps:
+                  - name: init
+                    type: set
+                    variables:
+                      i: 0
+                  - name: once
+                    type: once
+                    steps:
+                      - name: once-set
+                        type: set
+                        variables:
+                          onceValue: ok
+                  - name: while
+                    type: while
+                    condition: "${i} < 3"
+                    maxIterations: 10
+                    steps:
+                      - name: increment
+                        type: groovy
+                        script: |
+                          vars.put("i", ((Number) vars.get("i")).intValue() + 1)
+                  - name: verify
+                    type: assert
+                    assertions:
+                      - {type: VARIABLE, path: i, operator: EQ, expected: 3}
+                      - {type: VARIABLE, path: onceValue, operator: EQ, expected: ok}
+                """;
+        ScenarioRunResult result = executor.execute(yaml, Map.of(), Map.of(), 30, () -> false);
+        assertThat(result.status()).isEqualTo("SUCCESS");
+        assertThat(result.variables().get("i")).isEqualTo(3);
+        assertThat(result.variables().get("onceValue")).isEqualTo("ok");
+    }
+
     @Test
     void assertionFailureStopsScenarioByDefault() {
         ScenarioExecutor executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),

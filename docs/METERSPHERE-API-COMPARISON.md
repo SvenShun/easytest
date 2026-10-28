@@ -34,8 +34,8 @@ MeterSphere 的 API 测试不是“单接口 + 断言”：
 
 ## 尚未对齐（按优先级）
 
-1. ~~控制器~~：已支持 if/else、loop（times/items/dataset）；once/while 仍待补。
-2. ~~数据集~~：已支持 YAML `datasets` + loop 行迭代；CSV 文件导入仍待补。
+1. ~~控制器~~：已支持 if/else、loop（times/items/dataset）、once、while。
+2. ~~数据集~~：已支持 YAML `datasets` + loop 行迭代 + CSV 导入编辑器。
 3. **场景直接定时**：当前场景通过计划+定时任务执行（已可用，但多一层计划）。
 4. **场景批量运行/选择多个场景**：当前逐个运行。
 5. **前置/后置处理器抽象**：当前脚本/SQL是普通步骤，不能绑定到每个 HTTP 步骤。
