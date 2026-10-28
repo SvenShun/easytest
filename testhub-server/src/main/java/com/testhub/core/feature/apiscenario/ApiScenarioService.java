@@ -189,6 +189,40 @@ public class ApiScenarioService {
     public record RunHandle(String runId, String taskId, String status, String scenarioName) {
     }
 
+    public BatchRunView batchRun(BatchRunRequest request) {
+        if (request == null || request.scenarioIds() == null || request.scenarioIds().isEmpty()) {
+            throw ApiException.badRequest("请选择至少一个 API 场景");
+        }
+        List<RunView> results = new ArrayList<>();
+        int failed = 0;
+        for (String id : request.scenarioIds().stream().filter(java.util.Objects::nonNull).distinct().toList()) {
+            try {
+                results.add(run(id, new RunRequest(request.environmentId(), Map.of(),
+                        request.timeoutSec() == null ? 120 : request.timeoutSec())));
+            } catch (RuntimeException e) {
+                failed++;
+                results.add(new RunView(Ids.newId("scenario-run"), id, null, null, "FAILED",
+                        request.environmentId(), e.getMessage(), "EXECUTION_UNAVAILABLE", null, null, null,
+                        Map.of(), CurrentUser.require().username(), Instant.now(), Instant.now()));
+            }
+        }
+        return new BatchRunView(results, results.size() - failed, failed);
+    }
+
+    public ExportView export(String id) {
+        ApiScenario scenario = require(id);
+        return new ExportView(scenario.getName(), scenario.getDescription(), scenario.getYamlText(),
+                scenario.getEnvironmentId());
+    }
+
+    public ScenarioView importScenario(ImportRequest request) {
+        if (request == null) {
+            throw ApiException.badRequest("导入内容不能为空");
+        }
+        return create(new ScenarioRequest(request.name(), request.description(), request.yaml(),
+                request.environmentId(), request.enabled()));
+    }
+
     public PageResponse<RunView> runs(String scenarioId, Integer page, Integer size) {
         require(scenarioId);
         PageRequest pageRequest = PageRequest.of(PageSupport.pageIndex(page), PageSupport.pageSize(size),

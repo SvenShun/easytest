@@ -3,7 +3,7 @@ import { apiEnvironmentsApi, apiScenariosApi } from '../api';
 import type { ApiEnvironment } from '../api/types';
 import type { ApiScenario, ScenarioRun, ScenarioStep } from '../api/scenarios';
 import { canManageCases, useAuth } from '../auth';
-import { formatDateTime, safeErrorMessage } from '../utils';
+import { cx, formatDateTime, safeErrorMessage } from '../utils';
 import {
   Button, Callout, Card, CardHead, EmptyState, ErrorPanel, Field, Input, PageHeading, Pill,
   Select, SkeletonRows, StatusPill, Textarea,
@@ -130,6 +130,20 @@ export function ApiScenariosPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [deleting, setDeleting] = useState<ApiScenario | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchSelected, setBatchSelected] = useState<Set<string>>(new Set());
+  const [batchEnv, setBatchEnv] = useState('');
+  const [batchTimeout, setBatchTimeout] = useState('120');
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchError, setBatchError] = useState('');
+  const [batchResults, setBatchResults] = useState<Array<{ id: string; scenarioId: string; scenarioName?: string; status: string; summary?: string | null }>>([]);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importName, setImportName] = useState('');
+  const [importDescription, setImportDescription] = useState('');
+  const [importYaml, setImportYaml] = useState('');
+  const [importEnv, setImportEnv] = useState('');
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -157,6 +171,82 @@ export function ApiScenariosPage() {
     }, 1500);
     return () => window.clearInterval(timer);
   }, [run?.id, run?.status, runOpen]);
+
+  const openBatch = () => {
+    setBatchSelected(new Set());
+    setBatchEnv('');
+    setBatchTimeout('120');
+    setBatchError('');
+    setBatchResults([]);
+    setBatchOpen(true);
+  };
+
+  const runBatch = async () => {
+    if (batchSelected.size === 0) {
+      setBatchError('请选择至少一个场景');
+      return;
+    }
+    setBatchBusy(true);
+    setBatchError('');
+    try {
+      const result = await apiScenariosApi.batchRun({
+        scenarioIds: Array.from(batchSelected),
+        environmentId: batchEnv || null,
+        timeoutSec: Number(batchTimeout) || 120,
+      });
+      setBatchResults(result.runs);
+      toastSuccess(`批量运行已创建 ${result.started} 个，失败 ${result.failed} 个`);
+    } catch (err) {
+      setBatchError(safeErrorMessage(err));
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const exportScenario = async (item: ApiScenario) => {
+    try {
+      const data = await apiScenariosApi.exportScenario(item.id);
+      const blob = new Blob([data.yaml], { type: 'text/yaml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${item.name.replace(/[^A-Za-z0-9_\-\u4e00-\u9fa5]/g, '_')}.yaml`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    }
+  };
+
+  const importYamlFile = async (file: File) => {
+    setImportYaml(await file.text());
+    if (!importName) setImportName(file.name.replace(/\.(ya?ml)$/i, ''));
+  };
+
+  const submitImport = async () => {
+    if (!importName.trim() || !importYaml.trim()) {
+      setImportError('名称和 YAML 不能为空');
+      return;
+    }
+    setImportBusy(true);
+    setImportError('');
+    try {
+      await apiScenariosApi.importScenario({
+        name: importName.trim(),
+        description: importDescription,
+        yaml: importYaml,
+        environmentId: importEnv || null,
+        enabled: true,
+      });
+      toastSuccess('场景已导入');
+      setImportOpen(false);
+      await load();
+    } catch (err) {
+      setImportError(safeErrorMessage(err));
+    } finally {
+      setImportBusy(false);
+    }
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -319,7 +409,13 @@ export function ApiScenariosPage() {
       <PageHeading
         title="API 场景"
         description="YAML 驱动多步骤接口自动化：HTTP、SQL、Groovy、变量传递、断言。"
-        actions={canWrite ? <Button variant="primary" icon="plus" onClick={openCreate}>新建场景</Button> : undefined}
+        actions={canWrite ? (
+          <div className="row-actions">
+            <Button variant="secondary" icon="queue" onClick={openBatch}>批量运行</Button>
+            <Button variant="secondary" icon="external" onClick={() => { setImportName(''); setImportDescription(''); setImportYaml(''); setImportEnv(''); setImportError(''); setImportOpen(true); }}>导入</Button>
+            <Button variant="primary" icon="plus" onClick={openCreate}>新建场景</Button>
+          </div>
+        ) : undefined}
       />
       <Card>
         <CardHead title="场景列表" description="YAML 是唯一事实来源；运行报告包含每步请求/响应/断言/提取变量" icon="code"
@@ -342,6 +438,7 @@ export function ApiScenariosPage() {
                   <td><div className="row-actions">
                     <Button size="sm" variant="primary" onClick={() => openRun(item)} disabled={!canWrite}>运行</Button>
                     <Button size="sm" variant="ghost" onClick={() => openEdit(item)} disabled={!canWrite}>编辑</Button>
+                    <Button size="sm" variant="ghost" onClick={() => void exportScenario(item)}>导出</Button>
                     <Button size="sm" variant="ghost" onClick={() => void openHistory(item)}>历史</Button>
                     <Button size="sm" variant="ghost" onClick={() => setDeleting(item)} disabled={!canWrite}>删除</Button>
                   </div></td>
@@ -435,6 +532,63 @@ export function ApiScenariosPage() {
               ))}
             </>
           )}
+        </div>
+      </Modal>
+
+      <Modal open={batchOpen} title="批量运行 API 场景" size="lg"
+        onClose={() => { if (!batchBusy) setBatchOpen(false); }} closeOnOverlay={!batchBusy}
+        footer={<><Button variant="secondary" onClick={() => setBatchOpen(false)} disabled={batchBusy}>关闭</Button>
+          <Button variant="primary" loading={batchBusy} onClick={() => void runBatch()}>开始批量运行</Button></>}>
+        <div className="form-stack">
+          {batchError ? <Callout tone="error" title="运行失败">{batchError}</Callout> : null}
+          <div className="add-case-list" style={{ maxHeight: 260 }}>
+            {items.filter((item) => item.enabled).map((item) => (
+              <label key={item.id} className={cx('add-case-row', batchSelected.has(item.id) && 'is-checked')}>
+                <input type="checkbox" checked={batchSelected.has(item.id)} onChange={() => setBatchSelected((prev) => {
+                  const next = new Set(prev); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next;
+                })} />
+                <span className="add-case-main"><span className="add-case-title">{item.name}</span><span className="add-case-sub mono">{item.id}</span></span>
+              </label>
+            ))}
+          </div>
+          <div className="form-grid-2">
+            <Field label="环境覆盖" htmlFor="batch-env"><Select id="batch-env" value={batchEnv} onChange={(e) => setBatchEnv(e.target.value)}>
+              <option value="">跟随场景</option>
+              {environments.map((env) => <option key={env.id} value={env.id}>{env.name}</option>)}
+            </Select></Field>
+            <Field label="超时（秒）" htmlFor="batch-timeout"><Input id="batch-timeout" type="number" value={batchTimeout} onChange={(e) => setBatchTimeout(e.target.value)} /></Field>
+          </div>
+          {batchResults.length > 0 ? (
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>场景</th><th>运行 ID</th><th>状态</th><th>摘要</th></tr></thead>
+                <tbody>{batchResults.map((run) => (
+                  <tr key={run.id}><td>{run.scenarioName || run.scenarioId}</td><td className="mono">{run.id}</td>
+                    <td><Pill tone={run.status === 'SUCCESS' ? 'green' : run.status === 'FAILED' ? 'red' : 'blue'}>{run.status}</Pill></td>
+                    <td>{run.summary || '—'}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+      </Modal>
+
+      <Modal open={importOpen} title="导入 API 场景" size="lg"
+        onClose={() => { if (!importBusy) setImportOpen(false); }} closeOnOverlay={!importBusy}
+        footer={<><Button variant="secondary" onClick={() => setImportOpen(false)} disabled={importBusy}>取消</Button>
+          <Button variant="primary" loading={importBusy} onClick={() => void submitImport()}>导入</Button></>}>
+        <div className="form-stack">
+          {importError ? <Callout tone="error" title="导入失败">{importError}</Callout> : null}
+          <Field label="YAML 文件" htmlFor="scenario-import-file"><input id="scenario-import-file" type="file" accept=".yaml,.yml,text/yaml" onChange={(e) => { const file = e.target.files?.[0]; if (file) void importYamlFile(file); }} /></Field>
+          <div className="form-grid-2">
+            <Field label="场景名称" htmlFor="scenario-import-name" required><Input id="scenario-import-name" value={importName} onChange={(e) => setImportName(e.target.value)} /></Field>
+            <Field label="环境" htmlFor="scenario-import-env"><Select id="scenario-import-env" value={importEnv} onChange={(e) => setImportEnv(e.target.value)}>
+              <option value="">不绑定环境</option>
+              {environments.map((env) => <option key={env.id} value={env.id}>{env.name}</option>)}
+            </Select></Field>
+          </div>
+          <Field label="描述" htmlFor="scenario-import-desc"><Input id="scenario-import-desc" value={importDescription} onChange={(e) => setImportDescription(e.target.value)} /></Field>
+          <Field label="YAML" htmlFor="scenario-import-yaml"><Textarea id="scenario-import-yaml" className="yaml-editor" rows={14} value={importYaml} onChange={(e) => setImportYaml(e.target.value)} /></Field>
         </div>
       </Modal>
 

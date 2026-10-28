@@ -65,6 +65,23 @@ public class ApiScenarioController {
         return service.getRun(runId);
     }
 
+    @PostMapping("/batch-run")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public BatchRunView batchRun(@RequestBody BatchRunRequest request) {
+        return service.batchRun(request);
+    }
+
+    @GetMapping("/{id}/export")
+    public ExportView export(@PathVariable String id) {
+        return service.export(id);
+    }
+
+    @PostMapping("/import")
+    @RequireRole({Role.ADMIN, Role.TESTER})
+    public ScenarioView importScenario(@RequestBody ImportRequest request) {
+        return service.importScenario(request);
+    }
+
     @GetMapping("/{id}/runs")
     public PageResponse<RunView> runs(@PathVariable String id,
                                       @RequestParam(required = false) Integer page,

@@ -60,6 +60,14 @@ export const apiScenariosApi = {
     request<ScenarioRun>('core', `/api/v1/api-scenarios/${encodeURIComponent(id)}/run`, { method: 'POST', body: input }),
   runDetail: (runId: string) =>
     request<ScenarioRun>('core', `/api/v1/api-scenarios/runs/${encodeURIComponent(runId)}`),
+  batchRun: (input: { scenarioIds: string[]; environmentId?: string | null; timeoutSec?: number }) =>
+    request<{ runs: ScenarioRun[]; started: number; failed: number }>(
+      'core', '/api/v1/api-scenarios/batch-run', { method: 'POST', body: input }),
+  exportScenario: (id: string) =>
+    request<{ name: string; description?: string | null; yaml: string; environmentId?: string | null }>(
+      'core', `/api/v1/api-scenarios/${encodeURIComponent(id)}/export`),
+  importScenario: (input: { name: string; description?: string; yaml: string; environmentId?: string | null; enabled?: boolean }) =>
+    request<ApiScenario>('core', '/api/v1/api-scenarios/import', { method: 'POST', body: input }),
   runs: (id: string, page = 1, size = 20) =>
     request<unknown>('core', `/api/v1/api-scenarios/${encodeURIComponent(id)}/runs${queryString({ page, size })}`)
       .then((data) => asPage<ScenarioRun>(data, page, size)),

@@ -34,4 +34,17 @@ public final class ApiScenarioDtos {
 
     public record ValidateRequest(String yaml) {
     }
+
+    public record BatchRunRequest(java.util.List<String> scenarioIds, String environmentId, Integer timeoutSec) {
+    }
+
+    public record ImportRequest(String name, String description, String yaml, String environmentId,
+                                Boolean enabled) {
+    }
+
+    public record ExportView(String name, String description, String yaml, String environmentId) {
+    }
+
+    public record BatchRunView(java.util.List<RunView> runs, int started, int failed) {
+    }
 }

@@ -152,6 +152,13 @@ GET  /api/v1/api-scenarios/runs/{runId}
 GET  /api/v1/api-scenarios/{id}/runs
 ```
 
+## 批量运行与导入导出
+
+- `POST /api/v1/api-scenarios/batch-run`：按场景 ID 批量启动，返回每个场景的 runId/状态。
+- 前端「批量运行」弹窗支持多选、环境覆盖、超时。
+- `GET /api/v1/api-scenarios/{id}/export`：导出 YAML；前端「导出」直接下载 `.yaml`。
+- `POST /api/v1/api-scenarios/import`：导入 YAML 场景；前端「导入」支持文件或粘贴。
+
 ## 直接定时
 
 「定时任务」页新增 **API 场景** 目标选择，可直接按 Cron 运行 YAML 场景，无需先挂计划；运行 ID 指向场景运行历史。
