@@ -131,6 +131,7 @@ tail -f logs/core.log
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — E2E 验收结果与证据
 - [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md) — 第二部分（接口自动化）验收
 - [docs/API-SCENARIO.md](docs/API-SCENARIO.md) — YAML 多步骤接口场景（HTTP/SQL/Groovy/断言/变量）
+- [docs/METERSPHERE-API-COMPARISON.md](docs/METERSPHERE-API-COMPARISON.md) — MeterSphere 接口能力对照与后续清单
 - [docs/API-EXECUTION-CONTRACT.md](docs/API-EXECUTION-CONTRACT.md) — 接口执行契约
 - [docs/ACCEPTANCE-PART3.md](docs/ACCEPTANCE-PART3.md) — 环境/鉴权、数据驱动、共享队列验收
 - [docs/ACCEPTANCE-PART3-DEVICE.md](docs/ACCEPTANCE-PART3-DEVICE.md) — ADB 设备驱动验收（假 adb/真机步骤）
