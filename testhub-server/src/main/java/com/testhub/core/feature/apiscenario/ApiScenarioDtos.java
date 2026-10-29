@@ -47,4 +47,16 @@ public final class ApiScenarioDtos {
 
     public record BatchRunView(java.util.List<RunView> runs, int started, int failed) {
     }
+
+    public record GraphNode(String id, String name, String type, String summary,
+                            List<String> consumes, List<String> produces, List<String> warnings,
+                            List<GraphNode> children) {
+    }
+
+    public record VariableFlow(String name, String producer, List<String> consumers) {
+    }
+
+    public record ScenarioGraph(int stepCount, List<String> warnings,
+                                List<VariableFlow> variables, List<GraphNode> steps) {
+    }
 }

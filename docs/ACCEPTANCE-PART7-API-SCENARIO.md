@@ -30,4 +30,4 @@
 ## 测试
 
 - `ScenarioExecutorTest`：HTTP+SQL+Groovy+变量传递成功；断言失败默认终止；if/else + dataset loop 成功（9 个展开步骤，最后一行变量 admin）；once/while 成功。
-- `./scripts/check.sh`：Java **187** + Python **48** = 235，前端构建通过。
+- `./scripts/check.sh`：Java **189** + Python **48** = 237，前端构建通过。

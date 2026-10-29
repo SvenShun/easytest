@@ -199,6 +199,20 @@ GET  /api/v1/api-scenarios/{id}/runs
 - SQL 使用 `PreparedStatement` 参数绑定；`query` 仍由作者提供，平台按测试代码信任。
 - 报告脱敏环境 datasource，不返回 `env`。
 
+## 流程视图与静态检查
+
+「API 场景」列表提供 **流程** 只读视图，编辑器提供 **流程预览**：
+
+- 按 YAML 解析出步骤树，控制器/数据集/前置后置以嵌套节点展示；
+- 节点显示读取变量（`${var}`）与产出变量（`extract`/`set`/`groovy vars.put`）；
+- 展示变量生产者—消费者表和未定义变量的静态提示；
+- 流程视图只读，YAML 仍是唯一编辑源，避免双向同步产生第二套数据模型。
+
+对应接口：
+
+- `POST /api/v1/api-scenarios/analyze`：分析编辑器中的 YAML；
+- `GET /api/v1/api-scenarios/{id}/graph`：分析已保存场景。
+
 ## 页面入口
 
 左侧「测试资产」→「API 场景」（`/#/api-scenarios`，需 ADMIN/TESTER）。

@@ -130,6 +130,7 @@ tail -f logs/core.log
 - [docs/RUNBOOK.md](docs/RUNBOOK.md) — 部署、环境变量、切换到 MySQL/Redis/MinIO、排障
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — E2E 验收结果与证据
 - [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md) — 第二部分（接口自动化）验收
+- [docs/PRODUCT-ALIGNMENT.md](docs/PRODUCT-ALIGNMENT.md) — YAML 源真相、流程图与后续优先级
 - [docs/API-SCENARIO.md](docs/API-SCENARIO.md) — YAML 多步骤接口场景（HTTP/SQL/Groovy/断言/变量）
 - [docs/METERSPHERE-API-COMPARISON.md](docs/METERSPHERE-API-COMPARISON.md) — MeterSphere 接口能力对照与后续清单
 - [docs/API-EXECUTION-CONTRACT.md](docs/API-EXECUTION-CONTRACT.md) — 接口执行契约

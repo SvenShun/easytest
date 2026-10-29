@@ -54,6 +54,16 @@ public class ApiScenarioController {
         return service.validate(request == null ? null : request.yaml());
     }
 
+    @PostMapping("/analyze")
+    public ScenarioGraph analyze(@RequestBody ValidateRequest request) {
+        return service.analyze(request == null ? null : request.yaml());
+    }
+
+    @GetMapping("/{id}/graph")
+    public ScenarioGraph graph(@PathVariable String id) {
+        return service.graph(id);
+    }
+
     @PostMapping("/{id}/run")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public RunView run(@PathVariable String id, @RequestBody(required = false) RunRequest request) {

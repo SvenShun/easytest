@@ -25,6 +25,24 @@ export interface ScenarioStep {
   error?: string | null;
 }
 
+export interface ScenarioGraphNode {
+  id: string;
+  name: string;
+  type: string;
+  summary?: string | null;
+  consumes?: string[];
+  produces?: string[];
+  warnings?: string[];
+  children?: ScenarioGraphNode[];
+}
+
+export interface ScenarioGraph {
+  stepCount: number;
+  warnings: string[];
+  variables: Array<{ name: string; producer: string; consumers: string[] }>;
+  steps: ScenarioGraphNode[];
+}
+
 export interface ScenarioRun {
   id: string;
   scenarioId: string;
@@ -53,6 +71,10 @@ export const apiScenariosApi = {
     request<ApiScenario>('core', `/api/v1/api-scenarios/${encodeURIComponent(id)}`, { method: 'PUT', body: input }),
   remove: (id: string) =>
     request<void>('core', `/api/v1/api-scenarios/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  analyze: (yaml: string) =>
+    request<ScenarioGraph>('core', '/api/v1/api-scenarios/analyze', { method: 'POST', body: { yaml } }),
+  graph: (id: string) =>
+    request<ScenarioGraph>('core', `/api/v1/api-scenarios/${encodeURIComponent(id)}/graph`),
   validate: (yaml: string) =>
     request<{ valid: boolean; message: string; stepCount: number; stepTypes: string[] }>(
       'core', '/api/v1/api-scenarios/validate', { method: 'POST', body: { yaml } }),

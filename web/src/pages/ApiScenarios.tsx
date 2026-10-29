@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiEnvironmentsApi, apiScenariosApi } from '../api';
 import type { ApiEnvironment } from '../api/types';
-import type { ApiScenario, ScenarioRun, ScenarioStep } from '../api/scenarios';
+import type { ApiScenario, ScenarioGraph, ScenarioGraphNode, ScenarioRun, ScenarioStep } from '../api/scenarios';
 import { canManageCases, useAuth } from '../auth';
 import { cx, formatDateTime, safeErrorMessage } from '../utils';
 import {
@@ -10,6 +10,28 @@ import {
 } from '../components/ui';
 import { ConfirmDialog, Modal } from '../components/Modal';
 import { toastError, toastSuccess } from '../components/Toast';
+
+function GraphNodeView({ node }: { node: ScenarioGraphNode }) {
+  return (
+    <div className="scenario-graph-branch">
+      <div className={`scenario-graph-node type-${(node.type || 'step').toLowerCase()}`}>
+        <div className="scenario-graph-head">
+          <Pill tone={node.type === 'if' || node.type === 'loop' ? 'orange' : 'blue'}>{node.type || 'step'}</Pill>
+          <strong>{node.name}</strong>
+          {node.summary ? <span className="scenario-graph-summary">{node.summary}</span> : null}
+        </div>
+        {node.consumes?.length ? (
+          <div className="scenario-graph-vars"><span>读取</span>{node.consumes.map((name) => <code key={name}>{`${'${'}${name}}`}</code>)}</div>
+        ) : null}
+        {node.produces?.length ? (
+          <div className="scenario-graph-vars produces"><span>产出</span>{node.produces.map((name) => <code key={name}>{name}</code>)}</div>
+        ) : null}
+        {node.warnings?.length ? <div className="scenario-graph-warning">{node.warnings.join('；')}</div> : null}
+      </div>
+      {node.children?.length ? <div className="scenario-graph-children">{node.children.map((child) => <GraphNodeView key={child.id} node={child} />)}</div> : null}
+    </div>
+  );
+}
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -164,6 +186,11 @@ export function ApiScenariosPage() {
   const [importBusy, setImportBusy] = useState(false);
   const [importError, setImportError] = useState('');
   const [capabilitiesOpen, setCapabilitiesOpen] = useState(false);
+  const [graphOpen, setGraphOpen] = useState(false);
+  const [graph, setGraph] = useState<ScenarioGraph | null>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
+  const [graphError, setGraphError] = useState('');
+  const [graphTitle, setGraphTitle] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -279,6 +306,36 @@ export function ApiScenariosPage() {
       yaml: `${prev.yaml.trimEnd()}${prev.yaml.trim() ? '\n\n' : ''}${snippet}`,
     }));
     toastSuccess('已插入模板到 YAML 编辑器');
+  };
+
+  const openGraph = async (item: ApiScenario) => {
+    setGraphTitle(item.name);
+    setGraph(null);
+    setGraphError('');
+    setGraphOpen(true);
+    setGraphLoading(true);
+    try {
+      setGraph(await apiScenariosApi.graph(item.id));
+    } catch (err) {
+      setGraphError(safeErrorMessage(err));
+    } finally {
+      setGraphLoading(false);
+    }
+  };
+
+  const analyzeEditor = async () => {
+    setGraphTitle(editor.name || '未命名场景');
+    setGraph(null);
+    setGraphError('');
+    setGraphOpen(true);
+    setGraphLoading(true);
+    try {
+      setGraph(await apiScenariosApi.analyze(editor.yaml));
+    } catch (err) {
+      setGraphError(safeErrorMessage(err));
+    } finally {
+      setGraphLoading(false);
+    }
   };
 
   const openCreate = () => {
@@ -499,6 +556,7 @@ export function ApiScenariosPage() {
                   <td><div className="row-actions">
                     <Button size="sm" variant="primary" onClick={() => openRun(item)} disabled={!canWrite}>运行</Button>
                     <Button size="sm" variant="ghost" onClick={() => openEdit(item)} disabled={!canWrite}>编辑</Button>
+                    <Button size="sm" variant="ghost" onClick={() => void openGraph(item)}>流程</Button>
                     <Button size="sm" variant="ghost" onClick={() => void exportScenario(item)}>导出</Button>
                     <Button size="sm" variant="ghost" onClick={() => void openHistory(item)}>历史</Button>
                     <Button size="sm" variant="ghost" onClick={() => setDeleting(item)} disabled={!canWrite}>删除</Button>
@@ -513,6 +571,7 @@ export function ApiScenariosPage() {
       <Modal open={editorOpen} title={editing ? '编辑 API 场景' : '新建 API 场景'} size="xl"
         onClose={() => { if (!saving) setEditorOpen(false); }} closeOnOverlay={!saving}
         footer={<><Button variant="secondary" onClick={() => setEditorOpen(false)} disabled={saving}>取消</Button>
+          <Button variant="secondary" onClick={() => void analyzeEditor()}>流程预览</Button>
           <Button variant="secondary" loading={validating} onClick={() => void validate()}>校验 YAML</Button>
           <Button variant="primary" loading={saving} onClick={() => void save()}>{editing ? '保存' : '创建'}</Button></>}>
         <div className="form-stack">
@@ -680,6 +739,36 @@ export function ApiScenariosPage() {
           </div>
           <Field label="描述" htmlFor="scenario-import-desc"><Input id="scenario-import-desc" value={importDescription} onChange={(e) => setImportDescription(e.target.value)} /></Field>
           <Field label="YAML" htmlFor="scenario-import-yaml"><Textarea id="scenario-import-yaml" className="yaml-editor" rows={14} value={importYaml} onChange={(e) => setImportYaml(e.target.value)} /></Field>
+        </div>
+      </Modal>
+
+      <Modal open={graphOpen} title={`流程视图 · ${graphTitle}`} size="xl"
+        onClose={() => setGraphOpen(false)} footer={<Button variant="secondary" onClick={() => setGraphOpen(false)}>关闭</Button>}>
+        <div className="form-stack">
+          <Callout tone="info" title="只读视图">
+            流程图由 YAML 解析生成，不修改用例；点击「编辑」或在 YAML 视图修改参数。变量标签显示读取与产出的变量名。
+          </Callout>
+          {graphLoading ? <div className="field-hint">正在分析 YAML…</div> : graphError ? <Callout tone="error" title="分析失败">{graphError}</Callout> : graph ? (
+            <>
+              <div className="scenario-graph-meta">
+                <Pill tone="blue">{graph.stepCount} 个步骤</Pill>
+                <Pill tone={graph.warnings.length ? 'orange' : 'green'}>{graph.warnings.length ? `${graph.warnings.length} 个静态提示` : '静态检查通过'}</Pill>
+              </div>
+              {graph.warnings.length ? <Callout tone="warning" title="静态提示">{graph.warnings.join('；')}</Callout> : null}
+              <div className="scenario-graph">{graph.steps.map((node) => <GraphNodeView key={node.id} node={node} />)}</div>
+              {graph.variables.length ? (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead><tr><th>变量</th><th>生产者</th><th>消费者</th></tr></thead>
+                    <tbody>{graph.variables.map((flow) => (
+                      <tr key={flow.name}><td><code>{flow.name}</code></td><td>{flow.producer}</td>
+                        <td>{flow.consumers.length ? flow.consumers.join('、') : '—'}</td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </div>
       </Modal>
 

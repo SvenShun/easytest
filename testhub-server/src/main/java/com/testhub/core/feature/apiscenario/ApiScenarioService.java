@@ -39,11 +39,12 @@ public class ApiScenarioService {
     private final ScenarioExecutionClient executionClient;
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
+    private final ScenarioGraphAnalyzer graphAnalyzer;
 
     public ApiScenarioService(ApiScenarioRepository scenarios, ApiScenarioRunRepository runs,
                               ApiEnvironmentRepository environments, ApiEnvironmentResolver environmentResolver,
                               ScenarioExecutionClient executionClient, ObjectMapper objectMapper,
-                              NotificationService notificationService) {
+                              NotificationService notificationService, ScenarioGraphAnalyzer graphAnalyzer) {
         this.scenarios = scenarios;
         this.runs = runs;
         this.environments = environments;
@@ -51,6 +52,7 @@ public class ApiScenarioService {
         this.executionClient = executionClient;
         this.objectMapper = objectMapper;
         this.notificationService = notificationService;
+        this.graphAnalyzer = graphAnalyzer;
     }
 
     public PageResponse<ScenarioView> list(String keyword, Integer page, Integer size) {
@@ -243,6 +245,14 @@ public class ApiScenarioService {
         }
         return create(new ScenarioRequest(request.name(), request.description(), request.yaml(),
                 request.environmentId(), request.enabled()));
+    }
+
+    public ScenarioGraph analyze(String yaml) {
+        return graphAnalyzer.analyze(yaml);
+    }
+
+    public ScenarioGraph graph(String scenarioId) {
+        return graphAnalyzer.analyze(require(scenarioId).getYamlText());
     }
 
     public PageResponse<RunView> runs(String scenarioId, Integer page, Integer size) {

@@ -4981,3 +4981,19 @@ a.btn:hover {
 .scenario-step summary::-webkit-details-marker { display: none; }
 .scenario-step-body { padding-top: 8px; }
 .scenario-step-body pre { max-height: 260px; overflow: auto; background: #0b1220; color: #dbeafe; border-radius: 6px; padding: 8px; font-size: 11px; }
+
+/* Read-only scenario flow projection (YAML remains the source of truth). */
+.scenario-graph { display: flex; flex-direction: column; gap: 8px; }
+.scenario-graph-branch { position: relative; }
+.scenario-graph-node { border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 8px; padding: 10px 12px; background: var(--surface); }
+.scenario-graph-node.type-if, .scenario-graph-node.type-loop, .scenario-graph-node.type-once, .scenario-graph-node.type-while { border-left-color: #d97706; }
+.scenario-graph-node.type-sql { border-left-color: #0f766e; }
+.scenario-graph-node.type-groovy { border-left-color: #7c3aed; }
+.scenario-graph-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.scenario-graph-summary { color: var(--muted); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.scenario-graph-vars { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.scenario-graph-vars code { font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+.scenario-graph-vars.produces code { color: #0f766e; }
+.scenario-graph-warning { margin-top: 6px; font-size: 12px; color: #b45309; }
+.scenario-graph-children { margin: 8px 0 8px 22px; padding-left: 12px; border-left: 1px dashed var(--border); display: flex; flex-direction: column; gap: 8px; }
+.scenario-graph-meta { display: flex; gap: 8px; align-items: center; }
