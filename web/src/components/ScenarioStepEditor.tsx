@@ -142,7 +142,7 @@ function StepCard({ step, index, total, depth, onChange, onRemove, onMove }: {
         <span className="structured-step-index">{index + 1}</span>
         <Select value={type} onChange={(event) => {
           const nextType = event.target.value;
-          onChange({ ...DEFAULTS[nextType], ...step, type: nextType, name: step.name || DEFAULTS[nextType].name });
+          onChange({ ...DEFAULTS[nextType], name: step.name || DEFAULTS[nextType].name });
         }}>
           {STEP_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </Select>
