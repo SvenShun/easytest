@@ -199,6 +199,15 @@ GET  /api/v1/api-scenarios/{id}/runs
 - SQL 使用 `PreparedStatement` 参数绑定；`query` 仍由作者提供，平台按测试代码信任。
 - 报告脱敏环境 datasource，不返回 `env`。
 
+## 结构化编辑
+
+API 场景编辑器提供两个视图：
+
+- **表单编辑**：从 YAML 解析步骤树，支持添加/删除/上移下移、HTTP/SQL/Groovy/set/assert/wait/if/loop/once/while 参数表单、子步骤与 before/after 钩子编辑；场景变量、环境、数据集也可用 JSON 表单维护。
+- **YAML 源码**：原始文本，始终是保存与执行的唯一事实来源。
+
+保存时表单会先序列化为规范化 YAML，再走原有 `PUT /api/v1/api-scenarios/{id}`；平台不保存独立的步骤数据库模型。未知字段会随解析保留，YAML 注释会在表单序列化时丢失。
+
 ## 流程视图与静态检查
 
 「API 场景」列表提供 **流程** 只读视图，编辑器提供 **流程预览**：

@@ -4997,3 +4997,20 @@ a.btn:hover {
 .scenario-graph-warning { margin-top: 6px; font-size: 12px; color: #b45309; }
 .scenario-graph-children { margin: 8px 0 8px 22px; padding-left: 12px; border-left: 1px dashed var(--border); display: flex; flex-direction: column; gap: 8px; }
 .scenario-graph-meta { display: flex; gap: 8px; align-items: center; }
+
+/* YAML structured editor: visual layer only; serialized YAML stays the source of truth. */
+.editor-mode-tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; width: fit-content; }
+.editor-mode-tabs button { border: 0; background: transparent; padding: 6px 14px; cursor: pointer; color: var(--muted); font-size: 13px; }
+.editor-mode-tabs button.is-active { background: var(--primary); color: #fff; }
+.structured-step-list { display: flex; flex-direction: column; gap: 10px; }
+.structured-step { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--surface); }
+.structured-step.is-child { background: var(--surface-2); border-style: dashed; }
+.structured-step-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.structured-step-head select { max-width: 110px; }
+.structured-step-head .input { flex: 1; min-width: 180px; }
+.structured-step-index { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface-2); font-size: 11px; color: var(--muted); }
+.step-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.structured-children { margin: 10px 0 0 14px; padding-left: 10px; border-left: 2px dashed var(--border); }
+.structured-children-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.structured-hooks { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 6px; }
+.structured-hooks summary { cursor: pointer; font-size: 12px; color: var(--muted); }

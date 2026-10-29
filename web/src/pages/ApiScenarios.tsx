@@ -9,6 +9,8 @@ import {
   Select, SkeletonRows, StatusPill, Textarea,
 } from '../components/ui';
 import { ConfirmDialog, Modal } from '../components/Modal';
+import { JsonField, ScenarioStepEditor } from '../components/ScenarioStepEditor';
+import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
 import { toastError, toastSuccess } from '../components/Toast';
 
 function GraphNodeView({ node }: { node: ScenarioGraphNode }) {
@@ -156,6 +158,9 @@ export function ApiScenariosPage() {
   const [editor, setEditor] = useState<EditorState>(EMPTY_EDITOR);
   const [saving, setSaving] = useState(false);
   const [editorError, setEditorError] = useState('');
+  const [editorMode, setEditorMode] = useState<'form' | 'yaml'>('yaml');
+  const [draft, setDraft] = useState<Record<string, any> | null>(null);
+  const [formError, setFormError] = useState('');
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<{ valid: boolean; message: string; stepCount: number; stepTypes: string[] } | null>(null);
   const [datasetName, setDatasetName] = useState('rows');
@@ -295,7 +300,48 @@ export function ApiScenariosPage() {
     }
   };
 
+  const currentYaml = () => {
+    if (editorMode === 'form' && draft) {
+      const next = { ...draft, name: editor.name || draft.name };
+      return yamlDump(next, { noRefs: true, lineWidth: -1, sortKeys: false });
+    }
+    return editor.yaml;
+  };
+
+  const switchToForm = () => {
+    try {
+      const parsed = yamlLoad(editor.yaml);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('YAML 根节点必须是对象');
+      }
+      const next = parsed as Record<string, any>;
+      if (!Array.isArray(next.steps)) next.steps = [];
+      setDraft(next);
+      setEditorMode('form');
+      setFormError('');
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'YAML 解析失败');
+    }
+  };
+
+  const switchToYaml = () => {
+    if (draft) {
+      try {
+        setEditor((prev) => ({ ...prev, yaml: yamlDump(draft, { noRefs: true, lineWidth: -1, sortKeys: false }) }));
+      } catch {
+        // keep the previous YAML if serialization fails
+      }
+    }
+    setEditorMode('yaml');
+    setFormError('');
+  };
+
   const insertSnippet = (snippet: string) => {
+    if (editorMode === 'form') {
+      setEditorMode('yaml');
+      setDraft(null);
+      setEditorError('模板已追加到 YAML 源码；切换回表单会重新解析');
+    }
     if (!editorOpen) {
       setEditing(null);
       setEditor({ ...EMPTY_EDITOR, name: '新场景' });
@@ -330,7 +376,7 @@ export function ApiScenariosPage() {
     setGraphOpen(true);
     setGraphLoading(true);
     try {
-      setGraph(await apiScenariosApi.analyze(editor.yaml));
+      setGraph(await apiScenariosApi.analyze(currentYaml()));
     } catch (err) {
       setGraphError(safeErrorMessage(err));
     } finally {
@@ -343,6 +389,9 @@ export function ApiScenariosPage() {
     setEditor({ ...EMPTY_EDITOR });
     setValidation(null);
     setEditorError('');
+    setEditorMode('yaml');
+    setDraft(null);
+    setFormError('');
     setEditorOpen(true);
   };
 
@@ -357,6 +406,9 @@ export function ApiScenariosPage() {
     });
     setValidation(null);
     setEditorError('');
+    setEditorMode('yaml');
+    setDraft(null);
+    setFormError('');
     setEditorOpen(true);
   };
 
@@ -384,6 +436,8 @@ export function ApiScenariosPage() {
       yaml = `${block}${yaml}`;
     }
     setEditor({ ...editor, yaml });
+    setEditorMode('yaml');
+    setDraft(null);
     toastSuccess(`已导入 ${objects.length} 行到 dataset "${name}"`);
   };
 
@@ -391,7 +445,7 @@ export function ApiScenariosPage() {
     setValidating(true);
     setValidation(null);
     try {
-      setValidation(await apiScenariosApi.validate(editor.yaml));
+      setValidation(await apiScenariosApi.validate(currentYaml()));
     } catch (err) {
       setEditorError(safeErrorMessage(err));
     } finally {
@@ -407,10 +461,14 @@ export function ApiScenariosPage() {
     setSaving(true);
     setEditorError('');
     try {
+      let yamlText = editor.yaml;
+      if (editorMode === 'form' && draft) {
+        yamlText = yamlDump({ ...draft, name: editor.name || draft.name }, { noRefs: true, lineWidth: -1, sortKeys: false });
+      }
       const input = {
         name: editor.name.trim(),
         description: editor.description,
-        yaml: editor.yaml,
+        yaml: yamlText,
         environmentId: editor.environmentId || null,
         enabled: editor.enabled,
       };
@@ -589,31 +647,61 @@ export function ApiScenariosPage() {
             </Select></Field>
           </div>
           <Field label="描述" htmlFor="scenario-desc"><Input id="scenario-desc" value={editor.description} onChange={(e) => setEditor({ ...editor, description: e.target.value })} /></Field>
-          <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-            <span className="capability-label">插入：</span>
-            {STEP_SNIPPETS.map((item) => (
-              <Button key={item.label} size="sm" variant="ghost" onClick={() => insertSnippet(item.yaml)}>{item.label}</Button>
-            ))}
-            <Button size="sm" variant="ghost" onClick={() => insertSnippet(DATASET_SNIPPET)}>datasets</Button>
+          <div className="editor-mode-tabs">
+            <button type="button" className={editorMode === 'form' ? 'is-active' : ''} onClick={switchToForm}>表单编辑</button>
+            <button type="button" className={editorMode === 'yaml' ? 'is-active' : ''} onClick={switchToYaml}>YAML 源码</button>
           </div>
-          <Field label="YAML" htmlFor="scenario-yaml" hint="支持 HTTP/SQL/Groovy/set/assert/wait、if/loop/once/while、before/after、变量 ${var} 或 {{var}}">
-            <Textarea id="scenario-yaml" className="yaml-editor" rows={26} value={editor.yaml} onChange={(e) => setEditor({ ...editor, yaml: e.target.value })} />
-          </Field>
-          <div className="row-actions">
-            <Field label="CSV dataset 名称" htmlFor="scenario-dataset">
-              <Input id="scenario-dataset" value={datasetName} onChange={(e) => setDatasetName(e.target.value)} />
-            </Field>
-            <label className="button button-secondary" style={{ cursor: 'pointer' }}>
-              导入 CSV 数据集
-              <input type="file" accept=".csv,text/csv" hidden
-                     onChange={(event) => {
-                       const file = event.target.files?.[0];
-                       if (file) void importCsv(file);
-                       event.currentTarget.value = '';
-                     }} />
-            </label>
-          </div>
-          <div className="field-hint">CSV 会写入 YAML 的 datasets 段；loop 步骤用 <code>dataset: 名称</code> 引用。</div>
+          {formError ? <Callout tone="error" title="无法切换到表单">{formError}</Callout> : null}
+          {editorMode === 'form' ? (
+            <div className="form-stack">
+              <Callout tone="info" title="表单是 YAML 的结构化视图">
+                修改会先序列化回 YAML；未知字段仍保留在 YAML 中。结构性改动（控制器、变量）可切回源码。
+              </Callout>
+              {draft ? (
+                <>
+                  <div className="form-grid-2">
+                    <Field label="总超时（秒）"><Input type="number" value={draft.timeoutSec || ''} onChange={(e) => setDraft({ ...draft, timeoutSec: e.target.value ? Number(e.target.value) : undefined })} /></Field>
+                    <Field label="失败后继续"><Select value={draft.continueOnFailure ? '1' : '0'} onChange={(e) => setDraft({ ...draft, continueOnFailure: e.target.value === '1' })}><option value="0">否</option><option value="1">是</option></Select></Field>
+                  </div>
+                  <div className="form-grid-2">
+                    <JsonField label="场景变量 variables" value={draft.variables} onChange={(variables) => setDraft({ ...draft, variables })} />
+                    <JsonField label="环境 environment" value={draft.environment} onChange={(environment) => setDraft({ ...draft, environment })} />
+                  </div>
+                  <JsonField label="数据集 datasets" value={draft.datasets} onChange={(datasets) => setDraft({ ...draft, datasets })} />
+                  <ScenarioStepEditor steps={Array.isArray(draft.steps) ? draft.steps : []}
+                    onChange={(steps) => setDraft({ ...draft, steps })} />
+                </>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <div className="row-actions" style={{ flexWrap: 'wrap' }}>
+                <span className="capability-label">插入：</span>
+                {STEP_SNIPPETS.map((item) => (
+                  <Button key={item.label} size="sm" variant="ghost" onClick={() => insertSnippet(item.yaml)}>{item.label}</Button>
+                ))}
+                <Button size="sm" variant="ghost" onClick={() => insertSnippet(DATASET_SNIPPET)}>datasets</Button>
+              </div>
+              <Field label="YAML" htmlFor="scenario-yaml" hint="支持 HTTP/SQL/Groovy/set/assert/wait、if/loop/once/while、before/after、变量 ${var} 或 {{var}}">
+                <Textarea id="scenario-yaml" className="yaml-editor" rows={26} value={editor.yaml} onChange={(e) => setEditor({ ...editor, yaml: e.target.value })} />
+              </Field>
+              <div className="row-actions">
+                <Field label="CSV dataset 名称" htmlFor="scenario-dataset">
+                  <Input id="scenario-dataset" value={datasetName} onChange={(e) => setDatasetName(e.target.value)} />
+                </Field>
+                <label className="button button-secondary" style={{ cursor: 'pointer' }}>
+                  导入 CSV 数据集
+                  <input type="file" accept=".csv,text/csv" hidden
+                         onChange={(event) => {
+                           const file = event.target.files?.[0];
+                           if (file) void importCsv(file);
+                           event.currentTarget.value = '';
+                         }} />
+                </label>
+              </div>
+              <div className="field-hint">CSV 会写入 YAML 的 datasets 段；loop 步骤用 <code>dataset: 名称</code> 引用。</div>
+            </>
+          )}
           <Field label="状态" htmlFor="scenario-enabled"><Select id="scenario-enabled" value={editor.enabled ? '1' : '0'} onChange={(e) => setEditor({ ...editor, enabled: e.target.value === '1' })}><option value="1">启用</option><option value="0">停用</option></Select></Field>
         </div>
       </Modal>
