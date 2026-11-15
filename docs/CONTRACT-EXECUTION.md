@@ -97,13 +97,19 @@ java -cp contract-api/target/classes:examples/api-engineering/target/api-enginee
   com.easytest.contract.ContractManifestGenerator /tmp/api-engineering-example-1.0.0.jar /tmp/easytest-contract.yaml
 ```
 
-输出包含 `id/name/description/methodPath/inputs/outputs/tags`。Agent 加载 JAR 后，平台通过
-`GET /api/v1/engineering-methods` 获取方法列表，场景编辑器工程组件步骤提供 methodPath 下拉提示。
+输出包含 `id/name/description/methodPath/inputs/outputs/tags`。Agent 加载 JAR 后，平台通过：
+
+- `POST /api/v1/engineering-methods/sync`：从 Agent 同步方法到平台注册表；
+- `POST /api/v1/engineering-methods/import`：导入 `easytest-contract.yaml`；
+- `GET /api/v1/engineering-methods`：平台方法列表。
+
+「工程方法」页面可执行同步/导入；场景编辑器工程组件步骤提供 methodPath 下拉提示。
 
 ## 尚未完成
 
-- manifest 自动写入 Git/平台注册表（目前由 Agent 扫描 JAR + 编辑器 datalist 提供）
+- manifest 自动写入 Git/平台注册表（当前支持手动/Agent 同步）
 - 平台保存时校验 methodPath 是否存在/输入输出是否匹配
+- 工程 commit 与方法契约版本绑定到每次执行（当前场景运行记录 Git sourcePath/sourceCommit，方法契约记录在组件报告中）
 - Git 工程 commit 固化到执行记录
 - Python 工程 SDK
 - 平台端契约方法列表/补全 UI（目前可在场景表单手工填写）
