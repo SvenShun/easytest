@@ -103,7 +103,14 @@ POST   /api/v1/engineering-repos/{id}/webhook
 
 ## Demo 仓库
 
-两个目录已经是独立的本地 Git 仓库（`main` 分支）：
+两个目录已经是独立的本地 Git 仓库（`main` 分支）。如果从 GitHub 重新 clone 主仓库，
+先运行：
+
+```bash
+./examples/init-demo-repos.sh
+```
+
+目录：
 
 - `examples/engineering-api-repo/`：API 工程约定 + `GitDemoCases` + 已构建 `target/git-demo-api.jar`
 - `examples/engineering-ui-repo/`：UI STEP 工程约定
