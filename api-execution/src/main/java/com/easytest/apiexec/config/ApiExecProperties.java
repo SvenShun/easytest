@@ -42,6 +42,15 @@ public class ApiExecProperties {
     /** Disables the plan-run result callback (useful for isolated tests). */
     private boolean callbackEnabled = true;
 
+    /** Directory containing test-engineering JARs (contract methods) for this agent. */
+    private String engineeringDir = "data/engineering";
+
+    /** Registers this executor as a discoverable API agent at the core server. */
+    private boolean agentRegistrationEnabled = true;
+
+    /** Capabilities advertised to the scheduler. */
+    private java.util.List<String> agentCapabilities = java.util.List.of("HTTP", "SQL", "GROOVY", "COMPONENT");
+
     public String getCoreBaseUrl() {
         return coreBaseUrl;
     }
@@ -108,6 +117,30 @@ public class ApiExecProperties {
 
     public boolean isCallbackEnabled() {
         return callbackEnabled;
+    }
+
+    public String getEngineeringDir() {
+        return engineeringDir;
+    }
+
+    public void setEngineeringDir(String engineeringDir) {
+        this.engineeringDir = engineeringDir;
+    }
+
+    public boolean isAgentRegistrationEnabled() {
+        return agentRegistrationEnabled;
+    }
+
+    public void setAgentRegistrationEnabled(boolean agentRegistrationEnabled) {
+        this.agentRegistrationEnabled = agentRegistrationEnabled;
+    }
+
+    public java.util.List<String> getAgentCapabilities() {
+        return agentCapabilities;
+    }
+
+    public void setAgentCapabilities(java.util.List<String> agentCapabilities) {
+        this.agentCapabilities = agentCapabilities == null ? java.util.List.of() : agentCapabilities;
     }
 
     public void setCallbackEnabled(boolean callbackEnabled) {

@@ -172,6 +172,10 @@ public class ScenarioGraphAnalyzer {
             Matcher matcher = GROOVY_PUT.matcher(text(step.get("script")));
             while (matcher.find()) produces.add(matcher.group(1));
         }
+        if ("component".equalsIgnoreCase(type)) {
+            produces.addAll(map(step.get("outputs")).keySet());
+            produces.addAll(map(step.get("outputContract")).keySet());
+        }
         return new ArrayList<>(produces);
     }
 
@@ -204,6 +208,7 @@ public class ScenarioGraphAnalyzer {
             case "http" -> first(text(step.get("method")), "GET") + " " + first(text(step.get("url")), text(step.get("path")));
             case "sql" -> text(step.get("query"));
             case "groovy" -> "自定义 Groovy 脚本";
+            case "component" -> "工程方法: " + first(text(step.get("methodPath")), text(step.get("method")));
             case "assert" -> maps(step.get("assertions")).size() + " 个断言";
             case "set" -> "设置 " + map(step.get("variables")).keySet();
             case "wait" -> "等待 " + step.getOrDefault("ms", 500) + "ms";

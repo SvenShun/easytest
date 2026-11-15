@@ -4,6 +4,7 @@ import com.easytest.apiexec.config.ApiExecProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * api-execution (port 8084): independently deployable HTTP API test executor.
@@ -15,6 +16,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
  */
 @SpringBootApplication(scanBasePackages = "com.easytest")
 @EnableConfigurationProperties(ApiExecProperties.class)
+@EnableScheduling
 public class ApiExecutionApplication {
 
     public static void main(String[] args) {

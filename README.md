@@ -136,8 +136,11 @@ tail -f logs/core.log
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — E2E 验收结果与证据
 - [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md) — 第二部分（接口自动化）验收
 - [docs/PRODUCT-ALIGNMENT.md](docs/PRODUCT-ALIGNMENT.md) — YAML 源真相、流程图与后续优先级
+- [examples/api-engineering](examples/api-engineering/README.md) — 契约方法测试工程示例
 - [docs/API-CASE-CONTRACT.md](docs/API-CASE-CONTRACT.md) — 单步组件输入/输出变量契约
 - [docs/CASE-LINK.md](docs/CASE-LINK.md) — 文本用例 ↔ 自动化用例关联
+- [docs/CONTRACT-EXECUTION.md](docs/CONTRACT-EXECUTION.md)
+- [docs/API-AGENT.md](docs/API-AGENT.md) — API Agent 注册/心跳/能力/槽位 — 测试工程方法与组件契约执行
 - [docs/API-SCENARIO.md](docs/API-SCENARIO.md) — YAML 多步骤接口场景（HTTP/SQL/Groovy/断言/变量）
 - [docs/METERSPHERE-API-COMPARISON.md](docs/METERSPHERE-API-COMPARISON.md) — MeterSphere 接口能力对照与后续清单
 - [docs/API-EXECUTION-CONTRACT.md](docs/API-EXECUTION-CONTRACT.md) — 接口执行契约

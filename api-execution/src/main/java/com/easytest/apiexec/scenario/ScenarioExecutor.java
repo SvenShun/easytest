@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.easytest.apiexec.assertion.ApiAssertion;
 import com.easytest.apiexec.assertion.AssertionEvaluator;
 import com.easytest.apiexec.assertion.AssertionResult;
+import com.easytest.apiexec.contract.EngineeringMethodRegistry;
 import com.easytest.apiexec.execution.HttpExchangeResult;
 import com.easytest.apiexec.execution.HttpExecutor;
 import com.easytest.apiexec.execution.HttpRequestSpec;
@@ -53,13 +54,22 @@ public class ScenarioExecutor {
     private final HttpExecutor httpExecutor;
     private final AssertionEvaluator assertionEvaluator;
     private final ObjectMapper objectMapper;
+    private final EngineeringMethodRegistry engineeringMethods;
 
     public ScenarioExecutor(ScenarioYamlParser parser, HttpExecutor httpExecutor,
                             AssertionEvaluator assertionEvaluator, ObjectMapper objectMapper) {
+        this(parser, httpExecutor, assertionEvaluator, objectMapper, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ScenarioExecutor(ScenarioYamlParser parser, HttpExecutor httpExecutor,
+                            AssertionEvaluator assertionEvaluator, ObjectMapper objectMapper,
+                            EngineeringMethodRegistry engineeringMethods) {
         this.parser = parser;
         this.httpExecutor = httpExecutor;
         this.assertionEvaluator = assertionEvaluator;
         this.objectMapper = objectMapper;
+        this.engineeringMethods = engineeringMethods;
     }
 
     public ScenarioRunResult execute(String yaml, Map<String, Object> environment,
@@ -124,6 +134,7 @@ public class ScenarioExecutor {
                             extracted, remaining);
                     case "sql" -> executeSql(step, variables, env, requestView, responseView, assertions, extracted);
                     case "groovy" -> executeGroovy(step, variables, env, extracted);
+                    case "component" -> executeComponent(step, variables, requestView, responseView, extracted);
                     case "set" -> executeSet(step, variables);
                     case "assert" -> executeAssert(step, variables, assertions);
                     case "wait" -> Thread.sleep(Math.max(0, Math.min(integer(step.get("ms"), 500), remaining)));
@@ -422,6 +433,39 @@ public class ScenarioExecutor {
         }
         if (assertions.stream().anyMatch(item -> !item.passed())) {
             throw new StepFailure("ASSERTION_FAILED", "SQL assertions failed");
+        }
+    }
+
+    private void executeComponent(Map<String, Object> step, Map<String, Object> variables,
+                                  Map<String, Object> requestView, Map<String, Object> responseView,
+                                  Map<String, Object> extracted) {
+        if (engineeringMethods == null) {
+            throw new StepFailure("COMPONENT_UNAVAILABLE", "契约方法注册器未启用");
+        }
+        String methodPath = interpolateText(first(text(step.get("methodPath")), text(step.get("method"))), variables);
+        if (methodPath == null || methodPath.isBlank()) {
+            throw new StepFailure("STEP_INVALID", "component step requires methodPath");
+        }
+        Map<String, Object> inputs = map(resolve(step.get("inputs"), variables));
+        Map<String, Object> resolvedInputs = new LinkedHashMap<>();
+        inputs.forEach((key, value) -> resolvedInputs.put(key, resolve(value, variables)));
+        requestView.put("methodPath", methodPath);
+        requestView.put("inputs", resolvedInputs);
+        long timeoutMs = Math.max(1, Math.min(integer(step.get("timeoutMs"), 30_000), 600_000));
+        EngineeringMethodRegistry.Execution execution = engineeringMethods.execute(methodPath, resolvedInputs, timeoutMs);
+        responseView.put("passed", execution.passed());
+        responseView.put("summary", execution.summary());
+        if (!execution.logs().isEmpty()) responseView.put("logs", execution.logs());
+        if (!execution.outputs().isEmpty()) {
+            responseView.put("outputs", execution.outputs());
+            execution.outputs().forEach((key, value) -> {
+                variables.put(key, value);
+                extracted.put(key, value);
+            });
+        }
+        if (!execution.passed()) {
+            String reason = execution.failureReason() == null ? "COMPONENT_FAILED" : execution.failureReason();
+            throw new StepFailure(reason, reason + ": " + execution.summary());
         }
     }
 

@@ -20,6 +20,7 @@
 
     <modules>
         <module>common</module>
+        <module>contract-api</module>
         <module>easytest-server</module>
         <module>ui-execution</module>
         <module>device-agent</module>
@@ -39,6 +40,11 @@
             <dependency>
                 <groupId>com.easytest</groupId>
                 <artifactId>easytest-common</artifactId>
+                <version>${easytest.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.easytest</groupId>
+                <artifactId>easytest-contract-api</artifactId>
                 <version>${easytest.version}</version>
             </dependency>
             <dependency>

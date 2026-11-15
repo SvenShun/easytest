@@ -240,3 +240,25 @@ API 场景编辑器提供两个视图：
 - 以 YAML 文件相对路径作为 `sourcePath` 匹配已有场景，更新名称/YAML/commit；不会因 Git 删除文件而删除平台场景。
 
 服务端需要安装 `git`，并能访问仓库；私有仓库使用运行 core 的用户已有 SSH key 或 URL 凭据。Git 配置在「API 场景 → Git 同步」中维护，密钥只写不回显。
+
+### 工程组件（契约执行）
+
+代码实现的复杂用例不在平台里扩展表达式，而是通过工程方法接入：
+
+```yaml
+- name: engineering login
+  type: component
+  methodPath: com.example.easytest.LoginEngineeringCases#loginWithCode
+  description: 调用工程代码完成登录
+  inputs:
+    username: "${username}"
+    password: "${password}"
+  timeoutMs: 30000
+```
+
+- 工程方法使用 `@EasyContract` 标注，`description` 作为平台展示的行为说明；
+- 方法接收 `ContractContext`，返回 `ContractResult`；`outputs` 会写入后续变量；
+- api-execution 从 `data/engineering/`（或 `EASYTEST_ENGINEERING_DIR`）加载工程 JAR；
+- 示例工程：[examples/api-engineering](../examples/api-engineering/README.md)。
+
+平台只保存契约（methodPath/描述/输入输出），复杂逻辑留在测试工程中。

@@ -3,6 +3,7 @@ WORKDIR /src
 COPY deploy/maven-settings.xml /root/.m2/settings.xml
 COPY pom.xml .
 COPY common/pom.xml common/pom.xml
+COPY contract-api/pom.xml contract-api/pom.xml
 COPY easytest-server/pom.xml easytest-server/pom.xml
 COPY ui-execution/pom.xml ui-execution/pom.xml
 COPY device-agent/pom.xml device-agent/pom.xml

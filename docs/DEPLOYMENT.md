@@ -364,6 +364,7 @@ openssl rand -hex 32
 | `EASYTEST_AGENT_DATA_DIR` | `./data/agent` | Agent 缓存/脚本目录 |
 | `EASYTEST_SCRCPY_WEB` | `auto` | 设为 `0` 可禁用 ws-scrcpy 自动启动 |
 | `EASYTEST_AGENT_ADB` | `adb` | adb 可执行文件路径 |
+| `EASYTEST_APIEXEC_ENGINEERING_DIR` | `data/engineering` | api-execution 加载测试工程 JAR 的目录 |
 | `SPRING_DATASOURCE_*` | 由脚本设置 | MySQL 连接 |
 | `SPRING_DATA_REDIS_HOST/PORT` | 由脚本设置 | Redis |
 | `EASYTEST_MINIO_*` | 由脚本设置 | MinIO |

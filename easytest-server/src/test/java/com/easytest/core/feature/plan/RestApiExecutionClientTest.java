@@ -3,6 +3,7 @@ package com.easytest.core.feature.plan;
 import com.sun.net.httpserver.HttpServer;
 import com.easytest.common.security.SecurityProperties;
 import com.easytest.core.config.CoreProperties;
+import com.easytest.core.feature.apiagent.ApiAgentRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +45,7 @@ class RestApiExecutionClientTest {
         properties.setApiExecutionBaseUrls(baseUrl);
         SecurityProperties security = new SecurityProperties();
         security.setServiceToken("test-token");
-        RestApiExecutionClient client = new RestApiExecutionClient(properties, security);
+        RestApiExecutionClient client = new RestApiExecutionClient(properties, security, new ApiAgentRegistry());
 
         List<ApiExecutionClient.TaskSnapshot> tasks = client.listTasksByPlanRun("run-1");
 

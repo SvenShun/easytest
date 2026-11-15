@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.easytest.common.security.SecurityProperties;
 import com.easytest.common.web.ApiException;
 import com.easytest.core.config.CoreProperties;
+import com.easytest.core.feature.apiagent.ApiAgentRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -29,9 +30,11 @@ public class RestApiExecutionClient implements ApiExecutionClient {
 
     private final RestClient client;
     private final List<String> baseUrls;
+    private final ApiAgentRegistry agentRegistry;
     private final AtomicInteger cursor = new AtomicInteger();
 
-    public RestApiExecutionClient(CoreProperties coreProperties, SecurityProperties securityProperties) {
+    public RestApiExecutionClient(CoreProperties coreProperties, SecurityProperties securityProperties,
+                                  ApiAgentRegistry agentRegistry) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5_000);
         factory.setReadTimeout(15_000);
@@ -40,6 +43,7 @@ public class RestApiExecutionClient implements ApiExecutionClient {
                 .defaultHeader("X-Service-Token", securityProperties.getServiceToken())
                 .defaultHeader("Content-Type", "application/json")
                 .build();
+        this.agentRegistry = agentRegistry;
         String raw = coreProperties.getApiExecutionBaseUrls();
         this.baseUrls = Arrays.stream((raw == null || raw.isBlank() ? "http://127.0.0.1:8084" : raw).split(","))
                 .map(String::trim)
@@ -50,10 +54,14 @@ public class RestApiExecutionClient implements ApiExecutionClient {
 
     @Override
     public TaskCreated createTask(Map<String, Object> payload) {
+        List<String> candidates = candidateUrls(java.util.Set.of());
+        if (candidates.isEmpty()) {
+            throw ApiException.conflict("没有可用的 API Agent（能力/槽位不足）");
+        }
         RuntimeException last = null;
-        int start = Math.floorMod(cursor.getAndIncrement(), baseUrls.size());
-        for (int i = 0; i < baseUrls.size(); i++) {
-            String baseUrl = baseUrls.get((start + i) % baseUrls.size());
+        int start = Math.floorMod(cursor.getAndIncrement(), candidates.size());
+        for (int i = 0; i < candidates.size(); i++) {
+            String baseUrl = candidates.get((start + i) % candidates.size());
             try {
                 JsonNode response = client.post()
                         .uri(baseUrl + "/api/v1/api-execution/tasks")
@@ -79,7 +87,7 @@ public class RestApiExecutionClient implements ApiExecutionClient {
         List<TaskSnapshot> tasks = new ArrayList<>();
         RuntimeException last = null;
         boolean anySuccess = false;
-        for (String baseUrl : baseUrls) {
+        for (String baseUrl : candidateUrls(java.util.Set.of())) {
             try {
                 JsonNode response = client.get()
                         .uri(UriComponentsBuilder.fromHttpUrl(baseUrl)
@@ -111,6 +119,16 @@ public class RestApiExecutionClient implements ApiExecutionClient {
             throw last;
         }
         return tasks;
+    }
+
+    private List<String> candidateUrls(java.util.Set<String> requiredCapabilities) {
+        java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
+        if (agentRegistry != null && agentRegistry.hasAgents()) {
+            candidates.addAll(agentRegistry.availableBaseUrls(requiredCapabilities));
+            return new ArrayList<>(candidates);
+        }
+        candidates.addAll(baseUrls);
+        return new ArrayList<>(candidates);
     }
 
     private JsonNode unwrap(JsonNode response) {

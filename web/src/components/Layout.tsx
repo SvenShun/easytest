@@ -40,6 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/api-scenarios', label: 'API 场景', icon: 'code', roles: ['ADMIN', 'TESTER'] },
       { path: '/environments', label: '环境管理', icon: 'server', roles: ['ADMIN', 'TESTER'] },
       { path: '/kb', label: 'UI 知识库', icon: 'devices', roles: ['ADMIN', 'TESTER'] },
+      { path: '/agents', label: '执行节点', icon: 'server', roles: ['ADMIN', 'TESTER'] },
       { path: '/plans', label: '测试计划', icon: 'plans', roles: ['ADMIN', 'TESTER'] },
       { path: '/jobs', label: '定时任务', icon: 'clock', roles: ['ADMIN', 'TESTER'] },
       { path: '/reports', label: '测试报告', icon: 'dashboard', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
@@ -79,6 +80,8 @@ export function routeTitle(route: RouteState): string {
       return 'UI 知识库';
     case 'kb':
       return 'UI 知识库';
+    case 'agents':
+      return '执行节点';
     case 'ai':
       return 'AI 分析';
     case 'plans':

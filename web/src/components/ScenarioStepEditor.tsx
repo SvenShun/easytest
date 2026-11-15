@@ -5,7 +5,7 @@ export type ScenarioStep = Record<string, any>;
 
 const STEP_TYPES = [
   ['http', 'HTTP'], ['sql', 'SQL'], ['groovy', 'Groovy'], ['set', 'set'], ['assert', 'assert'],
-  ['wait', 'wait'], ['if', 'if'], ['loop', 'loop'], ['once', 'once'], ['while', 'while'],
+  ['wait', 'wait'], ['component', '工程组件'], ['if', 'if'], ['loop', 'loop'], ['once', 'once'], ['while', 'while'],
 ];
 
 const DEFAULTS: Record<string, ScenarioStep> = {
@@ -15,6 +15,7 @@ const DEFAULTS: Record<string, ScenarioStep> = {
   set: { type: 'set', name: '设置变量', variables: { key: 'value' } },
   assert: { type: 'assert', name: '断言', assertions: [{ type: 'VARIABLE', path: 'key', operator: 'EQ', expected: 'value' }] },
   wait: { type: 'wait', name: '等待', ms: 500 },
+  component: { type: 'component', name: '工程组件', methodPath: 'com.example#case', description: '工程代码行为说明', inputs: {} },
   if: { type: 'if', name: '条件分支', condition: '${flag} == yes', steps: [] },
   loop: { type: 'loop', name: '循环', dataset: 'rows', steps: [] },
   once: { type: 'once', name: '执行一次', steps: [] },
@@ -93,6 +94,19 @@ function StepFields({ step, update }: { step: ScenarioStep; update: (patch: Scen
       return <JsonField label="断言 assertions" value={step.assertions} onChange={(assertions) => update({ assertions })} />;
     case 'wait':
       return <Field label="等待毫秒"><Input type="number" value={step.ms ?? 500} onChange={(e) => update({ ms: Number(e.target.value) })} /></Field>;
+    case 'component':
+      return (
+        <div className="step-fields">
+          <Field label="工程方法 path" hint="测试工程中 @EasyContract 标注的方法，例如 com.example.LoginCases#login">
+            <Input value={step.methodPath || ''} onChange={(e) => update({ methodPath: e.target.value })} />
+          </Field>
+          <Field label="行为说明" hint="平台展示用；复杂用例由工程代码实现">
+            <Input value={step.description || ''} onChange={(e) => update({ description: e.target.value })} />
+          </Field>
+          <JsonField label="输入变量 inputs" value={step.inputs} onChange={(inputs) => update({ inputs })} />
+          <Field label="超时（毫秒）"><Input type="number" value={step.timeoutMs || ''} onChange={(e) => update({ timeoutMs: e.target.value ? Number(e.target.value) : undefined })} /></Field>
+        </div>
+      );
     case 'if':
       return (
         <div className="step-fields">

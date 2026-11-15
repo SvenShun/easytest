@@ -105,6 +105,7 @@ start apiexec env \
   EASYTEST_APIEXEC_QUEUE="$APIEXEC_QUEUE" \
   EASYTEST_APIEXEC_INSTANCE_ID="$APIEXEC_INSTANCE_ID" \
   EASYTEST_APIEXEC_WORKERS="${EASYTEST_APIEXEC_WORKERS:-4}" \
+  EASYTEST_APIEXEC_ENGINEERING_DIR="$ROOT/data/engineering" \
   ./scripts/mvn.sh -q -pl api-execution spring-boot:run
 
 start agent env \

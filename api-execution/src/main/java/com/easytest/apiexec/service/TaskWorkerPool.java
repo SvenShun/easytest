@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Starts {@code easytest.apiexec.workers} polling workers on this instance.
@@ -38,6 +39,7 @@ public class TaskWorkerPool implements ApplicationRunner, DisposableBean {
     private final List<Thread> threads = new ArrayList<>();
 
     private volatile boolean running;
+    private final AtomicInteger activeTasks = new AtomicInteger();
 
     public TaskWorkerPool(ApiExecutionService executionService,
                           com.easytest.apiexec.scenario.ScenarioExecutionService scenarioService,
@@ -93,6 +95,7 @@ public class TaskWorkerPool implements ApplicationRunner, DisposableBean {
             if (taskId == null) {
                 continue;
             }
+            activeTasks.incrementAndGet();
             try {
                 if (taskId.startsWith(com.easytest.apiexec.scenario.ScenarioExecutionService.QUEUE_PREFIX)) {
                     scenarioService.execute(taskId.substring(
@@ -112,8 +115,15 @@ public class TaskWorkerPool implements ApplicationRunner, DisposableBean {
                 } catch (RuntimeException failure) {
                     log.error("worker 标记任务失败异常 taskId={} workerId={}", taskId, workerId, failure);
                 }
+            } finally {
+                activeTasks.decrementAndGet();
             }
         }
+    }
+
+    /** Number of tasks currently executing on this agent (used by heartbeat). */
+    public int activeTasks() {
+        return activeTasks.get();
     }
 
     private void backoff() {
