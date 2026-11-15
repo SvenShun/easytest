@@ -1,0 +1,99 @@
+schemaVersion: 1
+repoType: api
+methods:
+  - id: iot.atom.http.login
+    name: 网关登录
+    layer: ATOM
+    protocols: [HTTP]
+    methodPath: com.easytest.iot.atom.HttpGatewayAtom#login
+    inputs: [username, password]
+    outputs: [token, status]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.action.device.onboard
+    name: 设备接入组合操作
+    layer: ACTION
+    protocols: [HTTP, MQTT, KAFKA]
+    methodPath: com.easytest.iot.action.DeviceOnboardingAction#onboard
+    inputs: [homeId, deviceId, token]
+    outputs: [bound, eventOffset]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.atom.mysql.seedHome
+    name: MySQL 造家庭数据
+    layer: ATOM
+    protocols: [SQL]
+    methodPath: com.easytest.iot.atom.MysqlSeedAtom#seedHome
+    inputs: [homeId, ownerId]
+    outputs: [rows]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.atom.mysql.queryHome
+    name: MySQL 查询家庭
+    layer: ATOM
+    protocols: [SQL]
+    methodPath: com.easytest.iot.atom.MysqlSeedAtom#queryHome
+    inputs: [homeId]
+    outputs: [row]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.atom.kafka.publish
+    name: 发送 Kafka 设备事件
+    layer: ATOM
+    protocols: [KAFKA]
+    methodPath: com.easytest.iot.atom.KafkaEventAtom#publish
+    inputs: [key, value]
+    outputs: [offset]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.atom.kafka.consume
+    name: 消费 Kafka 设备事件
+    layer: ATOM
+    protocols: [KAFKA]
+    methodPath: com.easytest.iot.atom.KafkaEventAtom#consume
+    inputs: [topic]
+    outputs: [messages]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.atom.mqtt.command
+    name: MQTT 设备指令
+    layer: ATOM
+    protocols: [MQTT]
+    methodPath: com.easytest.iot.atom.MqttCommandAtom#sendCommand
+    inputs: [deviceId, command]
+    outputs: [topic]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.atom.rpc.deviceDetail
+    name: RPC 查询设备
+    layer: ATOM
+    protocols: [RPC]
+    methodPath: com.easytest.iot.atom.RpcDeviceAtom#queryDevice
+    inputs: [deviceId]
+    outputs: [device]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.flow.single.loginContract
+    name: 单接口：网关登录契约
+    layer: FLOW
+    protocols: [HTTP]
+    methodPath: com.easytest.iot.flow.IotFlows#loginContract
+    inputs: [username, password]
+    outputs: [token]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.flow.e2e.bindAndControl
+    name: 端到端：家庭-设备-控制
+    layer: FLOW
+    protocols: [HTTP, MQTT, KAFKA, RPC]
+    methodPath: com.easytest.iot.flow.IotFlows#bindAndControl
+    inputs: [username, password, homeId, deviceId]
+    outputs: [token, eventOffset]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.flow.single.mysqlSeed
+    name: 单接口：MySQL 造数与查询
+    layer: FLOW
+    protocols: [SQL]
+    methodPath: com.easytest.iot.flow.IotFlows#mysqlSeed
+    inputs: [homeId, ownerId]
+    outputs: [row]
+    artifact: target/iot-api-engineering.jar
+  - id: iot.flow.single.rpcDevice
+    name: 单接口：RPC 设备查询
+    layer: FLOW
+    protocols: [RPC]
+    methodPath: com.easytest.iot.flow.IotFlows#rpcDevice
+    inputs: [deviceId]
+    outputs: [device]
+    artifact: target/iot-api-engineering.jar

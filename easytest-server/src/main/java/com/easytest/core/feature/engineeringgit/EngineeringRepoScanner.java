@@ -116,6 +116,8 @@ public class EngineeringRepoScanner {
                     method.setSource("git:" + repo.getId());
                     String caseId = "UI".equalsIgnoreCase(repo.getRepoType())
                             ? syncUiCase(repo, entry, methodPath) : null;
+                    method.setLayer(first(text(entry.get("layer")), "FLOW").toUpperCase(Locale.ROOT));
+                    method.setProtocolsJson(json(strings(entry.get("protocols"))));
                     method.setPayloadJson(payload(repo, entry, base, caseId));
                     method.setUpdatedAt(now);
                     methods.save(method);

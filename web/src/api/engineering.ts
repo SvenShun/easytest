@@ -8,6 +8,8 @@ export interface EngineeringMethod {
   inputs?: string[];
   outputs?: string[];
   tags?: string[];
+  layer?: string;
+  protocols?: string[];
   source?: string;
   updatedAt?: string;
 }

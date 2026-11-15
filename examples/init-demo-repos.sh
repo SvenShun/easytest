@@ -3,7 +3,7 @@
 # tracked source trees (useful after cloning easytest from GitHub).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-for name in engineering-api-repo engineering-ui-repo; do
+for name in engineering-api-repo engineering-ui-repo iot-api-engineering-repo; do
   dir="$ROOT/examples/$name"
   if [ -d "$dir/.git" ]; then
     echo "$name already initialized"

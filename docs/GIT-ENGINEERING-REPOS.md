@@ -134,6 +134,10 @@ git remote add origin <your-git-url>
 git push -u origin main
 ```
 
+## 分层工程
+
+action/atom 分层、共享 SDK 和 IoT 示例见 [ENGINEERING-LAYERS.md](ENGINEERING-LAYERS.md)。
+
 ## 限制
 
 - 私有仓库认证暂未接入（仅支持公开/免密 git URL）

@@ -47,7 +47,7 @@ export function JsonField({ label, value, onChange }: { label: string; value: un
   );
 }
 
-function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioStep; update: (patch: ScenarioStep) => void; engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }> }) {
+function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioStep; update: (patch: ScenarioStep) => void; engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }> }) {
   const type = String(step.type || '').toLowerCase();
   switch (type) {
     case 'http':
@@ -122,7 +122,7 @@ function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioS
           <Field label="工程方法 path" hint="测试工程中 @EasyContract 标注的方法，例如 com.example.LoginCases#login">
             <Input list="engineering-method-options" value={step.methodPath || ''} onChange={(e) => update({ methodPath: e.target.value })} />
             <datalist id="engineering-method-options">
-              {engineeringMethods.map((item) => <option key={item.methodPath} value={item.methodPath}>{item.name}{item.description ? ` · ${item.description}` : ''}</option>)}
+              {engineeringMethods.map((item) => <option key={item.methodPath} value={item.methodPath}>{item.layer ? `[${item.layer}] ` : ''}{item.name}{item.protocols?.length ? ` · ${item.protocols.join('/')}` : ''}{item.description ? ` · ${item.description}` : ''}</option>)}
             </datalist>
           </Field>
           <Field label="行为说明" hint="平台展示用；复杂用例由工程代码实现">
@@ -168,7 +168,7 @@ function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioS
 function StepCard({ step, index, total, depth, onChange, onRemove, onMove, engineeringMethods }: {
   step: ScenarioStep; index: number; total: number; depth: number;
   onChange: (next: ScenarioStep) => void; onRemove: () => void; onMove: (offset: number) => void;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }>;
 }) {
   const type = String(step.type || 'http').toLowerCase();
   const update = (patch: ScenarioStep) => {
@@ -220,7 +220,7 @@ function StepCard({ step, index, total, depth, onChange, onRemove, onMove, engin
 
 function StepList({ steps, depth, onChange, allowHooks = true, engineeringMethods = [] }: {
   steps: ScenarioStep[]; depth: number; onChange: (next: ScenarioStep[]) => void; allowHooks?: boolean;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }>;
 }) {
   const [newType, setNewType] = useState('http');
   const update = (index: number, next: ScenarioStep) => onChange(steps.map((item, i) => i === index ? next : item));
@@ -252,7 +252,7 @@ function StepList({ steps, depth, onChange, allowHooks = true, engineeringMethod
 
 export function ScenarioStepEditor({ steps, onChange, engineeringMethods = [] }: {
   steps: ScenarioStep[]; onChange: (steps: ScenarioStep[]) => void;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }>;
 }) {
   return <StepList steps={steps} depth={0} onChange={onChange} engineeringMethods={engineeringMethods} />;
 }

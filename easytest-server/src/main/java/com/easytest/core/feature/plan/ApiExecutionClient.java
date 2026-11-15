@@ -16,7 +16,8 @@ public interface ApiExecutionClient {
     void uploadEngineeringArtifact(String filename, byte[] content);
 
     record EngineeringMethod(String id, String name, String description, String methodPath,
-                            List<String> inputs, List<String> outputs, List<String> tags) {
+                            List<String> inputs, List<String> outputs, List<String> tags,
+                            String layer, List<String> protocols) {
     }
 
     record TaskCreated(String taskId, String status) {

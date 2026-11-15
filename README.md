@@ -204,3 +204,4 @@ Third-party components and their obligations are listed in [THIRD_PARTY_NOTICES.
 and [docs/LEGAL.md](docs/LEGAL.md).
 
 - [Git 测试工程接入](docs/GIT-ENGINEERING-REPOS.md)
+- [接口自动化分层与共享](docs/ENGINEERING-LAYERS.md)

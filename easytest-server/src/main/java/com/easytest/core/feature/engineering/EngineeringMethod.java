@@ -56,6 +56,12 @@ public class EngineeringMethod {
     @Column(name = "payload_json", columnDefinition = "TEXT")
     private String payloadJson;
 
+    @Column(name = "layer", length = 16)
+    private String layer = "FLOW";
+
+    @Column(name = "protocols_json", columnDefinition = "TEXT")
+    private String protocolsJson;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -90,6 +96,8 @@ public class EngineeringMethod {
     public String getRepoId() { return repoId; }
     public String getKind() { return kind; }
     public String getPayloadJson() { return payloadJson; }
+    public String getLayer() { return layer; }
+    public String getProtocolsJson() { return protocolsJson; }
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void setContractId(String contractId) { this.contractId = contractId; }
@@ -104,5 +112,7 @@ public class EngineeringMethod {
     public void setRepoId(String repoId) { this.repoId = repoId; }
     public void setKind(String kind) { this.kind = kind; }
     public void setPayloadJson(String payloadJson) { this.payloadJson = payloadJson; }
+    public void setLayer(String layer) { this.layer = layer; }
+    public void setProtocolsJson(String protocolsJson) { this.protocolsJson = protocolsJson; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

@@ -29,4 +29,10 @@ public @interface EasyContract {
     String[] outputs() default {};
 
     String[] tags() default {};
+
+    /** Engineering layer: FLOW = business case, ACTION = reusable combination, ATOM = fixed operation. */
+    ContractLayer layer() default ContractLayer.FLOW;
+
+    /** Protocols used by this method, e.g. HTTP, RPC, KAFKA, MQTT, SQL, REDIS. */
+    String[] protocols() default {};
 }

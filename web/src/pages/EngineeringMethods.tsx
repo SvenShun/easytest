@@ -72,13 +72,14 @@ export function EngineeringMethodsPage() {
           actions={<Button size="sm" variant="ghost" icon="refresh" loading={loading} onClick={() => void load()}>刷新</Button>} />
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>方法</th><th>契约 ID</th><th>行为说明</th><th>输入/输出</th><th>来源</th><th>更新时间</th></tr></thead>
+            <thead><tr><th>方法</th><th>层级</th><th>契约 ID</th><th>行为说明</th><th>输入/输出</th><th>来源</th><th>更新时间</th></tr></thead>
             <tbody>
-              {loading ? <SkeletonRows rows={4} cols={6} /> : items.length === 0 ? (
-                <tr><td colSpan={6}><EmptyState compact icon="code" title="暂无工程方法" description="启动 API Agent 后点击「从 Agent 同步」，或导入 manifest" /></td></tr>
+              {loading ? <SkeletonRows rows={4} cols={7} /> : items.length === 0 ? (
+                <tr><td colSpan={7}><EmptyState compact icon="code" title="暂无工程方法" description="启动 API Agent 后点击「从 Agent 同步」，或导入 manifest" /></td></tr>
               ) : items.map((method) => (
                 <tr key={method.id || method.methodPath}>
                   <td>{method.name}<div className="cell-sub mono">{method.methodPath}</div></td>
+                  <td><Pill tone={method.layer === 'ATOM' ? 'green' : method.layer === 'ACTION' ? 'blue' : 'gray'}>{method.layer || 'FLOW'}</Pill>{method.protocols?.length ? <div className="cell-sub">{method.protocols.join(' / ')}</div> : null}</td>
                   <td className="mono">{method.id || '—'}</td>
                   <td>{method.description || '—'}</td>
                   <td><div className="pill-row">{method.inputs?.map((v) => <Pill key={`i-${v}`} tone="blue">in:{v}</Pill>)}{method.outputs?.map((v) => <Pill key={`o-${v}`} tone="green">out:{v}</Pill>)}</div></td>

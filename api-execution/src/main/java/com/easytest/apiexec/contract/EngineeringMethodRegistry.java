@@ -190,7 +190,8 @@ public class EngineeringMethodRegistry {
     private ContractDescriptor descriptor(String path, EasyContract annotation) {
         String name = annotation.name().isBlank() ? path.substring(path.indexOf('#') + 1) : annotation.name();
         return new ContractDescriptor(annotation.id(), name, annotation.description(), path,
-                List.of(annotation.inputs()), List.of(annotation.outputs()), List.of(annotation.tags()));
+                List.of(annotation.inputs()), List.of(annotation.outputs()), List.of(annotation.tags()),
+                annotation.layer(), List.of(annotation.protocols()));
     }
 
     private URL url(Path path) {

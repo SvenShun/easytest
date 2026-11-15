@@ -64,6 +64,8 @@ public final class ContractManifestGenerator {
             item.put("inputs", descriptor.inputs());
             item.put("outputs", descriptor.outputs());
             item.put("tags", descriptor.tags());
+            item.put("layer", descriptor.layer().name());
+            item.put("protocols", descriptor.protocols());
             methods.add(item);
         }
         root.put("methods", methods);
@@ -124,7 +126,8 @@ public final class ContractManifestGenerator {
                 String path = type.getName() + "#" + method.getName();
                 String name = annotation.name().isBlank() ? method.getName() : annotation.name();
                 result.add(new ContractDescriptor(annotation.id(), name, annotation.description(), path,
-                        List.of(annotation.inputs()), List.of(annotation.outputs()), List.of(annotation.tags())));
+                        List.of(annotation.inputs()), List.of(annotation.outputs()), List.of(annotation.tags()),
+                        annotation.layer(), List.of(annotation.protocols())));
             }
         } catch (Throwable ignored) {
             // Optional classes may depend on classes not present in the given jar.

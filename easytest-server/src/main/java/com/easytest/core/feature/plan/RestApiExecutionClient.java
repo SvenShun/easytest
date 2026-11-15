@@ -201,7 +201,8 @@ public class RestApiExecutionClient implements ApiExecutionClient {
                     if (path == null) continue;
                     methods.put(path, new EngineeringMethod(text(item, "id"), text(item, "name"),
                             text(item, "description"), path, texts(item, "inputs"),
-                            texts(item, "outputs"), texts(item, "tags")));
+                            texts(item, "outputs"), texts(item, "tags"), text(item, "layer"),
+                            texts(item, "protocols")));
                 }
             } catch (RuntimeException e) {
                 log.warn("engineering methods query failed worker={}: {}", baseUrl, e.getMessage());

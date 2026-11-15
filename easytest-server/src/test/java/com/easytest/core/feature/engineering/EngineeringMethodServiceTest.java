@@ -50,7 +50,7 @@ class EngineeringMethodServiceTest {
         ApiExecutionClient client = mock(ApiExecutionClient.class);
         when(client.listEngineeringMethods()).thenReturn(List.of(
                 new ApiExecutionClient.EngineeringMethod("id", "Name", "Desc", "a#b",
-                        List.of("x"), List.of("y"), List.of("tag"))));
+                        List.of("x"), List.of("y"), List.of("tag"), "FLOW", List.of())));
         when(repository.findByMethodPath(any())).thenReturn(Optional.empty());
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(repository.findAll()).thenReturn(List.of());

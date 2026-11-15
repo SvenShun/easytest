@@ -21,6 +21,7 @@
     <modules>
         <module>common</module>
         <module>contract-api</module>
+        <module>engineering-sdk</module>
         <module>easytest-server</module>
         <module>ui-execution</module>
         <module>device-agent</module>
