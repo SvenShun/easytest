@@ -23,6 +23,11 @@ public class PlanRunController {
         return planRunService.getRun(runId);
     }
 
+    @GetMapping("/{runId}/lineage")
+    public java.util.Map<String, Object> lineage(@PathVariable String runId) {
+        return planRunService.lineage(runId);
+    }
+
     @GetMapping("/{runId}/report")
     public PlanReportView report(@PathVariable String runId) {
         return planRunService.report(runId);

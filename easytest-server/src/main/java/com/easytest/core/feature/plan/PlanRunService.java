@@ -343,6 +343,26 @@ public class PlanRunService {
         return new PlanRunDetailView(PlanRunView.of(refreshed), items(refreshed.getId()));
     }
 
+    public Map<String, Object> lineage(String runId) {
+        PlanRun run = requireRun(runId);
+        List<PlanRunItem> items = itemRepository.findByRunIdOrderByCreatedAtAscIdAsc(run.getId());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("runId", run.getId());
+        result.put("planId", run.getPlanId());
+        result.put("status", run.getStatus());
+        result.put("items", items.stream().map(item -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("caseId", item.getCaseId());
+            entry.put("caseTitle", item.getCaseTitle());
+            entry.put("taskId", item.getTaskId());
+            entry.put("sourcePath", item.getSourcePath());
+            entry.put("sourceCommit", item.getSourceCommit());
+            entry.put("lineageJson", item.getLineageJson());
+            return entry;
+        }).toList());
+        return result;
+    }
+
     public PlanReportView report(String runId) {
         PlanRun run = requireRun(runId);
         reconcile(run);

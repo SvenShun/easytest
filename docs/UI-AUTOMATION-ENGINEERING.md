@@ -62,6 +62,8 @@ outputs: [token]
 - `entryCommand` 未显式传入时使用 manifest 中的入口
 - 缺少 `id` 的 manifest 会被 400 拒绝
 
+平台「UI 脚本」页面支持 zip 上传、类型/入口命令和 manifest 编辑，列表展示契约 ID、输入/输出。
+
 device-agent 下载脚本包、执行、解析 JUnit XML 并回传结果/工件。
 
 ## 设备与项目

@@ -48,4 +48,7 @@ export const plansApi = {
     request<{ run: PlanRun; items: RunItem[] }>('core', `/api/v1/plan-runs/${encodeURIComponent(runId)}`),
   report: (runId: string) =>
     request<RunReport>('core', `/api/v1/plan-runs/${encodeURIComponent(runId)}/report`),
+  lineage: (runId: string) =>
+    request<{ runId: string; planId: string; status?: string; items: Array<Record<string, unknown>> }>(
+      'core', `/api/v1/plan-runs/${encodeURIComponent(runId)}/lineage`),
 };

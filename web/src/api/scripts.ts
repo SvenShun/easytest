@@ -7,4 +7,13 @@ export const scriptsApi = {
       asPage<ScriptInfo>(data, page, size),
     ),
   get: (id: string) => request<ScriptInfo>('core', `/api/v1/scripts/${encodeURIComponent(id)}`),
+  upload: (input: { file: File; scriptType: string; entryCommand?: string; manifest?: string }) => {
+    const form = new FormData();
+    form.append('file', input.file);
+    form.append('scriptType', input.scriptType);
+    if (input.entryCommand) form.append('entryCommand', input.entryCommand);
+    if (input.manifest) form.append('manifest', input.manifest);
+    return request<ScriptInfo>('core', '/api/v1/scripts', { method: 'POST', body: form, timeoutMs: 120000 });
+  },
+  remove: (id: string) => request<void>('core', `/api/v1/scripts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };

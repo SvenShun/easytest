@@ -219,7 +219,22 @@ export function RunDetailPage() {
     );
   }
 
-  return (
+    const exportLineage = async () => {
+    try {
+      const data = await plansApi.lineage(runId);
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `lineage-${runId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      window.alert(safeErrorMessage(err));
+    }
+  };
+
+return (
     <div className="page-stack">
       <PageHeading
         eyebrow={
@@ -249,6 +264,9 @@ export function RunDetailPage() {
             ) : null}
             <Button variant="secondary" icon="refresh" loading={refreshing} onClick={() => void load(true)}>
               刷新
+            </Button>
+            <Button variant="secondary" icon="code" onClick={() => void exportLineage()}>
+              导出血缘
             </Button>
             <Button
               variant="primary"

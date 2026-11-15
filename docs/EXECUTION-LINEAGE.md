@@ -35,6 +35,14 @@
 
 报告页面展示“已固化执行血缘”，可通过 API 读取原始 `lineageJson`。
 
+## 导出
+
+```text
+GET /api/v1/plan-runs/{runId}/lineage
+```
+
+返回运行、计划和每个执行项的血缘 JSON；运行报告页面提供「导出血缘」下载。
+
 ## 场景执行记录
 
 `api_scenario_run` 继续保存：
