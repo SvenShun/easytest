@@ -22,6 +22,11 @@ public interface ApiAgentRepository extends JpaRepository<ApiAgentEntity, String
     int release(@Param("id") String id);
 
     @Modifying
+    @Query("update ApiAgentEntity a set a.status = 'DOWN', a.updatedAt = :now "
+            + "where a.status = 'UP' and a.lastSeenAt < :cutoff")
+    int markStaleDown(@Param("cutoff") Instant cutoff, @Param("now") Instant now);
+
+    @Modifying
     @Query("update ApiAgentEntity a set a.status = :status, a.updatedAt = :now where a.agentId = :id")
     int updateStatus(@Param("id") String id, @Param("status") String status, @Param("now") Instant now);
 }

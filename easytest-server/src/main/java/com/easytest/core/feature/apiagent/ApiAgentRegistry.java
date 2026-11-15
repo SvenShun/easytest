@@ -88,7 +88,8 @@ public class ApiAgentRegistry {
         if (request.capabilities() != null) entity.setCapabilitiesJson(json(normalizeCapabilities(request.capabilities())));
         if (request.slots() != null) entity.setSlots(Math.max(1, request.slots()));
         if (request.activeTasks() != null) entity.setActiveTasks(Math.max(0, request.activeTasks()));
-        // DRAINING is sticky until the agent explicitly re-registers.
+        // DRAINING is sticky until the agent explicitly re-registers; stale DOWN recovers.
+        if ("DOWN".equals(entity.getStatus())) entity.setStatus("UP");
         entity.setLastSeenAt(Instant.now());
         entity.setUpdatedAt(Instant.now());
         repository.save(entity);
@@ -116,6 +117,15 @@ public class ApiAgentRegistry {
         } else {
             repository.deleteById(agentId);
         }
+    }
+
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 15_000)
+    @Transactional
+    public void markStaleAgentsDown() {
+        if (repository == null) return;
+        int changed = repository.markStaleDown(Instant.now().minusSeconds(STALE_SECONDS), Instant.now());
+        if (changed > 0) org.slf4j.LoggerFactory.getLogger(ApiAgentRegistry.class)
+                .info("API agents marked DOWN after heartbeat lease expiry: {}", changed);
     }
 
     public synchronized boolean hasAgents() {

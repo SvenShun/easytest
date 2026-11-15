@@ -37,6 +37,7 @@ core 维护注册表，并按：
 ## 当前边界
 
 - 注册表持久化到数据库表 `api_agent`，多 core 实例共享；Agent 30 秒无心跳视为不可调度。
+- 心跳超时的 Agent 由 core 定时标记为 `DOWN`；恢复心跳后自动回到 `UP`。
 - core 在 Agent 满槽时最多等待 `EASYTEST_API_AGENT_WAIT_SECONDS`（默认 10 秒）再失败，避免瞬时并发打满。
 - 任务下发失败会释放该 Agent 的预占槽位，并尝试其他可用 Agent（故障转移）。
 - 计划运行项记录场景 sourcePath/sourceCommit，报告可追溯 Git 来源。

@@ -49,6 +49,12 @@ Browser ── web :5173
                                                    └─► ai-runtime :8095
 ```
 
+## 冒烟
+
+```bash
+./scripts/smoke.sh
+```
+
 ## 快速开始（无需 Docker / 无需模型 Key / 无需真机）
 
 ```bash

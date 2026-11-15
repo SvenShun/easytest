@@ -64,14 +64,26 @@ Result: all checks passed
 
 ## 核心 API 冒烟
 
+可重复执行：
+
+```bash
+./scripts/smoke.sh
+```
+
+最近结果：
+
 ```text
-projects               PASS
-engineering methods    PASS
-api agents             PASS
-scripts                PASS
-scenario list          PASS
-contract scenario run  PASS   SUCCESS 2/2 steps passed
-project isolation      PASS   403
+PASS health
+PASS login tester
+PASS projects
+PASS cases
+PASS engineering methods
+PASS api agents
+PASS scripts
+PASS api scenarios
+PASS contract scenario  2/2 steps passed
+
+9/9 checks passed
 ```
 
 ## 部署

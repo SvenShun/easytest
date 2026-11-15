@@ -50,7 +50,7 @@ export function AgentsPage() {
                   <td className="mono">{agent.baseUrl}</td>
                   <td>{agent.capabilities.map((cap) => <Pill key={cap} tone="blue">{cap}</Pill>)}</td>
                   <td>{agent.activeTasks} / {agent.slots}</td>
-                  <td><Pill tone={agent.status === 'DRAINING' ? 'orange' : 'green'}>{agent.status || 'UP'}</Pill></td>
+                  <td><Pill tone={agent.status === 'DOWN' ? 'red' : agent.status === 'DRAINING' ? 'orange' : 'green'}>{agent.status || 'UP'}</Pill></td>
                   <td>{formatDateTime(agent.lastSeenAt)}</td>
                 </tr>
               ))}
