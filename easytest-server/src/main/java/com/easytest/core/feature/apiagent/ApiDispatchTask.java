@@ -33,6 +33,12 @@ public class ApiDispatchTask {
     @Column(name = "attempts", nullable = false)
     private int attempts;
 
+    @Column(name = "claimed_by", length = 64)
+    private String claimedBy;
+
+    @Column(name = "lease_until")
+    private Instant leaseUntil;
+
     @Column(name = "last_error", length = 2000)
     private String lastError;
 
@@ -61,12 +67,16 @@ public class ApiDispatchTask {
     public String getPayloadJson() { return payloadJson; }
     public String getStatus() { return status; }
     public int getAttempts() { return attempts; }
+    public String getClaimedBy() { return claimedBy; }
+    public Instant getLeaseUntil() { return leaseUntil; }
     public String getLastError() { return lastError; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void setStatus(String status) { this.status = status; }
     public void setAttempts(int attempts) { this.attempts = attempts; }
+    public void setClaimedBy(String claimedBy) { this.claimedBy = claimedBy; }
+    public void setLeaseUntil(Instant leaseUntil) { this.leaseUntil = leaseUntil; }
     public void setLastError(String lastError) { this.lastError = lastError; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

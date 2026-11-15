@@ -41,6 +41,7 @@ core 维护注册表，并按：
 - 任务下发失败会释放该 Agent 的预占槽位，并尝试其他可用 Agent（故障转移）。
 - 计划运行项记录场景 sourcePath/sourceCommit，报告可追溯 Git 来源。
 - Agent 满槽/无容量时，计划运行项进入 `api_dispatch_task` 持久化队列；core 定时重试分发，重启后队列仍在。
-- 没有任务租约/续约和跨 core 共享注册表；这些仍是后续生产化工作。
+- 队列项通过数据库条件更新领取（CLAIMED + 30s lease），多 core 同时运行不会重复下发同一任务；领取者使用 `claimedBy` 记录。
+- Agent 注册表仍是内存态，多 core 共享注册表还需 Redis/数据库化。
 - core 仍保留 `EASYTEST_API_EXECUTION_URLS` 兼容旧部署：只有没有任何已注册 Agent 时才使用静态地址。
 - 尚未实现 Agent 版本/能力热更新、优雅摘除、HTTP/Redis 双队列迁移。

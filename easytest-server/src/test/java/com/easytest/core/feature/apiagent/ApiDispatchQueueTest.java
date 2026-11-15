@@ -28,7 +28,8 @@ class ApiDispatchQueueTest {
                 "{\"planRunId\":\"run1\",\"caseId\":\"ac1\"}", Instant.now());
         PlanRunItem item = new PlanRunItem("item1", "run1", "ac1", "case", null,
                 RunItemStatus.PENDING, Instant.now());
-        when(queue.findTop20ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(task));
+        when(queue.findClaimable(any())).thenReturn(List.of(task));
+        when(queue.claim(any(), any(), any(), any())).thenReturn(1);
         when(items.findById("item1")).thenReturn(Optional.of(item));
         when(queue.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(items.save(any())).thenAnswer(invocation -> invocation.getArgument(0));

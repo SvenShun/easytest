@@ -14,8 +14,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /** Durable outbox for API tasks waiting for an agent slot. */
 @Component
@@ -28,6 +31,8 @@ public class ApiDispatchQueue {
     private final PlanRunItemRepository runItems;
     private final ApiExecutionClient apiExecutionClient;
     private final ObjectMapper objectMapper;
+    private final String owner = "core-" + UUID.randomUUID().toString().substring(0, 8);
+    private static final Duration LEASE = Duration.ofSeconds(30);
 
     public ApiDispatchQueue(ApiDispatchTaskRepository queue, PlanRunItemRepository runItems,
                             ApiExecutionClient apiExecutionClient, ObjectMapper objectMapper) {
@@ -50,10 +55,17 @@ public class ApiDispatchQueue {
     @Scheduled(fixedDelayString = "${easytest.core.api-dispatch-poll-ms:1000}")
     @Transactional
     public void dispatchPending() {
-        for (ApiDispatchTask task : queue.findTop20ByStatusOrderByCreatedAtAsc("PENDING")) {
+        Instant now = Instant.now();
+        List<ApiDispatchTask> candidates = queue.findClaimable(now);
+        for (ApiDispatchTask task : candidates.stream().limit(20).toList()) {
+            if (queue.claim(task.getId(), owner, now.plus(LEASE), now) == 0) {
+                continue;
+            }
             PlanRunItem item = runItems.findById(task.getPlanRunItemId()).orElse(null);
             if (item == null || item.getStatus() != RunItemStatus.PENDING || item.getTaskId() != null) {
                 task.setStatus("CANCELLED");
+                task.setClaimedBy(owner);
+                task.setLeaseUntil(null);
                 task.setUpdatedAt(Instant.now());
                 queue.save(task);
                 continue;
@@ -69,6 +81,8 @@ public class ApiDispatchQueue {
                 item.setUpdatedAt(Instant.now());
                 runItems.save(item);
                 task.setStatus("DISPATCHED");
+                task.setClaimedBy(owner);
+                task.setLeaseUntil(null);
                 task.setLastError(null);
                 task.setUpdatedAt(Instant.now());
                 queue.save(task);
@@ -85,6 +99,10 @@ public class ApiDispatchQueue {
                     item.setError(truncate("API Agent 调度超时: " + e.getMessage()));
                     item.setUpdatedAt(Instant.now());
                     runItems.save(item);
+                } else {
+                    task.setStatus("PENDING");
+                    task.setClaimedBy(null);
+                    task.setLeaseUntil(null);
                 }
                 queue.save(task);
             }
