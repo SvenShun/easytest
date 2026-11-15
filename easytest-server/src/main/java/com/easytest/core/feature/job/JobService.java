@@ -14,6 +14,7 @@ import com.easytest.core.feature.plan.TestPlan;
 import com.easytest.core.feature.plan.TestPlanRepository;
 import com.easytest.core.feature.plan.TriggerRequest;
 import com.easytest.core.feature.plan.TriggerResponse;
+import com.easytest.core.feature.project.ProjectContext;
 import com.easytest.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
@@ -48,24 +49,27 @@ public class JobService {
     private final PlanRunService planRunService;
     private final ApiScenarioService apiScenarioService;
     private final Map<String, Object> running = new ConcurrentHashMap<>();
+    private final ProjectContext projectContext;
 
     public JobService(TestJobRepository jobs, TestPlanRepository plans, PlanRunService planRunService) {
-        this(jobs, plans, planRunService, null);
+        this(jobs, plans, planRunService, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
     public JobService(TestJobRepository jobs, TestPlanRepository plans, PlanRunService planRunService,
-                      ApiScenarioService apiScenarioService) {
+                      ApiScenarioService apiScenarioService, ProjectContext projectContext) {
         this.jobs = jobs;
         this.plans = plans;
         this.planRunService = planRunService;
         this.apiScenarioService = apiScenarioService;
+        this.projectContext = projectContext;
     }
 
     public PageResponse<JobView> list(String keyword, Integer page, Integer size) {
         PageRequest pageRequest = PageRequest.of(PageSupport.pageIndex(page), PageSupport.pageSize(size),
                 Sort.by(Sort.Direction.DESC, "updatedAt"));
-        Page<TestJob> result = jobs.findAll(keywordSpec(keyword), pageRequest);
+        Page<TestJob> result = jobs.findAll(
+                keywordSpec(keyword, currentProject()), pageRequest);
         return PageSupport.of(result, this::view);
     }
 
@@ -83,6 +87,7 @@ public class JobService {
                 blankToNull(request.deviceTags()), join(request.deviceIds()), request.enabled() == null || request.enabled(),
                 principal.username(), now, now);
         job.setScenarioId(blankToNull(request.scenarioId()));
+        job.setProjectId(currentProject());
         job.setNextRunAt(next(request.cronExpression(), now));
         return view(jobs.save(job));
     }
@@ -137,7 +142,8 @@ public class JobService {
                 continue;
             }
             try {
-                TriggerResponse run = trigger(job);
+                TriggerResponse run = projectContext == null ? trigger(job)
+                        : projectContext.runAs(job.getProjectId(), () -> trigger(job));
                 job.setLastRunId(run.runId());
                 job.setLastRunAt(now);
                 job.setNextRunAt(next(job.getCronExpression(), now));
@@ -184,8 +190,12 @@ public class JobService {
         if (!hasPlan && !hasScenario) {
             throw ApiException.badRequest("必须指定测试计划或 API 场景");
         }
-        if (hasPlan && !plans.existsById(request.planId())) {
-            throw ApiException.notFound("测试计划不存在: " + request.planId());
+        if (hasPlan) {
+            TestPlan plan = plans.findById(request.planId())
+                    .orElseThrow(() -> ApiException.notFound("测试计划不存在: " + request.planId()));
+            if (plan.getProjectId() != null && !currentProject().equals(plan.getProjectId())) {
+                throw ApiException.notFound("测试计划不存在: " + request.planId());
+            }
         }
         if (hasScenario) {
             if (apiScenarioService == null) {
@@ -205,8 +215,16 @@ public class JobService {
         return next == null ? null : next.toInstant();
     }
 
+    private String currentProject() {
+        return projectContext == null ? ProjectContext.DEFAULT_PROJECT_ID : projectContext.currentProjectId();
+    }
+
     private TestJob require(String id) {
-        return jobs.findById(id).orElseThrow(() -> ApiException.notFound("任务不存在: " + id));
+        TestJob job = jobs.findById(id).orElseThrow(() -> ApiException.notFound("任务不存在: " + id));
+        if (job.getProjectId() != null && !currentProject().equals(job.getProjectId())) {
+            throw ApiException.notFound("任务不存在: " + id);
+        }
+        return job;
     }
 
     private JobView view(TestJob job) {
@@ -228,10 +246,11 @@ public class JobService {
                 job.getUpdatedAt());
     }
 
-    private Specification<TestJob> keywordSpec(String keyword) {
+    private Specification<TestJob> keywordSpec(String keyword, String projectId) {
         return (root, query, cb) -> {
+            Predicate scoped = cb.equal(root.get("projectId"), projectId);
             if (keyword == null || keyword.isBlank()) {
-                return cb.conjunction();
+                return scoped;
             }
             String pattern = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
             List<Predicate> predicates = new ArrayList<>();

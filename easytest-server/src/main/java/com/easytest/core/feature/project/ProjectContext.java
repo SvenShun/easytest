@@ -15,6 +15,8 @@ public class ProjectContext {
     public static final String HEADER = "X-Project-Id";
     public static final String DEFAULT_PROJECT_ID = "default";
 
+    private static final ThreadLocal<String> OVERRIDE = new ThreadLocal<>();
+
     private final ProjectRepository projects;
     private final ProjectMemberRepository members;
 
@@ -23,8 +25,21 @@ public class ProjectContext {
         this.members = members;
     }
 
+    /** Runs scheduler/background work under a project without an HTTP request. */
+    public <T> T runAs(String projectId, java.util.function.Supplier<T> action) {
+        String previous = OVERRIDE.get();
+        OVERRIDE.set(projectId);
+        try {
+            return action.get();
+        } finally {
+            if (previous == null) OVERRIDE.remove(); else OVERRIDE.set(previous);
+        }
+    }
+
     /** Header-selected project; falls back to the seeded default project. */
     public String currentProjectId() {
+        String override = OVERRIDE.get();
+        if (override != null) return override;
         String header = null;
         if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
             HttpServletRequest request = attributes.getRequest();

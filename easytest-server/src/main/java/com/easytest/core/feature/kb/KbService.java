@@ -4,6 +4,7 @@ import com.easytest.common.security.CurrentUser;
 import com.easytest.common.util.Ids;
 import com.easytest.common.web.ApiException;
 import com.easytest.core.feature.kb.KbDtos.*;
+import com.easytest.core.feature.project.ProjectContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,17 +27,20 @@ public class KbService {
     private final KbPageRepository pages;
     private final KbControlRepository controls;
     private final KbActionRepository actions;
+    private final ProjectContext projectContext;
 
     public KbService(KbAppRepository apps, KbPageRepository pages, KbControlRepository controls,
-                     KbActionRepository actions) {
+                     KbActionRepository actions, ProjectContext projectContext) {
         this.apps = apps;
         this.pages = pages;
         this.controls = controls;
         this.actions = actions;
+        this.projectContext = projectContext;
     }
 
     public List<AppView> listApps() {
-        return apps.findAllByOrderByUpdatedAtDesc().stream().map(this::appView).toList();
+        return apps.findByProjectIdOrderByUpdatedAtDesc(projectContext.currentProjectId()).stream()
+                .map(this::appView).toList();
     }
 
     public AppView getApp(String id) {
@@ -54,6 +58,7 @@ public class KbService {
                 request.platform() == null ? "android" : request.platform().trim(),
                 blank(request.description()), blank(request.iconUrl()),
                 CurrentUser.require().username(), now, now);
+        app.setProjectId(projectContext.currentProjectId());
         return appView(apps.save(app));
     }
 
@@ -277,15 +282,23 @@ public class KbService {
     }
 
     private KbApp requireApp(String id) {
-        return apps.findById(id).orElseThrow(() -> ApiException.notFound("应用不存在: " + id));
+        KbApp app = apps.findById(id).orElseThrow(() -> ApiException.notFound("应用不存在: " + id));
+        if (app.getProjectId() != null && !projectContext.currentProjectId().equals(app.getProjectId())) {
+            throw ApiException.notFound("应用不存在: " + id);
+        }
+        return app;
     }
 
     private KbPage requirePage(String id) {
-        return pages.findById(id).orElseThrow(() -> ApiException.notFound("页面不存在: " + id));
+        KbPage page = pages.findById(id).orElseThrow(() -> ApiException.notFound("页面不存在: " + id));
+        requireApp(page.getAppId());
+        return page;
     }
 
     private KbControl requireControl(String id) {
-        return controls.findById(id).orElseThrow(() -> ApiException.notFound("控件不存在: " + id));
+        KbControl control = controls.findById(id).orElseThrow(() -> ApiException.notFound("控件不存在: " + id));
+        requirePage(control.getPageId());
+        return control;
     }
 
     private AppView appView(KbApp app) {

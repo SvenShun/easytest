@@ -12,9 +12,12 @@ EasyTest 用项目（Project）作为部门级工作空间边界。数据按项�
 | API 场景 | `api_scenario.project_id` | 列表、创建、详情、更新、运行按项目 |
 | 测试计划 | `test_plan.project_id` | 列表、创建、详情、触发按项目 |
 | API 环境 | `api_environment.project_id` | 列表、创建、详情、更新、计划引用按项目 |
+| UI 知识库应用 | `kb_app.project_id` | 应用列表、创建、详情、页面/控件按应用项目 |
+| 定时任务 | `test_job.project_id` | 列表、创建、详情、计划/场景引用按项目 |
+| 计划报告 | 通过计划/运行所属项目 | 计划运行/报告跨项目读取 404 |
 
-已有历史数据在启动时回填到 `default` 项目。设备、UI 知识库、报告、定时任务
-等仍为全局，后续按同样方式接入项目。
+已有历史数据在启动时回填到 `default` 项目。设备池与 UI 执行服务仍为全局，
+后续把项目头传递到 ui-execution 并给设备/任务加项目归属。
 
 ## 接口
 
@@ -46,5 +49,5 @@ DELETE /api/v1/projects/{id}/members/{memberId}
 ## 尚未完成
 
 - 项目成员角色（ADMIN/TESTER/...）的细粒度权限矩阵
-- 设备、知识库、报告、定时任务的项目隔离
+- 设备池与 UI 执行任务的项目隔离
 - 项目级配额/权限矩阵

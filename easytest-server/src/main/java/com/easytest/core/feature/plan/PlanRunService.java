@@ -547,8 +547,17 @@ public class PlanRunService {
     }
 
     public PlanRun requireRun(String runId) {
-        return runRepository.findById(runId)
+        PlanRun run = runRepository.findById(runId)
                 .orElseThrow(() -> ApiException.notFound("计划运行不存在: " + runId));
+        if (CurrentUser.get() != null) {
+            planRepository.findById(run.getPlanId()).ifPresent(plan -> {
+                if (plan.getProjectId() != null
+                        && !projectContext.currentProjectId().equals(plan.getProjectId())) {
+                    throw ApiException.notFound("计划运行不存在: " + runId);
+                }
+            });
+        }
+        return run;
     }
 
     private List<PlanRunItemView> items(String runId) {

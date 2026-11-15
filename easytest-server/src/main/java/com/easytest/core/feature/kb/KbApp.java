@@ -19,6 +19,9 @@ public class KbApp {
     @Column(name = "name", length = 200, nullable = false)
     private String name;
 
+    @Column(name = "project_id", length = 64)
+    private String projectId = "default";
+
     @Column(name = "package_name", length = 300)
     private String packageName;
 
@@ -55,6 +58,9 @@ public class KbApp {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
+    public String getProjectId() { return projectId; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
 
     public String getId() { return id; }
     public String getName() { return name; }

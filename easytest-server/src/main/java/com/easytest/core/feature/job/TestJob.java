@@ -19,6 +19,9 @@ public class TestJob {
     @Column(name = "name", length = 255, nullable = false)
     private String name;
 
+    @Column(name = "project_id", length = 64)
+    private String projectId = "default";
+
     @Column(name = "plan_id", length = 64)
     private String planId;
 
@@ -85,6 +88,9 @@ public class TestJob {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
+    public String getProjectId() { return projectId; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
 
     public String getId() { return id; }
     public String getName() { return name; }
