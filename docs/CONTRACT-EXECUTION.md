@@ -110,7 +110,8 @@ java -cp contract-api/target/classes:examples/api-engineering/target/api-enginee
 平台在创建/更新场景和只校验接口时检查：
 
 - `component.methodPath` 是否在平台工程方法注册表中；
-- 方法声明的必填 `inputs` 是否都出现在步骤 `inputs` 中。
+- 方法声明的必填 `inputs` 是否都出现在步骤 `inputs` 中；
+- 步骤声明的 `outputs` 是否都在方法契约的输出中。
 
 未注册示例会返回 400：
 
@@ -121,7 +122,7 @@ java -cp contract-api/target/classes:examples/api-engineering/target/api-enginee
 ## 尚未完成
 
 - manifest 自动写入 Git/平台注册表（当前支持手动/Agent 同步）
-- 方法输出契约与后续变量类型/必填校验
+- 输出变量类型校验（当前只校验名称存在）
 - 工程 commit 与方法契约版本绑定到每次执行（场景运行和计划运行项已记录 sourcePath/sourceCommit；方法契约记录在组件报告中）
 - Git 工程 commit 固化到执行记录
 - Python 工程 SDK

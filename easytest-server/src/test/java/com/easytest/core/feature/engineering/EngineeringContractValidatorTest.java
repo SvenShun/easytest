@@ -44,5 +44,15 @@ class EngineeringContractValidatorTest {
                     methodPath: com.example.Missing#login
                 """;
         assertThat(validator.validate(missingMethod)).anyMatch(error -> error.contains("未注册"));
+
+        String badOutput = """
+                steps:
+                  - name: login
+                    type: component
+                    methodPath: com.example.Login#login
+                    inputs: {username: tester}
+                    outputs: [neverProduced]
+                """;
+        assertThat(validator.validate(badOutput)).anyMatch(error -> error.contains("neverProduced"));
     }
 }

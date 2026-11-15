@@ -129,6 +129,7 @@ function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioS
             <Input value={step.description || ''} onChange={(e) => update({ description: e.target.value })} />
           </Field>
           <JsonField label="输入变量 inputs" value={step.inputs} onChange={(inputs) => update({ inputs })} />
+          <JsonField label="期望输出 outputs" value={step.outputs} onChange={(outputs) => update({ outputs })} />
           <Field label="超时（毫秒）"><Input type="number" value={step.timeoutMs || ''} onChange={(e) => update({ timeoutMs: e.target.value ? Number(e.target.value) : undefined })} /></Field>
         </div>
       );

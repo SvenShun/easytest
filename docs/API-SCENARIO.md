@@ -289,3 +289,16 @@ API 场景编辑器提供两个视图：
 ```
 
 消费步骤会输出 `message`、`messageValue`、`messageKey`，并通过 `extract` 写入后续变量；超时/无消息为 `MESSAGE_TIMEOUT`。
+
+### 工程组件输出契约
+
+工程组件可以声明 `outputs`，执行时会校验方法是否真的返回这些变量：
+
+```yaml
+- type: component
+  methodPath: com.example.Login#login
+  inputs: {username: tester}
+  outputs: [token, userId]
+```
+
+缺失时返回 `CONTRACT_OUTPUT_MISSING`；保存时也会校验声明输出是否在方法契约中。

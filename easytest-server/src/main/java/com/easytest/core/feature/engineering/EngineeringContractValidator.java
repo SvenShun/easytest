@@ -48,6 +48,12 @@ public class EngineeringContractValidator {
                                 errors.add("工程组件 " + methodPath + " 缺少输入变量: " + input);
                             }
                         }
+                        Set<String> declared = declaredOutputs(step);
+                        for (String output : declared) {
+                            if (!readList(method.getOutputsJson()).contains(output)) {
+                                errors.add("工程组件 " + methodPath + " 声明了未在方法契约中定义的输出: " + output);
+                            }
+                        }
                     }
                 }
             }
@@ -56,6 +62,19 @@ public class EngineeringContractValidator {
             walk(maps(step.get("before")), errors);
             walk(maps(step.get("after")), errors);
         }
+    }
+
+    private Set<String> declaredOutputs(Map<String, Object> step) {
+        Set<String> result = new LinkedHashSet<>();
+        for (String key : List.of("outputs", "outputContract", "expectedOutputs")) {
+            Object value = step.get(key);
+            if (value instanceof Map<?, ?> map) {
+                map.keySet().forEach(item -> result.add(String.valueOf(item)));
+            } else if (value instanceof List<?> list) {
+                list.forEach(item -> result.add(String.valueOf(item)));
+            }
+        }
+        return result;
     }
 
     private Map<String, Object> strings(Object value) {

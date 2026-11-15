@@ -599,6 +599,21 @@ public class ScenarioExecutor {
             String reason = execution.failureReason() == null ? "COMPONENT_FAILED" : execution.failureReason();
             throw new StepFailure(reason, reason + ": " + execution.summary());
         }
+        List<String> expectedOutputs = new ArrayList<>();
+        Object outputSpec = resolve(step.get("outputs") == null ? step.get("outputContract") : step.get("outputs"),
+                variables);
+        if (outputSpec instanceof Map<?, ?> map) {
+            map.keySet().forEach(key -> expectedOutputs.add(String.valueOf(key)));
+        } else if (outputSpec instanceof List<?> list) {
+            list.forEach(item -> expectedOutputs.add(String.valueOf(item)));
+        }
+        for (String output : expectedOutputs) {
+            if (!execution.outputs().containsKey(output)) {
+                throw new StepFailure("CONTRACT_OUTPUT_MISSING",
+                        "CONTRACT_OUTPUT_MISSING: 契约方法未返回声明输出: " + output
+                                + "（method " + methodPath + "）");
+            }
+        }
     }
 
     private void executeGroovy(Map<String, Object> step, Map<String, Object> variables,

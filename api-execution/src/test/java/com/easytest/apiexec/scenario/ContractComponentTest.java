@@ -43,6 +43,7 @@ class ContractComponentTest {
                     methodPath: %s#login
                     inputs:
                       username: "${username}"
+                    outputs: [token]
                   - name: verify token
                     type: assert
                     assertions:
@@ -56,6 +57,28 @@ class ContractComponentTest {
             assertThat(step.status()).isEqualTo("OK");
             assertThat(step.response()).containsEntry("passed", true);
         });
+    }
+
+    @Test
+    void failsWhenDeclaredOutputIsMissing() {
+        ScenarioExecutor executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),
+                new AssertionEvaluator(new ObjectMapper()), new ObjectMapper());
+        EngineeringMethodRegistry registry = new EngineeringMethodRegistry(new ApiExecProperties());
+        registry.registerClass(DemoEngineeringCases.class);
+        executor = new ScenarioExecutor(new ScenarioYamlParser(), new HttpExecutor(),
+                new AssertionEvaluator(new ObjectMapper()), new ObjectMapper(), registry);
+        String yaml = """
+                name: missing-output
+                steps:
+                  - name: login
+                    type: component
+                    methodPath: %s#login
+                    inputs: {username: tester}
+                    outputs: [notThere]
+                """.formatted(DemoEngineeringCases.class.getName());
+        ScenarioRunResult result = executor.execute(yaml, Map.of(), Map.of(), 30, () -> false);
+        assertThat(result.status()).isEqualTo("FAILED");
+        assertThat(result.steps()).anySatisfy(step -> assertThat(step.error()).contains("CONTRACT_OUTPUT_MISSING"));
     }
 
     @Test
