@@ -185,6 +185,7 @@ const STEP_SNIPPETS: Array<{ label: string; group: string; yaml: string }> = [
   { label: 'assert', group: '步骤', yaml: '- name: assert-step\n  type: assert\n  assertions:\n    - {type: VARIABLE, path: key, operator: EQ, expected: value}' },
   { label: 'wait', group: '步骤', yaml: '- name: wait-step\n  type: wait\n  ms: 500' },
   { label: '工程组件', group: '步骤', yaml: '- name: engineering-case\n  type: component\n  methodPath: com.example.LoginCases#login\n  description: 代码实现的行为说明\n  inputs:\n    username: "${username}"\n  timeoutMs: 30000' },
+  { label: 'Kafka 消息', group: '步骤', yaml: '- name: kafka-produce\n  type: message\n  operation: produce\n  bootstrapServers: 127.0.0.1:9092\n  topic: easytest-topic\n  key: demo\n  value: {hello: world}' },
   { label: 'if / else', group: '控制器', yaml: '- name: branch\n  type: if\n  condition: "${flag} == yes"\n  steps:\n    - {name: then-step, type: set, variables: {branch: yes}}\n  elseSteps:\n    - {name: else-step, type: set, variables: {branch: no}}' },
   { label: 'loop / dataset', group: '控制器', yaml: '- name: iterate\n  type: loop\n  dataset: users\n  indexVar: idx\n  itemVar: row\n  steps:\n    - {name: use-row, type: set, variables: {current: "${username}"}}' },
   { label: 'once', group: '控制器', yaml: '- name: once\n  type: once\n  steps:\n    - {name: once-set, type: set, variables: {once: ok}}' },

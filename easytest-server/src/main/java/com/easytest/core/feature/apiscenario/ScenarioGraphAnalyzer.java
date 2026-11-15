@@ -209,6 +209,7 @@ public class ScenarioGraphAnalyzer {
             case "sql" -> text(step.get("query"));
             case "groovy" -> "自定义 Groovy 脚本";
             case "component" -> "工程方法: " + first(text(step.get("methodPath")), text(step.get("method")));
+            case "message", "kafka" -> "Kafka " + first(text(step.get("operation")), "produce") + " · " + text(step.get("topic"));
             case "assert" -> maps(step.get("assertions")).size() + " 个断言";
             case "set" -> "设置 " + map(step.get("variables")).keySet();
             case "wait" -> "等待 " + step.getOrDefault("ms", 500) + "ms";

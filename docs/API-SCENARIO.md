@@ -262,3 +262,30 @@ API 场景编辑器提供两个视图：
 - 示例工程：[examples/api-engineering](../examples/api-engineering/README.md)。
 
 平台只保存契约（methodPath/描述/输入输出），复杂逻辑留在测试工程中。
+
+### 消息 / Kafka
+
+原生异步消息步骤（api-execution 使用 Kafka 客户端）：
+
+```yaml
+- name: produce
+  type: message
+  operation: produce
+  bootstrapServers: 127.0.0.1:9092
+  topic: easytest-topic
+  key: demo
+  value: {hello: kafka}
+
+- name: consume
+  type: message
+  operation: consume
+  bootstrapServers: 127.0.0.1:9092
+  topic: easytest-topic
+  groupId: easytest-smoke-group
+  autoOffsetReset: earliest   # latest（默认）或 earliest
+  timeoutMs: 10000
+  maxMessages: 1
+  extract: {received: value}
+```
+
+消费步骤会输出 `message`、`messageValue`、`messageKey`，并通过 `extract` 写入后续变量；超时/无消息为 `MESSAGE_TIMEOUT`。

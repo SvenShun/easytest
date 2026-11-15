@@ -11,6 +11,15 @@ import com.easytest.apiexec.execution.HttpExecutor;
 import com.easytest.apiexec.execution.HttpRequestSpec;
 import com.easytest.apiexec.execution.RequestUrlBuilder;
 import com.easytest.common.web.ApiException;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
 import org.slf4j.Logger;
@@ -24,6 +33,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.time.Duration;
+import java.util.Properties;
+import java.util.UUID;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -135,6 +146,7 @@ public class ScenarioExecutor {
                     case "sql" -> executeSql(step, variables, env, requestView, responseView, assertions, extracted);
                     case "groovy" -> executeGroovy(step, variables, env, extracted);
                     case "component" -> executeComponent(step, variables, requestView, responseView, extracted);
+                    case "message", "kafka" -> executeMessage(step, variables, requestView, responseView, extracted);
                     case "set" -> executeSet(step, variables);
                     case "assert" -> executeAssert(step, variables, assertions);
                     case "wait" -> Thread.sleep(Math.max(0, Math.min(integer(step.get("ms"), 500), remaining)));
@@ -433,6 +445,118 @@ public class ScenarioExecutor {
         }
         if (assertions.stream().anyMatch(item -> !item.passed())) {
             throw new StepFailure("ASSERTION_FAILED", "SQL assertions failed");
+        }
+    }
+
+    private void executeMessage(Map<String, Object> step, Map<String, Object> variables,
+                                Map<String, Object> requestView, Map<String, Object> responseView,
+                                Map<String, Object> extracted) {
+        String bootstrap = first(text(step.get("bootstrapServers")),
+                first(text(step.get("brokers")), "127.0.0.1:9092"));
+        String topic = interpolateText(first(text(step.get("topic")), "easytest-topic"), variables);
+        String operation = first(text(step.get("operation")), "produce").toLowerCase(Locale.ROOT);
+        int timeoutMs = Math.max(1, Math.min(integer(step.get("timeoutMs"), 10_000), 120_000));
+        requestView.put("bootstrapServers", bootstrap);
+        requestView.put("topic", topic);
+        requestView.put("operation", operation);
+        try {
+            if ("consume".equals(operation)) {
+                consumeMessage(step, variables, bootstrap, topic, timeoutMs, requestView, responseView, extracted);
+            } else {
+                produceMessage(step, variables, bootstrap, topic, timeoutMs, requestView, responseView, extracted);
+            }
+        } catch (Exception e) {
+            throw new StepFailure("MESSAGE_FAILED", "Kafka message step failed: " + e.getMessage());
+        }
+    }
+
+    private void produceMessage(Map<String, Object> step, Map<String, Object> variables, String bootstrap,
+                                String topic, int timeoutMs, Map<String, Object> requestView,
+                                Map<String, Object> responseView, Map<String, Object> extracted) throws Exception {
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        String key = interpolateText(text(step.get("key")), variables);
+        Object resolvedValue = resolve(step.get("value") == null ? step.get("body") : step.get("value"), variables);
+        String value = resolvedValue == null ? "" : resolvedValue instanceof String s
+                ? interpolateText(s, variables) : objectMapper.writeValueAsString(resolvedValue);
+        requestView.put("key", key);
+        requestView.put("value", value);
+        Map<String, String> headers = stringMap(resolve(step.get("headers"), variables));
+        requestView.put("headers", headers);
+        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
+            headers.forEach((name, headerValue) -> record.headers().add(name,
+                    headerValue.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            var metadata = producer.send(record).get(timeoutMs, TimeUnit.MILLISECONDS);
+            responseView.put("topic", metadata.topic());
+            responseView.put("partition", metadata.partition());
+            responseView.put("offset", metadata.offset());
+            extracted.put("kafkaRecord", Map.of("topic", metadata.topic(), "partition", metadata.partition(),
+                    "offset", metadata.offset()));
+        }
+    }
+
+    private void consumeMessage(Map<String, Object> step, Map<String, Object> variables, String bootstrap,
+                                String topic, int timeoutMs, Map<String, Object> requestView,
+                                Map<String, Object> responseView, Map<String, Object> extracted) {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        String groupId = first(text(step.get("groupId")), "easytest-" + UUID.randomUUID());
+        String offset = first(text(step.get("autoOffsetReset")), "latest");
+        int maxMessages = Math.max(1, Math.min(integer(step.get("maxMessages"), 1), 100));
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, offset);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        requestView.put("groupId", groupId);
+        requestView.put("autoOffsetReset", offset);
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        List<Map<String, Object>> messages = new ArrayList<>();
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+            consumer.subscribe(List.of(topic));
+            while (messages.size() < maxMessages && System.currentTimeMillis() < deadline) {
+                ConsumerRecords<String, String> records = consumer.poll(
+                        Duration.ofMillis(Math.min(500, Math.max(1, deadline - System.currentTimeMillis()))));
+                for (ConsumerRecord<String, String> record : records) {
+                    Map<String, Object> message = new LinkedHashMap<>();
+                    message.put("key", record.key());
+                    message.put("value", record.value());
+                    message.put("partition", record.partition());
+                    message.put("offset", record.offset());
+                    message.put("headers", record.headers().toArray().length);
+                    messages.add(message);
+                    if (messages.size() >= maxMessages) break;
+                }
+            }
+        }
+        responseView.put("messages", messages);
+        responseView.put("count", messages.size());
+        if (messages.isEmpty()) {
+            throw new StepFailure("MESSAGE_TIMEOUT", "没有在 " + timeoutMs + "ms 内消费到消息");
+        }
+        Map<String, Object> first = messages.get(0);
+        extracted.put("message", first);
+        extracted.put("messageValue", first.get("value"));
+        extracted.put("messageKey", first.get("key"));
+        variables.put("message", first);
+        variables.put("messageValue", first.get("value"));
+        variables.put("messageKey", first.get("key"));
+        Object extractSpec = resolve(step.get("extract"), variables);
+        if (extractSpec instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> {
+                String name = String.valueOf(key);
+                String path = String.valueOf(value);
+                if ("value".equalsIgnoreCase(path)) {
+                    extracted.put(name, first.get("value"));
+                    variables.put(name, first.get("value"));
+                } else if ("key".equalsIgnoreCase(path)) {
+                    extracted.put(name, first.get("key"));
+                    variables.put(name, first.get("key"));
+                }
+            });
         }
     }
 

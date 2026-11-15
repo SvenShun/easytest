@@ -74,6 +74,14 @@ public class ApiAgentRegistry {
         return selected.baseUrl();
     }
 
+    public synchronized void release(String baseUrl) {
+        if (baseUrl == null) return;
+        Agent agent = agents.values().stream().filter(item -> baseUrl.equals(item.baseUrl())).findFirst().orElse(null);
+        if (agent == null) return;
+        agents.put(agent.agentId(), new Agent(agent.agentId(), agent.name(), agent.baseUrl(),
+                agent.capabilities(), agent.slots(), Math.max(0, agent.activeTasks() - 1), agent.lastSeenAt()));
+    }
+
     public List<String> availableBaseUrls(Set<String> requiredCapabilities) {
         evictStale();
         Set<String> required = requiredCapabilities == null ? Set.of() : requiredCapabilities;

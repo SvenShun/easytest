@@ -82,6 +82,9 @@ public class RestApiExecutionClient implements ApiExecutionClient {
                 log.warn("api-execution 任务下发失败 worker={}: {}", baseUrl, e.getMessage());
             }
         }
+        if (reserved != null && agentRegistry != null) {
+            agentRegistry.release(reserved);
+        }
         throw last == null ? ApiException.internal("没有可用的 api-execution 实例") : last;
     }
 

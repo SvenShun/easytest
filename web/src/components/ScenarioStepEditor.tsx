@@ -5,7 +5,7 @@ export type ScenarioStep = Record<string, any>;
 
 const STEP_TYPES = [
   ['http', 'HTTP'], ['sql', 'SQL'], ['groovy', 'Groovy'], ['set', 'set'], ['assert', 'assert'],
-  ['wait', 'wait'], ['component', '工程组件'], ['if', 'if'], ['loop', 'loop'], ['once', 'once'], ['while', 'while'],
+  ['wait', 'wait'], ['component', '工程组件'], ['message', '消息'], ['if', 'if'], ['loop', 'loop'], ['once', 'once'], ['while', 'while'],
 ];
 
 const DEFAULTS: Record<string, ScenarioStep> = {
@@ -16,6 +16,7 @@ const DEFAULTS: Record<string, ScenarioStep> = {
   assert: { type: 'assert', name: '断言', assertions: [{ type: 'VARIABLE', path: 'key', operator: 'EQ', expected: 'value' }] },
   wait: { type: 'wait', name: '等待', ms: 500 },
   component: { type: 'component', name: '工程组件', methodPath: 'com.example#case', description: '工程代码行为说明', inputs: {} },
+  message: { type: 'message', name: '消息步骤', operation: 'produce', bootstrapServers: '127.0.0.1:9092', topic: 'easytest-topic', key: 'demo', value: { hello: 'world' } },
   if: { type: 'if', name: '条件分支', condition: '${flag} == yes', steps: [] },
   loop: { type: 'loop', name: '循环', dataset: 'rows', steps: [] },
   once: { type: 'once', name: '执行一次', steps: [] },
@@ -94,6 +95,27 @@ function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioS
       return <JsonField label="断言 assertions" value={step.assertions} onChange={(assertions) => update({ assertions })} />;
     case 'wait':
       return <Field label="等待毫秒"><Input type="number" value={step.ms ?? 500} onChange={(e) => update({ ms: Number(e.target.value) })} /></Field>;
+    case 'message':
+    case 'kafka':
+      return (
+        <div className="step-fields">
+          <div className="form-grid-2">
+            <Field label="操作"><Select value={step.operation || 'produce'} onChange={(e) => update({ operation: e.target.value })}>
+              <option value="produce">生产消息</option><option value="consume">消费消息</option>
+            </Select></Field>
+            <Field label="Bootstrap Servers"><Input value={step.bootstrapServers || ''} onChange={(e) => update({ bootstrapServers: e.target.value })} /></Field>
+            <Field label="Topic"><Input value={step.topic || ''} onChange={(e) => update({ topic: e.target.value })} /></Field>
+            <Field label="Key"><Input value={step.key || ''} onChange={(e) => update({ key: e.target.value })} /></Field>
+          </div>
+          <Field label="消息体 / value"><Textarea rows={5} value={typeof step.value === 'string' ? step.value : JSON.stringify(step.value || {}, null, 2)}
+            onChange={(e) => { try { update({ value: JSON.parse(e.target.value) }); } catch { update({ value: e.target.value }); } }} /></Field>
+          <div className="form-grid-2">
+            <Field label="消费组 groupId"><Input value={step.groupId || ''} onChange={(e) => update({ groupId: e.target.value || undefined })} /></Field>
+            <Field label="超时 ms"><Input type="number" value={step.timeoutMs || 10000} onChange={(e) => update({ timeoutMs: Number(e.target.value) })} /></Field>
+          </div>
+          <JsonField label="提取变量 extract" value={step.extract} onChange={(extract) => update({ extract })} />
+        </div>
+      );
     case 'component':
       return (
         <div className="step-fields">

@@ -15,6 +15,7 @@
 - **结构化编辑**：表单步骤树增删/排序/参数编辑，保存前 YAML diff 预览；不产生第二套数据模型。
 - **API 组件契约**：接口用例显式记录输入/输出变量（名称+说明），为后续场景引入组件和静态校验提供契约。
 - **文本用例关联**：文本用例可标记关联 API 用例、API 场景、UI 用例，展示最近执行状态；不做断言级映射。
+- **原生 Kafka 消息步骤**：produce/consume、headers、超时、extract；
 - **契约执行**：`component` 步骤调用测试工程 `@EasyContract` 方法，见 [CONTRACT-EXECUTION.md](CONTRACT-EXECUTION.md)；API Agent 已增加注册/心跳/能力/槽位。
 - **Git 源同步**：Git 仓库 YAML → sourcePath 匹配创建/更新场景；支持手动同步和 webhook（token/HMAC）。
 - **变量生产者—消费者分析**与未定义变量静态提示，接口：
