@@ -11,6 +11,7 @@ import com.easytest.core.feature.apienv.ApiEnvironmentRepository;
 import com.easytest.core.feature.apienv.ApiEnvironmentResolver;
 import com.easytest.core.feature.apiscenario.ApiScenarioDtos;
 import com.easytest.core.feature.apiscenario.ApiScenarioService;
+import com.easytest.core.feature.apiagent.ApiDispatchQueue;
 import com.easytest.core.feature.notification.NotificationService;
 import com.easytest.core.feature.apicase.ApiCaseRepository;
 import com.easytest.core.feature.apicase.ApiCaseService;
@@ -62,6 +63,7 @@ public class PlanRunService {
     private final ApiEnvironmentResolver environmentResolver;
     private final NotificationService notificationService;
     private final ApiScenarioService apiScenarioService;
+    private final ApiDispatchQueue apiDispatchQueue;
 
     public PlanRunService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                           PlanRunRepository runRepository, PlanRunItemRepository itemRepository,
@@ -72,7 +74,8 @@ public class PlanRunService {
                           ApiCaseService apiCaseService, ApiEnvironmentRepository environmentRepository,
                           ApiEnvironmentResolver environmentResolver,
                           NotificationService notificationService,
-                          ApiScenarioService apiScenarioService) {
+                          ApiScenarioService apiScenarioService,
+                          ApiDispatchQueue apiDispatchQueue) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -89,6 +92,7 @@ public class PlanRunService {
         this.environmentResolver = environmentResolver;
         this.notificationService = notificationService;
         this.apiScenarioService = apiScenarioService;
+        this.apiDispatchQueue = apiDispatchQueue;
     }
 
     public TriggerResponse trigger(String planId, TriggerRequest request) {
@@ -148,14 +152,28 @@ public class PlanRunService {
                     itemRepository.save(item);
                     try {
                         int apiTimeout = Math.max(1, Math.min(timeoutSec, apiCase.getTimeoutSec()));
-                        ApiExecutionClient.TaskCreated created = apiExecutionClient.createTask(
-                                apiPayload(planId, run.getId(), apiCase, apiTimeout, actor, environment, row));
+                        Map<String, Object> payload = apiPayload(planId, run.getId(), apiCase, apiTimeout,
+                                actor, environment, row);
+                        ApiExecutionClient.TaskCreated created = apiExecutionClient.createTask(payload);
                         item.setTaskId(created.taskId());
                         RunItemStatus status = RunItemStatus.parse(created.status());
                         item.setStatus(status == null ? RunItemStatus.PENDING : status);
                     } catch (Exception e) {
-                        item.setStatus(RunItemStatus.FAILED);
-                        item.setError(truncate(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+                        String message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                        if (message.contains("没有可用的 API Agent") || message.contains("没有可用的 API 执行实例")) {
+                            try {
+                                int apiTimeout = Math.max(1, Math.min(timeoutSec, apiCase.getTimeoutSec()));
+                                apiDispatchQueue.enqueue(run.getId(), item.getId(),
+                                        apiPayload(planId, run.getId(), apiCase, apiTimeout, actor, environment, row));
+                                item.setError("等待可用 API Agent，已进入持久化调度队列");
+                            } catch (Exception queueError) {
+                                item.setStatus(RunItemStatus.FAILED);
+                                item.setError(truncate(queueError.getMessage()));
+                            }
+                        } else {
+                            item.setStatus(RunItemStatus.FAILED);
+                            item.setError(truncate(message));
+                        }
                     }
                     item.setUpdatedAt(Instant.now());
                     itemRepository.save(item);

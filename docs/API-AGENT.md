@@ -40,6 +40,7 @@ core 维护注册表，并按：
 - core 在 Agent 满槽时最多等待 `EASYTEST_API_AGENT_WAIT_SECONDS`（默认 10 秒）再失败，避免瞬时并发打满。
 - 任务下发失败会释放该 Agent 的预占槽位，并尝试其他可用 Agent（故障转移）。
 - 计划运行项记录场景 sourcePath/sourceCommit，报告可追溯 Git 来源。
-- 没有持久化等待队列和任务租约；Agent 长时间满槽时任务会失败，不会静默落到静态 URL。
+- Agent 满槽/无容量时，计划运行项进入 `api_dispatch_task` 持久化队列；core 定时重试分发，重启后队列仍在。
+- 没有任务租约/续约和跨 core 共享注册表；这些仍是后续生产化工作。
 - core 仍保留 `EASYTEST_API_EXECUTION_URLS` 兼容旧部署：只有没有任何已注册 Agent 时才使用静态地址。
 - 尚未实现 Agent 版本/能力热更新、优雅摘除、HTTP/Redis 双队列迁移。

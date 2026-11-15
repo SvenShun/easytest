@@ -567,7 +567,13 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v
 
 ---
 
-## 12. Git 场景源同步（可选）
+## 12. API 调度队列
+
+API Agent 满槽时，core 会把任务写入 `api_dispatch_task` 并在后台重试分发；
+`EASYTEST_API_AGENT_WAIT_SECONDS` 控制同步等待时长，`api-dispatch-poll-ms`（默认 1000）控制队列轮询。
+数据库表由 JPA 自动创建；多 core 共享需后续引入租约/分布式锁。
+
+## 13. Git 场景源同步（可选）
 
 在「API 场景 → Git 同步」配置仓库后，core 会用服务端 `git` 命令拉取 YAML：
 
@@ -583,7 +589,7 @@ ssh -T git@github.com   # 私有 SSH 仓库
 - 同一个 `sourcePath` 对应一个场景；同步不会自动删除 Git 中已移除的场景。
 - 公网部署时把 webhook 限制在可信来源，并使用 HTTPS。
 
-## 13. 目录和关键文件
+## 14. 目录和关键文件
 
 ```text
 common/            共享 JWT/角色/异常/CORS
@@ -613,13 +619,13 @@ examples/          演示脚本工程
 
 ---
 
-## 14. 可选：MeterSphere / Sonic 对比环境
+## 15. 可选：MeterSphere / Sonic 对比环境
 
 本仓库的 EasyTest 部署**不依赖** MeterSphere 或 Sonic。若要部署对比环境，参见 [COMPARE-DEPLOY.md](COMPARE-DEPLOY.md)；它使用 `upstream/` 下的源码，`upstream/` 被 `.gitignore` 忽略，需要在目标机器重新拉取源码并单独构建，不属于 EasyTest 主部署流程。
 
 ---
 
-## 15. GitHub 提交和更新
+## 16. GitHub 提交和更新
 
 代码通过 GitHub `main` 分支交付：
 
