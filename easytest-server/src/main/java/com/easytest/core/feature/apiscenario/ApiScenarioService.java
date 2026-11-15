@@ -13,6 +13,7 @@ import com.easytest.core.feature.apienv.ApiEnvironmentResolver;
 import com.easytest.core.feature.apiscenario.ApiScenarioDtos.*;
 import com.easytest.core.feature.engineering.EngineeringContractValidator;
 import com.easytest.core.feature.notification.NotificationService;
+import com.easytest.core.feature.project.ProjectContext;
 import com.easytest.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -42,12 +43,13 @@ public class ApiScenarioService {
     private final NotificationService notificationService;
     private final ScenarioGraphAnalyzer graphAnalyzer;
     private final EngineeringContractValidator contractValidator;
+    private final ProjectContext projectContext;
 
     public ApiScenarioService(ApiScenarioRepository scenarios, ApiScenarioRunRepository runs,
                               ApiEnvironmentRepository environments, ApiEnvironmentResolver environmentResolver,
                               ScenarioExecutionClient executionClient, ObjectMapper objectMapper,
                               NotificationService notificationService, ScenarioGraphAnalyzer graphAnalyzer,
-                              EngineeringContractValidator contractValidator) {
+                              EngineeringContractValidator contractValidator, ProjectContext projectContext) {
         this.scenarios = scenarios;
         this.runs = runs;
         this.environments = environments;
@@ -57,6 +59,7 @@ public class ApiScenarioService {
         this.notificationService = notificationService;
         this.graphAnalyzer = graphAnalyzer;
         this.contractValidator = contractValidator;
+        this.projectContext = projectContext;
     }
 
     public PageResponse<ScenarioView> list(String keyword, Integer page, Integer size) {
@@ -77,6 +80,7 @@ public class ApiScenarioService {
         ApiScenario scenario = new ApiScenario(Ids.newId("scenario"), request.name().trim(),
                 blank(request.description()), request.yaml(), blank(request.environmentId()),
                 request.enabled() == null || request.enabled(), CurrentUser.require().username(), now, now);
+        scenario.setProjectId(projectContext.currentProjectId());
         return view(scenarios.save(scenario));
     }
 
@@ -328,7 +332,12 @@ public class ApiScenarioService {
     }
 
     private ApiScenario require(String id) {
-        return scenarios.findById(id).orElseThrow(() -> ApiException.notFound("场景不存在: " + id));
+        ApiScenario scenario = scenarios.findById(id).orElseThrow(() -> ApiException.notFound("场景不存在: " + id));
+        if (scenario.getProjectId() != null
+                && !projectContext.currentProjectId().equals(scenario.getProjectId())) {
+            throw ApiException.notFound("场景不存在: " + id);
+        }
+        return scenario;
     }
 
     private ApiScenarioRun requireRun(String id) {

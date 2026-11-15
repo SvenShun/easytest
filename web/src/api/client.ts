@@ -1,4 +1,5 @@
 import { getConfig } from '../config';
+import { getCurrentProjectId } from '../project';
 import type { Page } from './types';
 
 export const TOKEN_KEY = 'easytest.token';
@@ -124,6 +125,8 @@ export async function request<T>(
   }
 
   const headers: Record<string, string> = { Accept: 'application/json', ...(options.headers || {}) };
+  const projectId = getCurrentProjectId();
+  if (projectId) headers['X-Project-Id'] = projectId;
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 

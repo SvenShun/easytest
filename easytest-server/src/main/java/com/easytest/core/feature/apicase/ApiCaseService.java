@@ -10,6 +10,7 @@ import com.easytest.common.web.PageResponse;
 import com.easytest.core.feature.apicase.ApiCaseDtos.ApiCaseRequest;
 import com.easytest.core.feature.apicase.ApiCaseDtos.ApiCaseView;
 import com.easytest.core.feature.plan.PlanCaseRepository;
+import com.easytest.core.feature.project.ProjectContext;
 import com.easytest.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -37,24 +38,32 @@ public class ApiCaseService {
     private final ApiCaseRepository repository;
     private final PlanCaseRepository planCaseRepository;
     private final ObjectMapper objectMapper;
+    private final ProjectContext projectContext;
 
     public ApiCaseService(ApiCaseRepository repository, PlanCaseRepository planCaseRepository,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper, ProjectContext projectContext) {
         this.repository = repository;
         this.planCaseRepository = planCaseRepository;
         this.objectMapper = objectMapper;
+        this.projectContext = projectContext;
     }
 
     public PageResponse<ApiCaseView> list(String keyword, Integer page, Integer size) {
         PageRequest pageRequest = PageRequest.of(PageSupport.pageIndex(page), PageSupport.pageSize(size),
                 Sort.by(Sort.Direction.DESC, "updatedAt"));
-        Page<ApiCase> result = repository.findAll(keywordSpec(keyword), pageRequest);
+        Page<ApiCase> result = repository.findAll(
+                keywordSpec(keyword, projectContext.currentProjectId()), pageRequest);
         return PageSupport.of(result, this::view);
     }
 
     public ApiCase require(String id) {
-        return repository.findById(id)
+        ApiCase apiCase = repository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("接口用例不存在: " + id));
+        if (apiCase.getProjectId() != null
+                && !projectContext.currentProjectId().equals(apiCase.getProjectId())) {
+            throw ApiException.notFound("接口用例不存在: " + id);
+        }
+        return apiCase;
     }
 
     public ApiCaseView get(String id) {
@@ -71,6 +80,7 @@ public class ApiCaseService {
                 json(request.inputContract()), json(request.outputContract()),
                 timeout(request.timeoutSec()), request.enabled() == null || request.enabled(),
                 principal.username(), now, now);
+        apiCase.setProjectId(projectContext.currentProjectId());
         return view(repository.save(apiCase));
     }
 
@@ -117,16 +127,17 @@ public class ApiCaseService {
                 apiCase.getUpdatedAt());
     }
 
-    private Specification<ApiCase> keywordSpec(String keyword) {
+    private Specification<ApiCase> keywordSpec(String keyword, String projectId) {
         return (root, query, cb) -> {
+            Predicate scoped = cb.equal(root.get("projectId"), projectId);
             if (keyword == null || keyword.isBlank()) {
-                return cb.conjunction();
+                return scoped;
             }
             String pattern = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.like(cb.lower(root.get("name")), pattern));
             predicates.add(cb.like(cb.lower(root.get("path")), pattern));
-            return cb.or(predicates.toArray(new Predicate[0]));
+            return cb.and(scoped, cb.or(predicates.toArray(new Predicate[0])));
         };
     }
 

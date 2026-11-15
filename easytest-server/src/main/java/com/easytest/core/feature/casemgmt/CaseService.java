@@ -11,6 +11,7 @@ import com.easytest.core.feature.script.ScriptProject;
 import com.easytest.core.feature.script.ScriptService;
 import com.easytest.core.feature.script.ScriptTicketService;
 import com.easytest.core.feature.support.AuditService;
+import com.easytest.core.feature.project.ProjectContext;
 import com.easytest.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -39,16 +40,19 @@ public class CaseService {
     private final ScriptService scriptService;
     private final ScriptTicketService ticketService;
     private final AuditService auditService;
+    private final ProjectContext projectContext;
 
     public CaseService(ClientCaseRepository caseRepository, CaseReviewRepository reviewRepository,
                        PlanCaseRepository planCaseRepository, ScriptService scriptService,
-                       ScriptTicketService ticketService, AuditService auditService) {
+                       ScriptTicketService ticketService, AuditService auditService,
+                       ProjectContext projectContext) {
         this.caseRepository = caseRepository;
         this.reviewRepository = reviewRepository;
         this.planCaseRepository = planCaseRepository;
         this.scriptService = scriptService;
         this.ticketService = ticketService;
         this.auditService = auditService;
+        this.projectContext = projectContext;
     }
 
     public PageResponse<CaseView> search(String reviewStatus, String keyword, String requirementId,
@@ -56,7 +60,8 @@ public class CaseService {
         ReviewStatus status = parseStatus(reviewStatus);
         PageRequest pageRequest = PageRequest.of(PageSupport.pageIndex(page), PageSupport.pageSize(size),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<ClientCase> result = caseRepository.findAll(filter(status, keyword, requirementId), pageRequest);
+        Page<ClientCase> result = caseRepository.findAll(
+                filter(status, keyword, requirementId, projectContext.currentProjectId()), pageRequest);
         List<CaseView> items = result.getContent().stream()
                 .map(clientCase -> view(clientCase, scriptService.findOrNull(clientCase.getScriptId())))
                 .toList();
@@ -64,8 +69,13 @@ public class CaseService {
     }
 
     public ClientCase require(String id) {
-        return caseRepository.findById(id)
+        ClientCase clientCase = caseRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("用例不存在: " + id));
+        if (clientCase.getProjectId() != null
+                && !projectContext.currentProjectId().equals(clientCase.getProjectId())) {
+            throw ApiException.notFound("用例不存在: " + id);
+        }
+        return clientCase;
     }
 
     public CaseView get(String id) {
@@ -91,6 +101,7 @@ public class CaseService {
         clientCase.setSource(CaseSource.MANUAL);
         clientCase.setReviewStatus(ReviewStatus.DRAFT);
         clientCase.setModelId(null);
+        clientCase.setProjectId(projectContext.currentProjectId());
         clientCase.setCreatedBy(principal.username());
         clientCase.setCreatedAt(now);
         clientCase.setUpdatedAt(now);
@@ -457,9 +468,11 @@ public class CaseService {
         return principal == null ? "system" : principal.username();
     }
 
-    private Specification<ClientCase> filter(ReviewStatus reviewStatus, String keyword, String requirementId) {
+    private Specification<ClientCase> filter(ReviewStatus reviewStatus, String keyword, String requirementId,
+                                              String projectId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("projectId"), projectId));
             if (reviewStatus != null) {
                 predicates.add(cb.equal(root.get("reviewStatus"), reviewStatus));
             }

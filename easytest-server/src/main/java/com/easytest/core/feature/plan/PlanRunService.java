@@ -12,6 +12,7 @@ import com.easytest.core.feature.apienv.ApiEnvironmentResolver;
 import com.easytest.core.feature.apiscenario.ApiScenarioDtos;
 import com.easytest.core.feature.apiscenario.ApiScenarioService;
 import com.easytest.core.feature.apiagent.ApiDispatchQueue;
+import com.easytest.core.feature.project.ProjectContext;
 import com.easytest.core.feature.notification.NotificationService;
 import com.easytest.core.feature.apicase.ApiCaseRepository;
 import com.easytest.core.feature.apicase.ApiCaseService;
@@ -64,6 +65,7 @@ public class PlanRunService {
     private final NotificationService notificationService;
     private final ApiScenarioService apiScenarioService;
     private final ApiDispatchQueue apiDispatchQueue;
+    private final ProjectContext projectContext;
 
     public PlanRunService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                           PlanRunRepository runRepository, PlanRunItemRepository itemRepository,
@@ -75,7 +77,7 @@ public class PlanRunService {
                           ApiEnvironmentResolver environmentResolver,
                           NotificationService notificationService,
                           ApiScenarioService apiScenarioService,
-                          ApiDispatchQueue apiDispatchQueue) {
+                          ApiDispatchQueue apiDispatchQueue, ProjectContext projectContext) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -93,11 +95,15 @@ public class PlanRunService {
         this.notificationService = notificationService;
         this.apiScenarioService = apiScenarioService;
         this.apiDispatchQueue = apiDispatchQueue;
+        this.projectContext = projectContext;
     }
 
     public TriggerResponse trigger(String planId, TriggerRequest request) {
         TestPlan plan = planRepository.findById(planId)
                 .orElseThrow(() -> ApiException.notFound("测试计划不存在: " + planId));
+        if (plan.getProjectId() != null && !projectContext.currentProjectId().equals(plan.getProjectId())) {
+            throw ApiException.notFound("测试计划不存在: " + planId);
+        }
         List<PlanCase> mounts = planCaseRepository.findByPlanIdOrderByCreatedAtAscIdAsc(planId);
         if (mounts.isEmpty()) {
             throw noExecutableCase("测试计划未挂载任何用例");

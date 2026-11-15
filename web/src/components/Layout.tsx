@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../auth';
+import { projectsApi, type Project } from '../api/projects';
+import { getCurrentProjectId, setCurrentProjectId } from '../project';
 import { MAIN_ONLY } from '../config';
 import { ROLE_META, metaOf } from '../constants';
 import type { Role } from '../api/types';
@@ -8,7 +10,7 @@ import { cx, formatDateTime, userDisplayName } from '../utils';
 import { navigate, type RouteState, useHashRoute } from '../router';
 import { BrandMark, Icon } from './icons';
 import type { IconName } from './icons';
-import { Avatar, IconButton, Pill } from './ui';
+import { Avatar, IconButton, Pill, Select } from './ui';
 
 interface NavItem {
   path: string;
@@ -42,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/kb', label: 'UI 知识库', icon: 'devices', roles: ['ADMIN', 'TESTER'] },
       { path: '/agents', label: '执行节点', icon: 'server', roles: ['ADMIN', 'TESTER'] },
       { path: '/engineering-methods', label: '工程方法', icon: 'code', roles: ['ADMIN', 'TESTER'] },
+      { path: '/projects', label: '项目', icon: 'cases', roles: ['ADMIN', 'TESTER'] },
       { path: '/plans', label: '测试计划', icon: 'plans', roles: ['ADMIN', 'TESTER'] },
       { path: '/jobs', label: '定时任务', icon: 'clock', roles: ['ADMIN', 'TESTER'] },
       { path: '/reports', label: '测试报告', icon: 'dashboard', roles: ['ADMIN', 'TESTER', 'BUSINESS'] },
@@ -85,6 +88,8 @@ export function routeTitle(route: RouteState): string {
       return '执行节点';
     case 'engineering-methods':
       return '工程方法';
+    case 'projects':
+      return '项目';
     case 'ai':
       return 'AI 分析';
     case 'plans':
@@ -181,6 +186,34 @@ function CurrentClock() {
   );
 }
 
+function ProjectSelector() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState(getCurrentProjectId());
+  useEffect(() => {
+    void projectsApi.list().then((items) => {
+      setProjects(items);
+      if (!items.some((item) => item.id === projectId)) {
+        const fallback = items[0]?.id || 'default';
+        setCurrentProjectId(fallback);
+        setProjectId(fallback);
+      }
+    }).catch(() => setProjects([]));
+  }, [projectId]);
+  if (projects.length === 0) return null;
+  return (
+    <div className="topbar-project" title="当前项目">
+      <Select value={projectId} onChange={(event) => {
+        const next = event.target.value;
+        setCurrentProjectId(next);
+        setProjectId(next);
+        window.location.reload();
+      }}>
+        {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+      </Select>
+    </div>
+  );
+}
+
 function Topbar({
   title,
   onRefresh,
@@ -206,6 +239,7 @@ function Topbar({
         <h2 className="topbar-title">{title}</h2>
       </div>
       <div className="topbar-right">
+        <ProjectSelector />
         <CurrentClock />
         <button type="button" className="topbar-refresh" onClick={refresh} title="刷新当前页面">
           <Icon name="refresh" size={16} className={spinning ? 'spin' : undefined} />

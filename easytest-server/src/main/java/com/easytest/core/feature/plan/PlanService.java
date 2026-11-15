@@ -17,6 +17,7 @@ import com.easytest.core.feature.casemgmt.ClientCaseRepository;
 import com.easytest.core.feature.casemgmt.ReviewStatus;
 import com.easytest.core.feature.script.ScriptProject;
 import com.easytest.core.feature.script.ScriptService;
+import com.easytest.core.feature.project.ProjectContext;
 import com.easytest.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -47,12 +48,13 @@ public class PlanService {
     private final ApiCaseRepository apiCaseRepository;
     private final ApiEnvironmentRepository environmentRepository;
     private final ApiScenarioRepository scenarioRepository;
+    private final ProjectContext projectContext;
 
     public PlanService(TestPlanRepository planRepository, PlanCaseRepository planCaseRepository,
                        PlanRunRepository runRepository, ClientCaseRepository caseRepository,
                        ScriptService scriptService, CaseService caseService,
                        ApiCaseRepository apiCaseRepository, ApiEnvironmentRepository environmentRepository,
-                       ApiScenarioRepository scenarioRepository) {
+                       ApiScenarioRepository scenarioRepository, ProjectContext projectContext) {
         this.planRepository = planRepository;
         this.planCaseRepository = planCaseRepository;
         this.runRepository = runRepository;
@@ -62,18 +64,24 @@ public class PlanService {
         this.apiCaseRepository = apiCaseRepository;
         this.environmentRepository = environmentRepository;
         this.scenarioRepository = scenarioRepository;
+        this.projectContext = projectContext;
     }
 
     public PageResponse<PlanView> list(String keyword, Integer page, Integer size) {
         PageRequest pageRequest = PageRequest.of(PageSupport.pageIndex(page), PageSupport.pageSize(size),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<TestPlan> result = planRepository.findAll(keywordSpec(keyword), pageRequest);
+        Page<TestPlan> result = planRepository.findAll(
+                keywordSpec(keyword, projectContext.currentProjectId()), pageRequest);
         return PageSupport.of(result, PlanView::of);
     }
 
     public TestPlan require(String id) {
-        return planRepository.findById(id)
+        TestPlan plan = planRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("测试计划不存在: " + id));
+        if (plan.getProjectId() != null && !projectContext.currentProjectId().equals(plan.getProjectId())) {
+            throw ApiException.notFound("测试计划不存在: " + id);
+        }
+        return plan;
     }
 
     public PlanView get(String id) {
@@ -95,6 +103,7 @@ public class PlanService {
         Instant now = Instant.now();
         TestPlan plan = new TestPlan(Ids.newId("plan"), request.name().trim(), request.description(), "READY",
                 principal.username(), now, now);
+        plan.setProjectId(projectContext.currentProjectId());
         plan.setEnvironmentId(validateEnvironment(request.environmentId()));
         return PlanView.of(planRepository.save(plan));
     }
@@ -272,16 +281,17 @@ public class PlanService {
         }
     }
 
-    private Specification<TestPlan> keywordSpec(String keyword) {
+    private Specification<TestPlan> keywordSpec(String keyword, String projectId) {
         return (root, query, cb) -> {
+            Predicate scoped = cb.equal(root.get("projectId"), projectId);
             if (keyword == null || keyword.isBlank()) {
-                return cb.conjunction();
+                return scoped;
             }
             String pattern = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.like(cb.lower(root.get("name")), pattern));
             predicates.add(cb.like(cb.lower(root.get("description")), pattern));
-            return cb.or(predicates.toArray(new Predicate[0]));
+            return cb.and(scoped, cb.or(predicates.toArray(new Predicate[0])));
         };
     }
 }

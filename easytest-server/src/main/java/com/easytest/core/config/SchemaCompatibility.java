@@ -49,6 +49,10 @@ public class SchemaCompatibility implements ApplicationRunner {
         alter("ALTER TABLE test_job MODIFY COLUMN plan_id VARCHAR(64) NULL");
         alter("ALTER TABLE plan_run_item MODIFY COLUMN error TEXT NULL");
         alter("ALTER TABLE plan_run_item MODIFY COLUMN summary TEXT NULL");
+        alter("UPDATE client_case SET project_id = 'default' WHERE project_id IS NULL");
+        alter("UPDATE api_case SET project_id = 'default' WHERE project_id IS NULL");
+        alter("UPDATE api_scenario SET project_id = 'default' WHERE project_id IS NULL");
+        alter("UPDATE test_plan SET project_id = 'default' WHERE project_id IS NULL");
     }
 
     private void alter(String sql) {

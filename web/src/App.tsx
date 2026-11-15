@@ -29,6 +29,7 @@ import { DevicesPage } from './pages/Devices';
 import { SettingsPage } from './pages/Settings';
 import { AgentsPage } from './pages/Agents';
 import { EngineeringMethodsPage } from './pages/EngineeringMethods';
+import { ProjectsPage } from './pages/Projects';
 
 const ALL_ROLES: Role[] = ['ADMIN', 'TESTER', 'BUSINESS', 'OPS'];
 const TESTERS: Role[] = ['ADMIN', 'TESTER'];
@@ -82,6 +83,8 @@ function renderPage(route: RouteState): ReactNode {
       return second ? <NotFoundPage routePath={route.path} /> : <AgentsPage />;
     case 'engineering-methods':
       return second ? <NotFoundPage routePath={route.path} /> : <EngineeringMethodsPage />;
+    case 'projects':
+      return second ? <NotFoundPage routePath={route.path} /> : <ProjectsPage />;
     case 'ai':
       return second ? <NotFoundPage routePath={route.path} /> : <AiPage />;
     case 'plans':
@@ -107,7 +110,7 @@ function AppRoutes() {
   const [refreshKey, setRefreshKey] = useState(0);
   const first = route.segments[0] || 'dashboard';
   const isLogin = first === 'login';
-  const knownRoute = ['dashboard', 'devices', 'tasks', 'requirements', 'cases', 'api-cases', 'api-scenarios', 'environments', 'ui-elements', 'kb', 'agents', 'engineering-methods', 'ai', 'plans', 'jobs', 'reports', 'notifications', 'runs', 'settings', 'login'];
+  const knownRoute = ['dashboard', 'devices', 'tasks', 'requirements', 'cases', 'api-cases', 'api-scenarios', 'environments', 'ui-elements', 'kb', 'agents', 'engineering-methods', 'projects', 'ai', 'plans', 'jobs', 'reports', 'notifications', 'runs', 'settings', 'login'];
   const pageExists = !route.segments.length || knownRoute.includes(first);
 
   useEffect(() => {

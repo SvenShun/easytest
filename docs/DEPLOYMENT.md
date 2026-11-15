@@ -630,7 +630,12 @@ examples/          演示脚本工程
 
 ---
 
-## 17. GitHub 提交和更新
+## 17. 项目隔离
+
+项目数据通过 `X-Project-Id` 请求头选择；默认项目 `default` 由启动初始化器创建。
+历史数据回填 `project_id=default`。详见 [PROJECTS.md](PROJECTS.md)。
+
+## 18. GitHub 提交和更新
 
 代码通过 GitHub `main` 分支交付：
 
