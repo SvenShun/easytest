@@ -103,10 +103,29 @@ POST   /api/v1/engineering-repos/{id}/webhook
 
 ## Demo 仓库
 
-- `examples/engineering-api-repo/`：API 工程约定 + `GitDemoCases`
+两个目录已经是独立的本地 Git 仓库（`main` 分支）：
+
+- `examples/engineering-api-repo/`：API 工程约定 + `GitDemoCases` + 已构建 `target/git-demo-api.jar`
 - `examples/engineering-ui-repo/`：UI STEP 工程约定
 
-将目录作为独立 git 仓库推到 GitHub/GitLab 后，在平台填写地址即可。
+平台可使用：
+
+```text
+file:///Users/wen/DeepseekWorkspace/EasyTest/examples/engineering-api-repo
+file:///Users/wen/DeepseekWorkspace/EasyTest/examples/engineering-ui-repo
+```
+
+推送到 GitHub/GitLab：
+
+```bash
+cd examples/engineering-api-repo
+git remote add origin <your-git-url>
+git push -u origin main
+
+cd ../engineering-ui-repo
+git remote add origin <your-git-url>
+git push -u origin main
+```
 
 ## 限制
 

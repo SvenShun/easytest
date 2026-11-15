@@ -50,6 +50,9 @@ check('api agents', status == 200 and isinstance(agents, list))
 status, scripts = call('GET', '/api/v1/scripts?page=1&size=5', token=token)
 check('scripts', status == 200 and 'items' in (scripts or {}))
 
+status, repos = call('GET', '/api/v1/engineering-repos', token=token)
+check('git engineering repos', status == 200 and isinstance(repos, list))
+
 status, scenarios = call('GET', '/api/v1/api-scenarios?page=1&size=50', token=token)
 check('api scenarios', status == 200 and 'items' in (scenarios or {}))
 items = (scenarios or {}).get('items', [])

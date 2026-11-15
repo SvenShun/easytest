@@ -2,14 +2,20 @@
 
 Independent Git repository demo for EasyTest Git engineering integration.
 
+This directory is already initialized as an independent local Git repository (`main`).
+Push it to a remote to use it from another machine:
+
 ```bash
-git init
-git add .
-git commit -m "demo: api engineering cases"
 git remote add origin <your-git-url>
 git push -u origin main
 ```
 
+Local platform URL:
+
+```text
+file:///Users/wen/DeepseekWorkspace/EasyTest/examples/engineering-api-repo
+```
+
 The platform scans `easytest.api.yaml` and loads `git.login` / `git.health`.
-Build the JAR with the EasyTest `contract-api` dependency and put it into the API agent's
-`data/engineering` directory for execution.
+`target/git-demo-api.jar` is committed as the artifact; scanning uploads it to the API Agent automatically.
+Rebuild it with the EasyTest `contract-api` dependency when changing Java code.
