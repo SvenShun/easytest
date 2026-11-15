@@ -1,0 +1,84 @@
+# Multi-machine agent node: run this compose on a worker host.
+# Required environment:
+#   CORE_URL=http://<core-host>:8080
+#   UIEXEC_URL=http://<ui-execution-host>:8081
+#   EASYTEST_SERVICE_TOKEN / EASYTEST_AGENT_TOKEN
+#   EASYTEST_AGENT_WEB_URL=http://<web-demo-host>:18090/
+services:
+  api-execution:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.apiexec
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_DATASOURCE_URL: ${APIEXEC_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EASYTEST_CORE_URL: ${CORE_URL}
+      EASYTEST_APIEXEC_PUBLIC_URL: ${APIEXEC_PUBLIC_URL:-http://api-execution:8084}
+      EASYTEST_APIEXEC_CALLBACK_URL: ${CORE_URL}
+      EASYTEST_SERVICE_TOKEN: ${EASYTEST_SERVICE_TOKEN}
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN}
+      EASYTEST_JWT_SECRET: ${EASYTEST_JWT_SECRET}
+    ports:
+      - "8084:8084"
+
+  ui-execution:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.uiexec
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      SPRING_DATASOURCE_URL: ${UIEXEC_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      EASYTEST_CORE_URL: ${CORE_URL}
+      EASYTEST_UIEXEC_PUBLIC_URL: ${UIEXEC_PUBLIC_URL:-http://ui-execution:8081}
+      EASYTEST_UIEXEC_CALLBACK_URL: ${UIEXEC_PUBLIC_URL:-http://ui-execution:8081}
+      EASYTEST_SERVICE_TOKEN: ${EASYTEST_SERVICE_TOKEN}
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN}
+      EASYTEST_JWT_SECRET: ${EASYTEST_JWT_SECRET}
+      EASYTEST_QUEUE_STORE: ${QUEUE_STORE:-redis}
+      SPRING_DATA_REDIS_HOST: ${REDIS_HOST}
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
+    ports:
+      - "8081:8081"
+
+  device-agent:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.agent
+    environment:
+      EASYTEST_AGENT_NAME: device-agent-remote
+      EASYTEST_AGENT_HOST: device-agent
+      EASYTEST_AGENT_BASE_URL: http://device-agent:8090
+      EASYTEST_UIEXEC_URL: ${UIEXEC_URL}
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN}
+      EASYTEST_AGENT_MODE: ${DEVICE_AGENT_MODE:-auto}
+      EASYTEST_AGENT_DATA_DIR: /data/agent
+    volumes:
+      - agent-data:/data/agent
+    ports:
+      - "8090:8090"
+
+  web-agent:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.agent
+    environment:
+      EASYTEST_AGENT_NAME: web-agent-remote
+      EASYTEST_AGENT_HOST: web-agent
+      EASYTEST_AGENT_BASE_URL: http://web-agent:8090
+      EASYTEST_UIEXEC_URL: ${UIEXEC_URL}
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN}
+      EASYTEST_AGENT_MODE: web
+      EASYTEST_AGENT_WEB_URL: ${EASYTEST_AGENT_WEB_URL}
+      EASYTEST_AGENT_DATA_DIR: /data/web-agent
+    volumes:
+      - web-agent-data:/data/web-agent
+    ports:
+      - "8091:8090"
+
+volumes:
+  agent-data:
+  web-agent-data:

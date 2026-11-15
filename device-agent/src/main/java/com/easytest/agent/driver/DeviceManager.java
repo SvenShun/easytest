@@ -39,7 +39,7 @@ public class DeviceManager {
         String normalised = configuredMode == null ? "simulated"
                 : configuredMode.trim().toLowerCase(Locale.ROOT);
         if (!"adb".equals(normalised) && !"auto".equals(normalised) && !"sonic".equals(normalised)
-                && !"ios".equals(normalised) && !"wda".equals(normalised)) {
+                && !"ios".equals(normalised) && !"wda".equals(normalised) && !"web".equals(normalised)) {
             normalised = "simulated";
         }
         this.mode = normalised;
@@ -75,6 +75,9 @@ public class DeviceManager {
 
         if ("ios".equals(mode) || "wda".equals(mode) || "auto".equals(mode)) {
             addIosDevices(properties);
+        }
+        if ("web".equals(mode) || "auto".equals(mode)) {
+            addWebDevice(properties);
         }
 
         if ("simulated".equals(mode) || ("auto".equals(mode) && devices.isEmpty())) {
@@ -136,6 +139,15 @@ public class DeviceManager {
                     new IosWdaDeviceDriver(descriptor, configured.getWdaUrl()));
             log.info("iOS WDA device configured: {} at {}", descriptor.serial(), configured.getWdaUrl());
         }
+    }
+
+    private void addWebDevice(AgentProperties properties) {
+        String url = properties.getWeb().getUrl();
+        if (url == null || url.isBlank()) return;
+        DeviceDescriptor descriptor = new DeviceDescriptor(properties.getWeb().getSerial(),
+                properties.getWeb().getName(), "Headless Chromium", "web", properties.getWeb().getTags(), true);
+        devices.putIfAbsent(descriptor.serial(), new WebDeviceDriver(descriptor, url, renderer));
+        log.info("web device configured: {} -> {}", descriptor.serial(), url);
     }
 
     private void addSimulatedDevices() {

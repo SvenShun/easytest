@@ -19,10 +19,10 @@ import java.util.Map;
 @RequestMapping("/api")
 public class GatewayController {
 
-    @DubboReference(url = "dubbo://127.0.0.1:20880")
+    @DubboReference(url = "${IOT_DUBBO_URL:dubbo://127.0.0.1:20880}")
     private UserFacade userFacade;
 
-    @DubboReference(url = "dubbo://127.0.0.1:20880")
+    @DubboReference(url = "${IOT_DUBBO_URL:dubbo://127.0.0.1:20880}")
     private DeviceFacade deviceFacade;
 
     @PostMapping("/auth/login")

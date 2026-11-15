@@ -2,6 +2,7 @@ FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /src
 COPY deploy/maven-settings.xml /root/.m2/settings.xml
 COPY pom.xml .
+COPY engineering-sdk/pom.xml engineering-sdk/pom.xml
 COPY common/pom.xml common/pom.xml
 COPY contract-api/pom.xml contract-api/pom.xml
 COPY easytest-server/pom.xml easytest-server/pom.xml

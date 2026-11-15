@@ -668,3 +668,36 @@ make setup
 ## 验收
 
 一期功能、测试证据和已知限制见 [ACCEPTANCE-V1.md](ACCEPTANCE-V1.md)。
+
+## 一键 Docker 全栈
+
+```bash
+./scripts/stack-up.sh     # 构建并启动平台 + 中间件 + 本地 IoT 系统
+./scripts/stack-status.sh
+./scripts/stack-down.sh
+```
+
+访问：
+
+```text
+平台前端 http://127.0.0.1:5173
+核心 API http://127.0.0.1:8080
+IoT gateway http://127.0.0.1:18080
+MQTT 127.0.0.1:1883
+```
+
+包含：MySQL/Redis/MinIO/Kafka、core、API/UI 执行、ai-runtime、Android/iOS 设备 Agent、
+Web Agent（HtmlUnit）、本地 IoT gateway/Dubbo/MQTT 服务、Web Demo 页面。
+
+> 一键栈需要 Docker 能拉取 Maven/基础镜像；首次构建需要网络。
+
+## 多机 Agent 部署
+
+在核心/中间件机器启动完整栈；工作机复制 `deploy/docker-compose.agent-node.yml`，
+配置 `CORE_URL`、`UIEXEC_URL`、数据库连接与令牌后：
+
+```bash
+docker compose -f deploy/docker-compose.agent-node.yml up -d --build
+```
+
+Agent 会注册到共享 UI/API 执行服务；多机部署时需要使用共享 MySQL/Redis/Kafka/MinIO。

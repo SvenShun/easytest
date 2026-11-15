@@ -5,3 +5,7 @@ GRANT ALL PRIVILEGES ON easytest_core.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON easytest_uiexec.* TO 'root'@'%';
 GRANT ALL PRIVILEGES ON easytest_apiexec.* TO 'root'@'%';
 FLUSH PRIVILEGES;
+CREATE DATABASE IF NOT EXISTS iot_local CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'iot'@'%' IDENTIFIED BY 'iot';
+GRANT ALL PRIVILEGES ON iot_local.* TO 'iot'@'%';
+FLUSH PRIVILEGES;

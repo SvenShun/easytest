@@ -57,3 +57,15 @@ EASYTEST_AGENT_IOS_DEVICES_0_TAGS=ios,wda
 - 安装/卸载/文件/Shell 等 Android 专属操作暂不支持
 - WDA 会话为懒创建；WDA 不可达时动作返回明确失败
 - iOS 排期最后，先保证 STEP/脚本执行主链路
+
+## Web（HtmlUnit Headless）
+
+`EASYTEST_AGENT_MODE=web` + `EASYTEST_AGENT_WEB_URL` 会注册一个 `platform=web` 的虚拟设备。
+复用现有 UI STEP/队列/报告链路：
+
+```bash
+EASYTEST_AGENT_MODE=web EASYTEST_AGENT_WEB_URL=http://127.0.0.1:18090/ EASYTEST_AGENT_NAME=web-agent-local SERVER_PORT=8091 java -jar device-agent/target/device-agent-1.0.0.jar
+```
+
+Web STEP 支持 CLICK/INPUT/LAUNCH/ASSERT_TEXT/WAIT（HtmlUnit DOM）。
+后续可替换 Playwright/Selenium，不影响平台 STEP 契约与任务模型。

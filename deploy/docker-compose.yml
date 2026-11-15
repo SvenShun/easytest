@@ -110,6 +110,16 @@ services:
       EASYTEST_APIEXEC_PUBLIC_URL: ${EASYTEST_APIEXEC_PUBLIC_URL:-http://127.0.0.1:8084}
       EASYTEST_APIEXEC_CALLBACK_URL: http://core:8080
       EASYTEST_APIEXEC_WORKERS: 4
+      EASYTEST_APIEXEC_ENGINEERING_DIR: /data/engineering
+      IOT_GATEWAY_URL: http://iot-gateway:18080
+      IOT_MYSQL_URL: jdbc:mysql://mysql:3306/iot_local?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      IOT_MYSQL_USER: iot
+      IOT_MYSQL_PASSWORD: iot
+      IOT_KAFKA_BOOTSTRAP: kafka:9092
+      IOT_MQTT_HOST: iot-service
+      IOT_MQTT_PORT: 1883
+    volumes:
+      - ../data/engineering:/data/engineering:ro
     depends_on:
       mysql:
         condition: service_healthy
@@ -184,6 +194,64 @@ services:
     ports:
       - "8090:8090"
 
+  iot-service:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.iot-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/iot_local?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: iot
+      SPRING_DATASOURCE_PASSWORD: ${IOT_DB_PASSWORD:-iot}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    ports:
+      - "1883:1883"
+      - "18081:18081"
+      - "20880:20880"
+
+  iot-gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.iot-gateway
+    environment:
+      IOT_DUBBO_URL: dubbo://iot-service:20880
+    depends_on:
+      - iot-service
+    ports:
+      - "18080:18080"
+
+  web-demo:
+    image: public.ecr.aws/docker/library/nginx:1.27-alpine
+    volumes:
+      - ../examples/web-demo:/usr/share/nginx/html:ro
+    ports:
+      - "18090:80"
+
+  web-agent:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.agent
+    environment:
+      EASYTEST_AGENT_NAME: web-agent-docker
+      EASYTEST_AGENT_HOST: web-agent
+      EASYTEST_AGENT_BASE_URL: http://web-agent:8090
+      EASYTEST_UIEXEC_URL: http://ui-execution:8081
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN:-change-me-agent-token}
+      EASYTEST_AGENT_MODE: web
+      EASYTEST_AGENT_WEB_URL: http://web-demo/
+      EASYTEST_AGENT_DATA_DIR: /data/agent
+    volumes:
+      - web-agent-data:/data/agent
+    depends_on:
+      - ui-execution
+      - web-demo
+    ports:
+      - "8091:8090"
+
   web:
     build:
       context: ..
@@ -202,3 +270,4 @@ volumes:
   core-artifacts:
   ui-artifacts:
   agent-data:
+  web-agent-data:

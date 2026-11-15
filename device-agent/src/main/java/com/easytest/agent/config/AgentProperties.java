@@ -46,6 +46,9 @@ public class AgentProperties {
     /** iOS WebDriverAgent mode settings. */
     private final Ios ios = new Ios();
 
+    /** Headless web browser mode settings. */
+    private final Web web = new Web();
+
     public String getAdb() {
         return adb;
     }
@@ -76,6 +79,10 @@ public class AgentProperties {
 
     public Ios getIos() {
         return ios;
+    }
+
+    public Web getWeb() {
+        return web;
     }
 
     public String getName() {
@@ -261,6 +268,24 @@ public class AgentProperties {
     }
 
     /** iOS WDA devices exposed to ui-execution as platform=ios. */
+    public static class Web {
+        private String url = "";
+        private String serial = "web-1";
+        private String name = "Headless Web";
+        private java.util.List<String> tags = new ArrayList<>(List.of("web", "headless"));
+
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+        public String getSerial() { return serial; }
+        public void setSerial(String serial) { this.serial = serial; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public java.util.List<String> getTags() { return tags; }
+        public void setTags(java.util.List<String> tags) {
+            this.tags = tags == null ? new ArrayList<>() : tags;
+        }
+    }
+
     public static class Ios {
         private List<IosDevice> devices = new ArrayList<>();
 
