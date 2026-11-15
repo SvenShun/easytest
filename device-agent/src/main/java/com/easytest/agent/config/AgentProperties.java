@@ -25,7 +25,7 @@ public class AgentProperties {
     private String token = "easytest-dev-agent-token";
     /** ai-runtime base URL. */
     private String runtimeUrl = "http://127.0.0.1:8095";
-    /** simulated | adb | sonic | auto. */
+    /** simulated | adb | sonic | ios | wda | auto. */
     private String mode = "simulated";
     /** Directory for task workspaces and the Skills cache. */
     private String dataDir = "./data/agent";
@@ -42,6 +42,9 @@ public class AgentProperties {
 
     /** Sonic (UIA2) device mode settings. */
     private final Sonic sonic = new Sonic();
+
+    /** iOS WebDriverAgent mode settings. */
+    private final Ios ios = new Ios();
 
     public String getAdb() {
         return adb;
@@ -69,6 +72,10 @@ public class AgentProperties {
 
     public Sonic getSonic() {
         return sonic;
+    }
+
+    public Ios getIos() {
+        return ios;
     }
 
     public String getName() {
@@ -251,5 +258,37 @@ public class AgentProperties {
         public void setTags(List<String> tags) {
             this.tags = tags == null ? new ArrayList<>() : tags;
         }
+    }
+
+    /** iOS WDA devices exposed to ui-execution as platform=ios. */
+    public static class Ios {
+        private List<IosDevice> devices = new ArrayList<>();
+
+        public List<IosDevice> getDevices() {
+            return devices;
+        }
+
+        public void setDevices(List<IosDevice> devices) {
+            this.devices = devices == null ? new ArrayList<>() : devices;
+        }
+    }
+
+    public static class IosDevice {
+        private String serial;
+        private String name;
+        private String model = "iPhone";
+        private String wdaUrl;
+        private List<String> tags = new ArrayList<>(List.of("ios", "wda"));
+
+        public String getSerial() { return serial; }
+        public void setSerial(String serial) { this.serial = serial; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getModel() { return model; }
+        public void setModel(String model) { this.model = model; }
+        public String getWdaUrl() { return wdaUrl; }
+        public void setWdaUrl(String wdaUrl) { this.wdaUrl = wdaUrl; }
+        public List<String> getTags() { return tags; }
+        public void setTags(List<String> tags) { this.tags = tags == null ? new ArrayList<>() : tags; }
     }
 }

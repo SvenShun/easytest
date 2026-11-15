@@ -32,3 +32,28 @@
 - 占用是软租约，不阻止任务队列；用于避免多人同时远程操作。
 - ws-scrcpy `:8000` 无鉴权，生产需反向代理+认证。
 - Android 设备需开启 USB 调试（安全设置）与 USB 安装；MIUI 未开启时驱动会返回明确错误。
+
+## iOS（WDA）
+
+iOS 通过 WebDriverAgent 接入同一个设备/STEP 契约：
+
+```bash
+EASYTEST_AGENT_MODE=ios
+EASYTEST_AGENT_IOS_DEVICES_0_SERIAL=<udid>
+EASYTEST_AGENT_IOS_DEVICES_0_NAME=iPhone\ 15
+EASYTEST_AGENT_IOS_DEVICES_0_WDA_URL=http://127.0.0.1:8100
+EASYTEST_AGENT_IOS_DEVICES_0_TAGS=ios,wda
+```
+
+启动前需在设备/模拟器上运行 WDA 并确保端口可达。已支持：
+
+- 截图
+- UI 树（WDA source XML 转 EasyTest UiTree）
+- 点击/文本输入/滑动/返回/Home/启动 App/等待
+- 设备在注册时上报 `platform=ios`，ui-execution 的 STEP 执行器无需改动
+
+限制：
+
+- 安装/卸载/文件/Shell 等 Android 专属操作暂不支持
+- WDA 会话为懒创建；WDA 不可达时动作返回明确失败
+- iOS 排期最后，先保证 STEP/脚本执行主链路

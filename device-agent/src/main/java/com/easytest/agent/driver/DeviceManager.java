@@ -38,7 +38,8 @@ public class DeviceManager {
         String configuredMode = properties.getMode();
         String normalised = configuredMode == null ? "simulated"
                 : configuredMode.trim().toLowerCase(Locale.ROOT);
-        if (!"adb".equals(normalised) && !"auto".equals(normalised) && !"sonic".equals(normalised)) {
+        if (!"adb".equals(normalised) && !"auto".equals(normalised) && !"sonic".equals(normalised)
+                && !"ios".equals(normalised) && !"wda".equals(normalised)) {
             normalised = "simulated";
         }
         this.mode = normalised;
@@ -70,6 +71,10 @@ public class DeviceManager {
                 }
             }
             log.info("sonic mode configured {} device(s)", devices.size());
+        }
+
+        if ("ios".equals(mode) || "wda".equals(mode) || "auto".equals(mode)) {
+            addIosDevices(properties);
         }
 
         if ("simulated".equals(mode) || ("auto".equals(mode) && devices.isEmpty())) {
@@ -114,6 +119,23 @@ public class DeviceManager {
         adbSerials.clear();
         adbSerials.addAll(current);
         log.info("adb mode discovered {} device(s) via {}", discovered.size(), adb);
+    }
+
+    private void addIosDevices(AgentProperties properties) {
+        for (AgentProperties.IosDevice configured : properties.getIos().getDevices()) {
+            if (configured.getSerial() == null || configured.getSerial().isBlank()
+                    || configured.getWdaUrl() == null || configured.getWdaUrl().isBlank()) {
+                log.warn("skipping iOS device with missing serial/wdaUrl");
+                continue;
+            }
+            DeviceDescriptor descriptor = new DeviceDescriptor(configured.getSerial(),
+                    configured.getName() == null ? configured.getSerial() : configured.getName(),
+                    configured.getModel() == null ? "iPhone" : configured.getModel(),
+                    "ios", configured.getTags(), true);
+            devices.putIfAbsent(descriptor.serial(),
+                    new IosWdaDeviceDriver(descriptor, configured.getWdaUrl()));
+            log.info("iOS WDA device configured: {} at {}", descriptor.serial(), configured.getWdaUrl());
+        }
     }
 
     private void addSimulatedDevices() {

@@ -74,5 +74,11 @@ device-agent 下载脚本包、执行、解析 JUnit XML 并回传结果/工件�
 
 ## iOS
 
-当前 Android 已支持 ADB/Sonic/UIA2；iOS 排在最后，后续通过同一 `DeviceDriver` 契约接入
-XCTest/WDA，不改变平台 STEP/SCRIPT 契约。
+iOS 已通过 WebDriverAgent（WDA）接入同一 `DeviceDriver` 契约：
+
+- 配置 `EASYTEST_AGENT_MODE=ios` 与 `EASYTEST_AGENT_IOS_DEVICES_*_WDA_URL`
+- 支持截图、UI 树、点击、输入、滑动、返回/Home、启动 App
+- 设备上报 `platform=ios`
+- ui-execution 的 STEP/SCRIPT 执行链路无需修改
+
+限制：Android 专属安装/文件/Shell 能力在 iOS 上返回“不支持”，后续按需补 WDA/idevice 能力。
