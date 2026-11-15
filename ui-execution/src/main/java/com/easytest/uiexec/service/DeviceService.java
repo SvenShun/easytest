@@ -309,7 +309,8 @@ public class DeviceService {
                 device.getAgentId(),
                 agent == null ? null : agent.getName(),
                 device.getLastSeenAt(),
-                activeOccupant(device), activeOccupant(device) == null ? null : device.getOccupiedUntil());
+                activeOccupant(device), activeOccupant(device) == null ? null : device.getOccupiedUntil(),
+                device.getProjectId());
     }
 
     public synchronized DeviceView occupy(String deviceId, String user) {

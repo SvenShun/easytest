@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { deviceGroupsApi, uiexecApi } from '../api';
+import { deviceGroupsApi, projectsApi, uiexecApi } from '../api';
 import type { DeviceGroup } from '../api/deviceGroups';
 import type { Agent, Device, DeviceQueue } from '../api/types';
+import type { Project } from '../api/projects';
+import { useAuth } from '../auth';
 import { AGENT_STATUS_META, DEVICE_STATUS_META, EXECUTOR_META, TASK_STATUS_META, metaOf } from '../constants';
 import { usePolling } from '../hooks';
 import { navigate, useHashRoute } from '../router';
@@ -76,6 +78,8 @@ function MetricChart({ samples }: { samples: Array<{ createdAt: string; cpuPerce
 
 export function DevicesPage() {
   const route = useHashRoute();
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [devicesLoading, setDevicesLoading] = useState(true);
@@ -207,6 +211,10 @@ export function DevicesPage() {
   }, []);
 
   useEffect(() => {
+    void projectsApi.list().then(setProjects).catch(() => setProjects([]));
+  }, []);
+
+  useEffect(() => {
     const queryDeviceId = route.query.get('queue');
     if (!queryDeviceId) {
       queueHandled.current = null;
@@ -238,6 +246,22 @@ export function DevicesPage() {
       action: 'stream', udid: device.serial, player: 'webcodecs', ws: proxy, fitToScreen: 'true',
     });
     return `${http}://${host}:8000/#!${query.toString()}`;
+  };
+
+  const assignProject = async (projectId: string) => {
+    if (!manageDevice) return;
+    setActionBusy(true);
+    setManageError('');
+    try {
+      await uiexecApi.assignDeviceProject(manageDevice.deviceId, projectId);
+      toastSuccess('设备项目已更新');
+      setManageDevice({ ...manageDevice, projectId });
+      await load(true);
+    } catch (err) {
+      setManageError(safeErrorMessage(err));
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const loadShot = async (device: Device) => {
@@ -953,6 +977,14 @@ export function DevicesPage() {
       >
         <div className="form-stack">
           {manageError ? <ErrorPanel message={manageError} compact /> : null}
+          {manageDevice && user?.role === 'ADMIN' ? (
+            <Field label="所属项目" hint="设备分配后只在对应项目可见">
+              <Select value={manageDevice.projectId || 'default'} disabled={actionBusy}
+                onChange={(e) => void assignProject(e.target.value)}>
+                {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </Select>
+            </Field>
+          ) : null}
           {manageDevice ? (
             <div className="scrcpy-stage">
               <iframe

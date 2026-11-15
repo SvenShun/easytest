@@ -59,6 +59,9 @@ export const uiexecApi = {
     ),
   deviceQueue: (deviceId: string) =>
     request<DeviceQueue>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/queue`),
+  assignDeviceProject: (deviceId: string, projectId: string) =>
+    request<Device>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/project`,
+      { method: 'POST', body: { projectId } }),
   deviceOccupy: (deviceId: string) =>
     request<Device>('uexec', `/api/v1/ui-execution/devices/${encodeURIComponent(deviceId)}/occupy`, { method: 'POST' }),
   deviceRelease: (deviceId: string) =>

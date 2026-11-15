@@ -537,6 +537,7 @@ export interface Device {
   lastSeenAt?: string;
   occupant?: string | null;
   occupiedUntil?: string | null;
+  projectId?: string | null;
 }
 
 export interface DeviceQueueTask {

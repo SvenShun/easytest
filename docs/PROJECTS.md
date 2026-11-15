@@ -27,6 +27,7 @@ POST /api/v1/ui-execution/devices/{deviceId}/project
 ```
 
 ui-execution 通过 `X-Project-Id` 过滤设备和 UI 任务；计划触发时 core 在任务 payload 中携带项目。
+设备管理弹窗中管理员可直接切换设备所属项目，保存后立即刷新设备可见范围。
 
 ## 接口
 
@@ -68,5 +69,5 @@ DELETE /api/v1/projects/{id}/members/{memberId}
 ## 尚未完成
 
 - 项目成员角色（ADMIN/TESTER/...）的细粒度权限矩阵
-- 设备分配 UI 操作入口（当前为管理员 API）
+- 设备批量分配/项目配额
 - 项目级配额/权限矩阵

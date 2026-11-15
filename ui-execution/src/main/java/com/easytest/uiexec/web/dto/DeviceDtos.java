@@ -16,7 +16,7 @@ public final class DeviceDtos {
     public record DeviceView(String deviceId, String serial, String name, String model, String platform,
                              List<String> tags, DeviceStatus status, boolean online, String currentTaskId,
                              int queueLength, String agentId, String agentName, Instant lastSeenAt,
-                             String occupant, Instant occupiedUntil) {
+                             String occupant, Instant occupiedUntil, String projectId) {
     }
 
     public record MetricView(String id, String deviceId, Double cpuPercent, Double memUsedPercent,
