@@ -155,6 +155,7 @@ public class PlanRunService {
                     PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), mount.getCaseId(),
                             title, ExecutorType.API, RunItemStatus.PENDING, itemTime.plusMillis(rowIndex),
                             rows.size() > 1 ? rowIndex + 1 : 0);
+                    item.setLineageJson(lineage(apiCase, null, null, row));
                     itemRepository.save(item);
                     try {
                         int apiTimeout = Math.max(1, Math.min(timeoutSec, apiCase.getTimeoutSec()));
@@ -215,6 +216,7 @@ public class PlanRunService {
                         scenario.name(), ExecutorType.SCENARIO, RunItemStatus.PENDING, itemTime);
                 item.setSourcePath(scenario.sourcePath());
                 item.setSourceCommit(scenario.sourceCommit());
+                item.setLineageJson(lineage(null, null, scenario, null));
                 itemRepository.save(item);
                 try {
                     ApiScenarioService.RunHandle handle = apiScenarioService.startForPlan(
@@ -290,6 +292,7 @@ public class PlanRunService {
                 PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), clientCase.getId(),
                         title, intended, RunItemStatus.PENDING, itemTime.plusMillis(index++));
                 item.setDeviceId(targetDeviceId);
+                item.setLineageJson(lineage(null, clientCase, null, null));
                 // Persist the pending item before the remote call so an early callback can find it.
                 itemRepository.save(item);
                 try {
@@ -656,6 +659,46 @@ public class PlanRunService {
             ids.add(null);
         }
         return ids;
+    }
+
+    private String lineage(com.easytest.core.feature.apicase.ApiCase apiCase, ClientCase clientCase,
+                           com.easytest.core.feature.apiscenario.ApiScenarioDtos.ScenarioView scenario,
+                           Map<String, Object> datasetRow) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        if (apiCase != null) {
+            data.put("caseType", "API");
+            data.put("caseId", apiCase.getId());
+            data.put("caseRevision", apiCase.getUpdatedAt());
+            data.put("inputContract", apiCase.getInputContractJson());
+            data.put("outputContract", apiCase.getOutputContractJson());
+            if (datasetRow != null && !datasetRow.isEmpty()) data.put("datasetRow", datasetRow);
+        }
+        if (clientCase != null) {
+            data.put("caseType", "UI");
+            data.put("caseId", clientCase.getId());
+            data.put("caseRevision", clientCase.getUpdatedAt());
+            data.put("executionMode", clientCase.getExecutionMode() == null ? null
+                    : clientCase.getExecutionMode().name());
+            data.put("scriptId", clientCase.getScriptId());
+            ScriptProject script = scriptService.findOrNull(clientCase.getScriptId());
+            if (script != null) {
+                data.put("scriptName", script.getName());
+                data.put("scriptContractId", script.getContractId());
+                data.put("scriptEntryCommand", script.getEntryCommand());
+                data.put("scriptCreatedAt", script.getCreatedAt());
+            }
+        }
+        if (scenario != null) {
+            data.put("caseType", "SCENARIO");
+            data.put("caseId", scenario.id());
+            data.put("sourcePath", scenario.sourcePath());
+            data.put("sourceCommit", scenario.sourceCommit());
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(data);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private Map<String, Object> taskPayload(String planId, String runId, ClientCase clientCase,

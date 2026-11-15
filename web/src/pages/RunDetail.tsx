@@ -432,6 +432,7 @@ export function RunDetailPage() {
                       <td>
                         <div className="cell-title">{item.caseTitle}</div>
                         <div className="cell-sub mono">{item.sourcePath ? `git: ${item.sourcePath}${item.sourceCommit ? ` @ ${item.sourceCommit.slice(0, 8)}` : ''}` : item.caseId}</div>
+                        {item.lineageJson ? <div className="cell-sub" title={item.lineageJson}>已固化执行血缘</div> : null}
                       </td>
                       <td>
                         <StatusPill meta={metaOf(EXECUTOR_META, item.executorType)} dot={false} />

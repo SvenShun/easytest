@@ -418,6 +418,7 @@ export interface RunItem {
   deviceId?: string | null;
   sourcePath?: string | null;
   sourceCommit?: string | null;
+  lineageJson?: string | null;
   updatedAt?: string | null;
 }
 

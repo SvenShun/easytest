@@ -62,6 +62,11 @@ public class PlanRunItem {
     @Column(name = "source_commit", length = 80)
     private String sourceCommit;
 
+    /** JSON snapshot: case revision, script/contract metadata, source commit. */
+    @Lob
+    @Column(name = "lineage_json", columnDefinition = "TEXT")
+    private String lineageJson;
+
     @Lob
     @Column(name = "error", length = 4000)
     private String error;
@@ -168,6 +173,9 @@ public class PlanRunItem {
     public void setSummary(String summary) {
         this.summary = summary;
     }
+
+    public String getLineageJson() { return lineageJson; }
+    public void setLineageJson(String lineageJson) { this.lineageJson = lineageJson; }
 
     public String getSourcePath() { return sourcePath; }
     public String getSourceCommit() { return sourceCommit; }
