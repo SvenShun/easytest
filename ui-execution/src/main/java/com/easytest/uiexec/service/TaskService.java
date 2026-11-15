@@ -186,6 +186,11 @@ public class TaskService {
                 timeoutSec, stepTimeoutSec, Instant.now());
         task.setProjectId(hasText(projectIdOverride) ? projectIdOverride.trim()
                 : hasText(request.projectId()) ? request.projectId().trim() : "default");
+        if (context.script() != null) {
+            task.setScriptId(context.script().id());
+            task.setScriptContractId(context.script().contractId());
+            task.setScriptEntryCommand(context.script().entryCommand());
+        }
         task.setPlanId(blankToNull(request.planId()));
         task.setPlanRunId(blankToNull(request.planRunId()));
         task.setCaseTitle(truncate(hasText(request.caseTitle()) ? request.caseTitle().trim() : context.title(), 500));
@@ -418,7 +423,8 @@ public class TaskService {
                 securityProperties.getAgentToken());
         DispatchPayload.Script script = context.script() == null ? null
                 : new DispatchPayload.Script(context.script().id(), context.script().scriptType(),
-                context.script().name(), context.script().entryCommand(), context.script().bundleUrl());
+                context.script().name(), context.script().entryCommand(), context.script().bundleUrl(),
+                context.script().contractId(), context.script().description());
         DispatchPayload.Skills skillsRef = null;
         if (pointer != null && pointer.getActiveCommit() != null && !pointer.getActiveCommit().isBlank()) {
             skillsRef = new DispatchPayload.Skills(pointer.getGitUrl(), pointer.getActiveCommit());
@@ -723,6 +729,9 @@ public class TaskService {
                 task.getDeviceId(),
                 task.getDeviceSerial(),
                 task.getAgentId(),
+                task.getScriptId(),
+                task.getScriptContractId(),
+                task.getScriptEntryCommand(),
                 skillsRef,
                 task.getTimeoutSec(),
                 task.getStepTimeoutSec(),

@@ -66,6 +66,15 @@ public class TaskEntity {
     @Column(name = "agent_id", length = 64)
     private String agentId;
 
+    @Column(name = "script_id", length = 64)
+    private String scriptId;
+
+    @Column(name = "script_contract_id", length = 128)
+    private String scriptContractId;
+
+    @Column(name = "script_entry_command", length = 512)
+    private String scriptEntryCommand;
+
     @Column(name = "skills_repo", length = 500)
     private String skillsRepo;
 
@@ -229,6 +238,13 @@ public class TaskEntity {
     public void setAgentId(String agentId) {
         this.agentId = agentId;
     }
+
+    public String getScriptId() { return scriptId; }
+    public String getScriptContractId() { return scriptContractId; }
+    public String getScriptEntryCommand() { return scriptEntryCommand; }
+    public void setScriptId(String scriptId) { this.scriptId = scriptId; }
+    public void setScriptContractId(String scriptContractId) { this.scriptContractId = scriptContractId; }
+    public void setScriptEntryCommand(String scriptEntryCommand) { this.scriptEntryCommand = scriptEntryCommand; }
 
     public String getSkillsRepo() {
         return skillsRepo;

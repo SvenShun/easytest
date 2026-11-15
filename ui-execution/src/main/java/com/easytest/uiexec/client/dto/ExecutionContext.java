@@ -12,6 +12,7 @@ public record ExecutionContext(String caseId, String title, String reviewStatus,
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Script(String id, String scriptType, String name, String entryCommand, String bundleUrl) {
+    public record Script(String id, String scriptType, String name, String entryCommand, String bundleUrl,
+                         String contractId, String description) {
     }
 }

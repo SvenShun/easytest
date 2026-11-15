@@ -43,7 +43,18 @@
 - `sourceCommit`
 - 组件步骤的 contractId / methodPath / description
 
+## UI 任务级血缘
+
+`ue_task` 直接保存：
+
+- `script_id`
+- `script_contract_id`
+- `script_entry_command`
+- `skills_commit`
+
+任务详情接口返回这些字段，跨服务可直接查询 UI 执行使用的脚本契约版本。
+
 ## 后续
 
-- 把 UI task 的 script contract 同步写入 ue_task 以便跨服务查询
 - 血缘与报告导出、失败分析联动
+- iOS 设备执行血缘

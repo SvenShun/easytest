@@ -49,6 +49,16 @@ DELETE /api/v1/projects/{id}/members/{memberId}
 - `X-Project-Id` 指向非成员项目时返回 403；
 - 项目资源详情/更新按当前项目校验，跨项目读取返回 404。
 
+项目角色：
+
+| 角色 | 权限 |
+| --- | --- |
+| `ADMIN` | 修改项目、管理成员、访问项目内资源 |
+| `TESTER` | 访问项目内资源；不能修改项目/成员 |
+| `VIEWER` | 访问项目内资源（只读） |
+
+创建项目时创建者为 `ADMIN`；全局 `ADMIN` 可管理所有项目。
+
 ## 前端
 
 - 顶部项目切换器读写 `localStorage.easytest.projectId`，切换后刷新页面

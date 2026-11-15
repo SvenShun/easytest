@@ -92,6 +92,7 @@ public final class TaskDtos {
                                  BddView bdd, ExecutorType executorType, TaskStatus status,
                                  FailureCategory failureReason, String failureSummary, String failureReportUrl,
                                  int queuePosition, String deviceId, String deviceSerial, String agentId,
+                                 String scriptId, String scriptContractId, String scriptEntryCommand,
                                  SkillsRefView skills, int timeoutSec, int stepTimeoutSec, Instant createdAt,
                                  Instant dispatchedAt, Instant startedAt, Instant finishedAt, List<StepView> steps,
                                  List<LogView> logs, List<ArtifactView> artifacts,

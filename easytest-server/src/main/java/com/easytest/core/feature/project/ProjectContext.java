@@ -36,6 +36,24 @@ public class ProjectContext {
         }
     }
 
+    public String currentProjectRole() {
+        AuthPrincipal principal = CurrentUser.get();
+        if (principal == null) return "TESTER";
+        if (principal.role() == Role.ADMIN) return "ADMIN";
+        return members.findByProjectIdAndUsername(currentProjectId(), principal.username())
+                .map(ProjectMember::getRole).orElse(null);
+    }
+
+    public void requireProjectAdmin(String projectId) {
+        AuthPrincipal principal = CurrentUser.get();
+        if (principal != null && principal.role() == Role.ADMIN) return;
+        String role = members.findByProjectIdAndUsername(projectId, principal == null ? "" : principal.username())
+                .map(ProjectMember::getRole).orElse(null);
+        if (!"ADMIN".equals(role)) {
+            throw ApiException.forbidden("需要项目管理员权限");
+        }
+    }
+
     /** Header-selected project; falls back to the seeded default project. */
     public String currentProjectId() {
         String override = OVERRIDE.get();

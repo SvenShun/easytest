@@ -3,7 +3,7 @@ import { projectsApi } from '../api';
 import type { Project, ProjectMember } from '../api/projects';
 import { canManageCases, useAuth } from '../auth';
 import { safeErrorMessage } from '../utils';
-import { Button, Callout, Card, CardHead, EmptyState, ErrorPanel, Field, Input, PageHeading, Pill, SkeletonRows, Textarea } from '../components/ui';
+import { Button, Callout, Card, CardHead, EmptyState, ErrorPanel, Field, Input, PageHeading, Pill, Select, SkeletonRows, Textarea } from '../components/ui';
 import { Modal } from '../components/Modal';
 import { toastError, toastSuccess } from '../components/Toast';
 
@@ -20,6 +20,7 @@ export function ProjectsPage() {
   const [membersOf, setMembersOf] = useState<Project | null>(null);
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [memberName, setMemberName] = useState('');
+  const [memberRole, setMemberRole] = useState('TESTER');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,7 +65,7 @@ export function ProjectsPage() {
   const addMember = async () => {
     if (!membersOf || !memberName.trim()) return;
     try {
-      await projectsApi.addMember(membersOf.id, { username: memberName.trim() });
+      await projectsApi.addMember(membersOf.id, { username: memberName.trim(), role: memberRole });
       setMemberName('');
       setMembers(await projectsApi.members(membersOf.id));
     } catch (err) {
@@ -113,6 +114,9 @@ export function ProjectsPage() {
         <div className="form-stack">
           {canWrite ? <div className="row-actions">
             <Input placeholder="用户名" value={memberName} onChange={(e) => setMemberName(e.target.value)} />
+            <Select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}>
+              <option value="TESTER">TESTER</option><option value="ADMIN">ADMIN</option><option value="VIEWER">VIEWER</option>
+            </Select>
             <Button size="sm" variant="secondary" onClick={() => void addMember()}>添加成员</Button>
           </div> : null}
           <div className="table-wrap">

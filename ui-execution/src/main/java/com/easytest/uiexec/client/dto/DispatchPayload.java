@@ -12,7 +12,8 @@ public record DispatchPayload(String taskId, ExecutorType executorType, String c
     public record Bdd(String given, String when, String then) {
     }
 
-    public record Script(String id, String scriptType, String name, String entryCommand, String bundleUrl) {
+    public record Script(String id, String scriptType, String name, String entryCommand, String bundleUrl,
+                         String contractId, String description) {
     }
 
     public record Device(String serial, String platform, List<String> tags) {

@@ -19,10 +19,13 @@ public class ProjectService {
 
     private final ProjectRepository projects;
     private final ProjectMemberRepository members;
+    private final ProjectContext projectContext;
 
-    public ProjectService(ProjectRepository projects, ProjectMemberRepository members) {
+    public ProjectService(ProjectRepository projects, ProjectMemberRepository members,
+                          ProjectContext projectContext) {
         this.projects = projects;
         this.members = members;
+        this.projectContext = projectContext;
     }
 
     public List<ProjectView> list() {
@@ -61,6 +64,7 @@ public class ProjectService {
     public ProjectView update(String id, ProjectRequest request) {
         Project project = require(id);
         requireMembership(id);
+        projectContext.requireProjectAdmin(id);
         if (request == null || request.name() == null || request.name().isBlank()) {
             throw ApiException.badRequest("项目名称不能为空");
         }
@@ -77,6 +81,7 @@ public class ProjectService {
             throw ApiException.badRequest("默认项目不能删除");
         }
         requireMembership(id);
+        projectContext.requireProjectAdmin(id);
         projects.delete(require(id));
     }
 
@@ -93,24 +98,36 @@ public class ProjectService {
     public MemberView addMember(String projectId, MemberRequest request) {
         require(projectId);
         requireMembership(projectId);
+        projectContext.requireProjectAdmin(projectId);
         if (request == null || request.username() == null || request.username().isBlank()) {
             throw ApiException.badRequest("username 不能为空");
         }
         if (members.existsByProjectIdAndUsername(projectId, request.username().trim())) {
             throw ApiException.conflict("成员已存在");
         }
+        String role = normalizeRole(request.role());
         ProjectMember member = members.save(new ProjectMember(Ids.newId("pm"), projectId,
-                request.username().trim(), request.role() == null ? "TESTER" : request.role(), Instant.now()));
+                request.username().trim(), role, Instant.now()));
         return new MemberView(member.getId(), member.getUsername(), member.getRole(), member.getCreatedAt());
     }
 
     @Transactional
     public void removeMember(String projectId, String memberId) {
         requireMembership(projectId);
+        projectContext.requireProjectAdmin(projectId);
         ProjectMember member = members.findById(memberId)
                 .filter(item -> projectId.equals(item.getProjectId()))
                 .orElseThrow(() -> ApiException.notFound("成员不存在"));
         members.delete(member);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null || role.isBlank()) return "TESTER";
+        String normalized = role.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!java.util.Set.of("ADMIN", "TESTER", "VIEWER").contains(normalized)) {
+            throw ApiException.badRequest("项目角色仅支持 ADMIN / TESTER / VIEWER");
+        }
+        return normalized;
     }
 
     private Project require(String id) {
