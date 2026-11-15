@@ -99,7 +99,7 @@ admin/admin123 tester/test123 business/biz123 ops/ops123
 - iOS 当前以 mock WDA 单测覆盖协议，真机需启动 WDA 后联调
 - 设备安装/文件/Shell 等 Android 专属能力在 iOS 未实现
 - Agent 租约续约、多 core 注册表故障恢复仍需生产化增强
-- 项目级设备分配当前为管理员 API，页面入口待补
+- 设备项目分配已提供管理员页面入口，批量分配待补
 - UI 报告导出与失败分析联动为后续增强
 - Dubbo 等协议当前通过 `component` 工程代码覆盖，未做原生步骤
 
