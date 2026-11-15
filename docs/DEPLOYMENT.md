@@ -664,3 +664,7 @@ make setup
 - `tools/`（本地 adb/ws-scrcpy）
 
 `.gitignore` 已覆盖这些路径。生产密钥通过环境变量或部署平台的 Secret 管理。
+
+## 验收
+
+一期功能、测试证据和已知限制见 [ACCEPTANCE-V1.md](ACCEPTANCE-V1.md)。
