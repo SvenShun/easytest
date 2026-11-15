@@ -1,5 +1,5 @@
 import { asPage, queryString, request } from './client';
-import type { CaseDetail, CaseInput, CaseReview, ReviewAction } from './types';
+import type { AutomationLink, AutomationTargetType, CaseDetail, CaseInput, CaseReview, ReviewAction } from './types';
 
 export interface CaseListParams {
   reviewStatus?: string;
@@ -41,4 +41,14 @@ export const casesApi = {
     }),
   reviews: (id: string) =>
     request<CaseReview[]>('core', `/api/v1/cases/${encodeURIComponent(id)}/reviews`),
+  automationLinks: (id: string) =>
+    request<AutomationLink[]>('core', `/api/v1/cases/${encodeURIComponent(id)}/automation-links`),
+  addAutomationLink: (id: string, input: { targetType: AutomationTargetType; targetId: string }) =>
+    request<AutomationLink>('core', `/api/v1/cases/${encodeURIComponent(id)}/automation-links`, {
+      method: 'POST', body: input,
+    }),
+  removeAutomationLink: (id: string, linkId: string) =>
+    request<void>('core', `/api/v1/cases/${encodeURIComponent(id)}/automation-links/${encodeURIComponent(linkId)}`, {
+      method: 'DELETE',
+    }),
 };

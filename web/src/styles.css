@@ -5014,3 +5014,14 @@ a.btn:hover {
 .structured-children-title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .structured-hooks { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 6px; }
 .structured-hooks summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+/* Save-time YAML diff preview. */
+.yaml-diff { max-height: 520px; overflow: auto; background: #0b1220; color: #dbeafe; border-radius: 8px; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5; margin: 0; }
+.yaml-diff-line { display: grid; grid-template-columns: 36px 36px 18px 1fr; gap: 4px; white-space: pre-wrap; word-break: break-word; }
+.yaml-diff-no { color: #64748b; text-align: right; user-select: none; }
+.yaml-diff-mark { text-align: center; user-select: none; }
+.yaml-diff-add { background: rgba(22, 163, 74, .22); }
+.yaml-diff-add .yaml-diff-mark { color: #4ade80; }
+.yaml-diff-remove { background: rgba(220, 38, 38, .22); }
+.yaml-diff-remove .yaml-diff-mark { color: #f87171; }
+.yaml-diff-same { color: #94a3b8; }

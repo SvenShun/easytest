@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiEnvironmentsApi, apiScenariosApi } from '../api';
 import type { ApiEnvironment } from '../api/types';
-import type { ApiScenario, ScenarioGraph, ScenarioGraphNode, ScenarioRun, ScenarioStep } from '../api/scenarios';
+import type { ApiScenario, ScenarioGitConfig, ScenarioGitSyncResult, ScenarioGraph, ScenarioGraphNode, ScenarioRun, ScenarioStep } from '../api/scenarios';
 import { canManageCases, useAuth } from '../auth';
 import { cx, formatDateTime, safeErrorMessage } from '../utils';
 import {
@@ -33,6 +33,55 @@ function GraphNodeView({ node }: { node: ScenarioGraphNode }) {
       {node.children?.length ? <div className="scenario-graph-children">{node.children.map((child) => <GraphNodeView key={child.id} node={child} />)}</div> : null}
     </div>
   );
+}
+
+type DiffLine = { kind: 'same' | 'add' | 'remove'; text: string; oldNo?: number; newNo?: number };
+
+function cleanForYaml(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(cleanForYaml);
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+      if (item !== undefined) result[key] = cleanForYaml(item);
+    });
+    return result;
+  }
+  return value;
+}
+
+function yamlLineDiff(before: string, after: string): DiffLine[] {
+  const oldLines = before ? before.replace(/\r\n/g, '\n').split('\n') : [];
+  const newLines = after ? after.replace(/\r\n/g, '\n').split('\n') : [];
+  const n = oldLines.length;
+  const m = newLines.length;
+  if (n * m > 400000) {
+    return [
+      { kind: 'remove', text: `（旧版本 ${n} 行）`, oldNo: 1 },
+      { kind: 'add', text: `（新版本 ${m} 行，内容变化过大，已折叠）`, newNo: 1 },
+    ];
+  }
+  const dp = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = oldLines[i] === newLines[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const result: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && oldLines[i] === newLines[j]) {
+      result.push({ kind: 'same', text: oldLines[i], oldNo: i + 1, newNo: j + 1 });
+      i++; j++;
+    } else if (j < m && (i >= n || dp[i][j + 1] >= dp[i + 1][j])) {
+      result.push({ kind: 'add', text: newLines[j], newNo: j + 1 });
+      j++;
+    } else {
+      result.push({ kind: 'remove', text: oldLines[i], oldNo: i + 1 });
+      i++;
+    }
+  }
+  return result;
 }
 
 function parseCsv(text: string): string[][] {
@@ -161,6 +210,11 @@ export function ApiScenariosPage() {
   const [editorMode, setEditorMode] = useState<'form' | 'yaml'>('yaml');
   const [draft, setDraft] = useState<Record<string, any> | null>(null);
   const [formError, setFormError] = useState('');
+  const [baseYaml, setBaseYaml] = useState('');
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffBefore, setDiffBefore] = useState('');
+  const [diffAfter, setDiffAfter] = useState('');
+  const [diffSaving, setDiffSaving] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<{ valid: boolean; message: string; stepCount: number; stepTypes: string[] } | null>(null);
   const [datasetName, setDatasetName] = useState('rows');
@@ -196,6 +250,13 @@ export function ApiScenariosPage() {
   const [graphLoading, setGraphLoading] = useState(false);
   const [graphError, setGraphError] = useState('');
   const [graphTitle, setGraphTitle] = useState('');
+  const [gitOpen, setGitOpen] = useState(false);
+  const [gitConfig, setGitConfig] = useState<ScenarioGitConfig | null>(null);
+  const [gitForm, setGitForm] = useState({ repoUrl: '', branch: 'main', yamlDirectory: '.', webhookSecret: '', enabled: false });
+  const [gitLoading, setGitLoading] = useState(false);
+  const [gitSaving, setGitSaving] = useState(false);
+  const [gitError, setGitError] = useState('');
+  const [gitResult, setGitResult] = useState<ScenarioGitSyncResult | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -303,7 +364,7 @@ export function ApiScenariosPage() {
   const currentYaml = () => {
     if (editorMode === 'form' && draft) {
       const next = { ...draft, name: editor.name || draft.name };
-      return yamlDump(next, { noRefs: true, lineWidth: -1, sortKeys: false });
+      return yamlDump(cleanForYaml(next), { noRefs: true, lineWidth: -1, sortKeys: false });
     }
     return editor.yaml;
   };
@@ -327,7 +388,7 @@ export function ApiScenariosPage() {
   const switchToYaml = () => {
     if (draft) {
       try {
-        setEditor((prev) => ({ ...prev, yaml: yamlDump(draft, { noRefs: true, lineWidth: -1, sortKeys: false }) }));
+        setEditor((prev) => ({ ...prev, yaml: yamlDump(cleanForYaml(draft), { noRefs: true, lineWidth: -1, sortKeys: false }) }));
       } catch {
         // keep the previous YAML if serialization fails
       }
@@ -352,6 +413,65 @@ export function ApiScenariosPage() {
       yaml: `${prev.yaml.trimEnd()}${prev.yaml.trim() ? '\n\n' : ''}${snippet}`,
     }));
     toastSuccess('已插入模板到 YAML 编辑器');
+  };
+
+  const openGit = async () => {
+    setGitOpen(true);
+    setGitLoading(true);
+    setGitError('');
+    setGitResult(null);
+    try {
+      const config = await apiScenariosApi.gitConfig();
+      setGitConfig(config);
+      setGitForm({
+        repoUrl: config.repoUrl || '',
+        branch: config.branch || 'main',
+        yamlDirectory: config.yamlDirectory || '.',
+        webhookSecret: '',
+        enabled: config.enabled,
+      });
+    } catch (err) {
+      setGitError(safeErrorMessage(err));
+    } finally {
+      setGitLoading(false);
+    }
+  };
+
+  const saveGit = async () => {
+    setGitSaving(true);
+    setGitError('');
+    try {
+      const config = await apiScenariosApi.updateGitConfig({
+        repoUrl: gitForm.repoUrl.trim(),
+        branch: gitForm.branch.trim() || 'main',
+        yamlDirectory: gitForm.yamlDirectory.trim() || '.',
+        webhookSecret: gitForm.webhookSecret.trim() || undefined,
+        enabled: gitForm.enabled,
+      });
+      setGitConfig(config);
+      setGitForm((prev) => ({ ...prev, webhookSecret: '' }));
+      toastSuccess('Git 同步配置已保存');
+    } catch (err) {
+      setGitError(safeErrorMessage(err));
+    } finally {
+      setGitSaving(false);
+    }
+  };
+
+  const syncGit = async () => {
+    setGitSaving(true);
+    setGitError('');
+    try {
+      const result = await apiScenariosApi.syncGit();
+      setGitResult(result);
+      setGitConfig(await apiScenariosApi.gitConfig());
+      await load();
+      toastSuccess(`Git 同步完成：新增 ${result.created}，更新 ${result.updated}`);
+    } catch (err) {
+      setGitError(safeErrorMessage(err));
+    } finally {
+      setGitSaving(false);
+    }
   };
 
   const openGraph = async (item: ApiScenario) => {
@@ -392,6 +512,7 @@ export function ApiScenariosPage() {
     setEditorMode('yaml');
     setDraft(null);
     setFormError('');
+    setBaseYaml('');
     setEditorOpen(true);
   };
 
@@ -409,6 +530,7 @@ export function ApiScenariosPage() {
     setEditorMode('yaml');
     setDraft(null);
     setFormError('');
+    setBaseYaml(item.yaml);
     setEditorOpen(true);
   };
 
@@ -453,18 +575,8 @@ export function ApiScenariosPage() {
     }
   };
 
-  const save = async () => {
-    if (!editor.name.trim() || !editor.yaml.trim()) {
-      setEditorError('名称和 YAML 不能为空');
-      return;
-    }
-    setSaving(true);
-    setEditorError('');
+  const persistScenario = async (yamlText: string): Promise<boolean> => {
     try {
-      let yamlText = editor.yaml;
-      if (editorMode === 'form' && draft) {
-        yamlText = yamlDump({ ...draft, name: editor.name || draft.name }, { noRefs: true, lineWidth: -1, sortKeys: false });
-      }
       const input = {
         name: editor.name.trim(),
         description: editor.description,
@@ -474,14 +586,41 @@ export function ApiScenariosPage() {
       };
       if (editing) await apiScenariosApi.update(editing.id, input);
       else await apiScenariosApi.create(input);
+      setBaseYaml(yamlText);
       toastSuccess(editing ? '场景已更新' : '场景已创建');
       setEditorOpen(false);
       await load();
+      return true;
     } catch (err) {
       setEditorError(safeErrorMessage(err));
-    } finally {
-      setSaving(false);
+      return false;
     }
+  };
+
+  const save = async () => {
+    if (!editor.name.trim() || !editor.yaml.trim()) {
+      setEditorError('名称和 YAML 不能为空');
+      return;
+    }
+    setEditorError('');
+    const yamlText = currentYaml();
+    if (yamlText !== baseYaml) {
+      setDiffBefore(baseYaml);
+      setDiffAfter(yamlText);
+      setDiffOpen(true);
+      return;
+    }
+    setSaving(true);
+    await persistScenario(yamlText);
+    setSaving(false);
+  };
+
+  const confirmDiffSave = async () => {
+    setDiffSaving(true);
+    setEditorError('');
+    const ok = await persistScenario(diffAfter);
+    if (ok) setDiffOpen(false);
+    setDiffSaving(false);
   };
 
   const openRun = (item: ApiScenario) => {
@@ -587,6 +726,7 @@ export function ApiScenariosPage() {
             <Button size="sm" variant="secondary" onClick={() => insertSnippet(DATASET_SNIPPET)}>+ 数据集 datasets</Button>
             <Button size="sm" variant="secondary" onClick={() => { setEditor({ ...EMPTY_EDITOR, name: '新场景' }); setEditing(null); setEditorOpen(true); }}>打开 YAML 编辑器</Button>
             <Button size="sm" variant="secondary" onClick={openBatch}>批量运行</Button>
+            <Button size="sm" variant="secondary" onClick={() => void openGit()}>Git 同步</Button>
             <Button size="sm" variant="secondary" onClick={() => { setImportName(''); setImportDescription(''); setImportYaml(''); setImportEnv(''); setImportError(''); setImportOpen(true); }}>导入 YAML</Button>
           </div>
           <div className="field-hint">支持 HTTP / SQL / Groovy / set / assert / wait / if-else / loop(times/items/dataset) / once / while / before-after / 变量提取；CSV 导入按钮在编辑器内。</div>
@@ -606,7 +746,7 @@ export function ApiScenariosPage() {
                 <tr><td colSpan={6}><EmptyState icon="code" title="暂无 API 场景" description="新建一个 YAML 场景，组合 HTTP/SQL/Groovy/断言步骤" /></td></tr>
               ) : items.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.name}<div className="cell-sub mono">{item.id}</div></td>
+                  <td>{item.name}<div className="cell-sub mono">{item.sourcePath ? `git: ${item.sourcePath}` : item.id}</div></td>
                   <td>{environments.find((env) => env.id === item.environmentId)?.name || item.environmentId || 'YAML 内配置'}</td>
                   <td><Pill tone={item.enabled ? 'green' : 'red'} dot>{item.enabled ? '启用' : '停用'}</Pill></td>
                   <td>{formatDateTime(item.updatedAt)}</td>
@@ -773,6 +913,49 @@ export function ApiScenariosPage() {
         </div>
       </Modal>
 
+      <Modal open={gitOpen} title="Git 场景源同步" size="lg"
+        onClose={() => { if (!gitSaving) setGitOpen(false); }} closeOnOverlay={!gitSaving}
+        footer={<><Button variant="secondary" onClick={() => setGitOpen(false)} disabled={gitSaving}>关闭</Button>
+          <Button variant="secondary" loading={gitSaving} onClick={() => void saveGit()}>保存配置</Button>
+          <Button variant="primary" loading={gitSaving} onClick={() => void syncGit()}>立即同步</Button></>}>
+        <div className="form-stack">
+          {gitError ? <Callout tone="error" title="Git 同步失败">{gitError}</Callout> : null}
+          <Callout tone="info" title="YAML 源真相">
+            仓库中的 YAML 会按 source_path 创建/更新场景；删除 Git 文件不会自动删除平台场景。Webhook:
+            <code>{`${window.location.origin}/api/v1/api-scenarios/git/webhook`}</code>
+          </Callout>
+          {gitLoading ? <div className="field-hint">加载配置…</div> : (
+            <>
+              <Field label="仓库地址" htmlFor="git-repo" required hint="支持 HTTPS/SSH 或本地路径；私有仓库可通过部署机 SSH key 或 URL 凭据访问">
+                <Input id="git-repo" value={gitForm.repoUrl} placeholder="git@github.com:org/test-assets.git" onChange={(e) => setGitForm({ ...gitForm, repoUrl: e.target.value })} />
+              </Field>
+              <div className="form-grid-2">
+                <Field label="分支" htmlFor="git-branch"><Input id="git-branch" value={gitForm.branch} onChange={(e) => setGitForm({ ...gitForm, branch: e.target.value })} /></Field>
+                <Field label="YAML 目录" htmlFor="git-dir"><Input id="git-dir" value={gitForm.yamlDirectory} onChange={(e) => setGitForm({ ...gitForm, yamlDirectory: e.target.value })} /></Field>
+              </div>
+              <div className="form-grid-2">
+                <Field label="状态" htmlFor="git-enabled"><Select id="git-enabled" value={gitForm.enabled ? '1' : '0'} onChange={(e) => setGitForm({ ...gitForm, enabled: e.target.value === '1' })}>
+                  <option value="1">启用</option><option value="0">停用</option>
+                </Select></Field>
+                <Field label="Webhook 密钥" htmlFor="git-secret" hint={gitConfig?.webhookSecretConfigured ? '已配置；留空保持不变' : '用于 X-Webhook-Token 或 HMAC'}>
+                  <Input id="git-secret" type="password" value={gitForm.webhookSecret} onChange={(e) => setGitForm({ ...gitForm, webhookSecret: e.target.value })} />
+                </Field>
+              </div>
+              {gitConfig?.lastCommit ? (
+                <div className="field-hint">最近 commit <code>{gitConfig.lastCommit}</code> · 同步于 {formatDateTime(gitConfig.lastSyncAt)}</div>
+              ) : null}
+              {gitConfig?.lastError ? <Callout tone="warning" title="上次同步提示">{gitConfig.lastError}</Callout> : null}
+              {gitResult ? (
+                <Callout tone={gitResult.errors.length ? 'warning' : 'success'} title="同步结果">
+                  扫描 {gitResult.scanned}，新增 {gitResult.created}，更新 {gitResult.updated}，commit {gitResult.commit}
+                  {gitResult.errors.length ? <ul>{gitResult.errors.map((error) => <li key={error}>{error}</li>)}</ul> : null}
+                </Callout>
+              ) : null}
+            </>
+          )}
+        </div>
+      </Modal>
+
       <Modal open={batchOpen} title="批量运行 API 场景" size="lg"
         onClose={() => { if (!batchBusy) setBatchOpen(false); }} closeOnOverlay={!batchBusy}
         footer={<><Button variant="secondary" onClick={() => setBatchOpen(false)} disabled={batchBusy}>关闭</Button>
@@ -827,6 +1010,40 @@ export function ApiScenariosPage() {
           </div>
           <Field label="描述" htmlFor="scenario-import-desc"><Input id="scenario-import-desc" value={importDescription} onChange={(e) => setImportDescription(e.target.value)} /></Field>
           <Field label="YAML" htmlFor="scenario-import-yaml"><Textarea id="scenario-import-yaml" className="yaml-editor" rows={14} value={importYaml} onChange={(e) => setImportYaml(e.target.value)} /></Field>
+        </div>
+      </Modal>
+
+      <Modal open={diffOpen} title="保存前确认 YAML 变更" size="xl"
+        onClose={() => { if (!diffSaving) setDiffOpen(false); }} closeOnOverlay={!diffSaving}
+        footer={<><Button variant="secondary" onClick={() => setDiffOpen(false)} disabled={diffSaving}>取消</Button>
+          <Button variant="primary" loading={diffSaving} onClick={() => void confirmDiffSave()}>确认保存</Button></>}>
+        <div className="form-stack">
+          {editorError ? <Callout tone="error" title="保存失败">{editorError}</Callout> : null}
+          <Callout tone="info" title="YAML 是唯一事实来源">
+            下面是本次表单/YAML 编辑将要提交的文本变更；取消不会写入数据库。
+          </Callout>
+          {(() => {
+            const diff = yamlLineDiff(diffBefore, diffAfter);
+            const added = diff.filter((line) => line.kind === 'add').length;
+            const removed = diff.filter((line) => line.kind === 'remove').length;
+            return (
+              <>
+                <div className="scenario-graph-meta">
+                  <Pill tone="green">+{added}</Pill>
+                  <Pill tone="red">-{removed}</Pill>
+                  <span className="field-hint">行级 LCS 对比</span>
+                </div>
+                <pre className="yaml-diff">{diff.map((line, index) => (
+                  <div key={index} className={`yaml-diff-line yaml-diff-${line.kind}`}>
+                    <span className="yaml-diff-no">{line.oldNo ?? ''}</span>
+                    <span className="yaml-diff-no">{line.newNo ?? ''}</span>
+                    <span className="yaml-diff-mark">{line.kind === 'add' ? '+' : line.kind === 'remove' ? '-' : ' '}</span>
+                    <span>{line.text || ' '}</span>
+                  </div>
+                ))}</pre>
+              </>
+            );
+          })()}
         </div>
       </Modal>
 

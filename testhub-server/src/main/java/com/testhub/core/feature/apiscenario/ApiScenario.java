@@ -24,6 +24,13 @@ public class ApiScenario {
     @Column(name = "environment_id", length = 64)
     private String environmentId;
 
+    /** Relative YAML path when this scenario is synchronized from Git. */
+    @Column(name = "source_path", length = 1000)
+    private String sourcePath;
+
+    @Column(name = "source_commit", length = 80)
+    private String sourceCommit;
+
     @Column(name = "enabled", nullable = false)
     private boolean enabled = true;
 
@@ -57,6 +64,8 @@ public class ApiScenario {
     public String getDescription() { return description; }
     public String getYamlText() { return yamlText; }
     public String getEnvironmentId() { return environmentId; }
+    public String getSourcePath() { return sourcePath; }
+    public String getSourceCommit() { return sourceCommit; }
     public boolean isEnabled() { return enabled; }
     public String getCreatedBy() { return createdBy; }
     public Instant getCreatedAt() { return createdAt; }
@@ -66,6 +75,8 @@ public class ApiScenario {
     public void setDescription(String description) { this.description = description; }
     public void setYamlText(String yamlText) { this.yamlText = yamlText; }
     public void setEnvironmentId(String environmentId) { this.environmentId = environmentId; }
+    public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }
+    public void setSourceCommit(String sourceCommit) { this.sourceCommit = sourceCommit; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

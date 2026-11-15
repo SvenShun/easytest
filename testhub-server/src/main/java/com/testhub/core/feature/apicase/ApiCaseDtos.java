@@ -23,13 +23,24 @@ public final class ApiCaseDtos {
             List<Map<String, Object>> assertions,
             List<Map<String, Object>> dataset,
             Integer timeoutSec,
-            Boolean enabled) {
+            Boolean enabled,
+            Map<String, String> inputContract,
+            Map<String, String> outputContract) {
+
+        public ApiCaseRequest(String name, String method, String baseUrl, String path,
+                              Map<String, String> headers, Map<String, String> query, String body,
+                              List<Map<String, Object>> assertions, List<Map<String, Object>> dataset,
+                              Integer timeoutSec, Boolean enabled) {
+            this(name, method, baseUrl, path, headers, query, body, assertions, dataset, timeoutSec,
+                    enabled, null, null);
+        }
     }
 
     public record ApiCaseView(String id, String name, String method, String baseUrl, String path,
                               Map<String, String> headers, Map<String, String> query, String body,
                               List<Map<String, Object>> assertions, List<Map<String, Object>> dataset,
-                              int timeoutSec, boolean enabled, String createdBy, Instant createdAt,
+                              int timeoutSec, boolean enabled, Map<String, String> inputContract,
+                              Map<String, String> outputContract, String createdBy, Instant createdAt,
                               Instant updatedAt) {
     }
 

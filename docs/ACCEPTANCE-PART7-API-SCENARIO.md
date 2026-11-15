@@ -30,4 +30,6 @@
 ## 测试
 
 - `ScenarioExecutorTest`：HTTP+SQL+Groovy+变量传递成功；断言失败默认终止；if/else + dataset loop 成功（9 个展开步骤，最后一行变量 admin）；once/while 成功。
-- `./scripts/check.sh`：Java **189** + Python **48** = 237，前端构建通过。
+- `./scripts/check.sh`：Java **192** + Python **48** = 240，前端构建通过。
+
+- 本轮新增：场景表单保存前 YAML diff、API 组件输入/输出契约、文本用例自动化关联、Git 场景源同步（webhook）。

@@ -302,6 +302,7 @@ public class ApiScenarioService {
     private ScenarioView view(ApiScenario scenario) {
         return new ScenarioView(scenario.getId(), scenario.getName(), scenario.getDescription(),
                 scenario.getYamlText(), scenario.getEnvironmentId(), scenario.isEnabled(),
+                scenario.getSourcePath(), scenario.getSourceCommit(),
                 scenario.getCreatedBy(), scenario.getCreatedAt(), scenario.getUpdatedAt());
     }
 

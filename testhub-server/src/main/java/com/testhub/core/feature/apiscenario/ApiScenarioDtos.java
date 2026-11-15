@@ -16,8 +16,9 @@ public final class ApiScenarioDtos {
     }
 
     public record ScenarioView(String id, String name, String description, String yaml,
-                               String environmentId, boolean enabled, String createdBy,
-                               Instant createdAt, Instant updatedAt) {
+                               String environmentId, boolean enabled, String sourcePath,
+                               String sourceCommit, String createdBy, Instant createdAt,
+                               Instant updatedAt) {
     }
 
     public record RunRequest(String environmentId, Map<String, Object> variables, Integer timeoutSec) {

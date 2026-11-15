@@ -566,7 +566,23 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v
 
 ---
 
-## 12. 目录和关键文件
+## 12. Git 场景源同步（可选）
+
+在「API 场景 → Git 同步」配置仓库后，core 会用服务端 `git` 命令拉取 YAML：
+
+```bash
+# 运行 core 的用户必须能执行 git 并访问仓库
+git --version
+ssh -T git@github.com   # 私有 SSH 仓库
+```
+
+- Git 克隆目录：`data/git-scenarios/<hash>`（忽略提交）。
+- Webhook 地址：`http://<host>:8080/api/v1/api-scenarios/git/webhook`
+- 密钥：配置页填写的值作为 `X-Webhook-Token`，或配置 GitHub `X-Hub-Signature-256` HMAC。
+- 同一个 `sourcePath` 对应一个场景；同步不会自动删除 Git 中已移除的场景。
+- 公网部署时把 webhook 限制在可信来源，并使用 HTTPS。
+
+## 13. 目录和关键文件
 
 ```text
 common/            共享 JWT/角色/异常/CORS
@@ -596,13 +612,13 @@ examples/          演示脚本工程
 
 ---
 
-## 13. 可选：MeterSphere / Sonic 对比环境
+## 14. 可选：MeterSphere / Sonic 对比环境
 
 本仓库的 TestHub 部署**不依赖** MeterSphere 或 Sonic。若要部署对比环境，参见 [COMPARE-DEPLOY.md](COMPARE-DEPLOY.md)；它使用 `upstream/` 下的源码，`upstream/` 被 `.gitignore` 忽略，需要在目标机器重新拉取源码并单独构建，不属于 TestHub 主部署流程。
 
 ---
 
-## 14. GitHub 提交和更新
+## 15. GitHub 提交和更新
 
 代码通过 GitHub `main` 分支交付：
 

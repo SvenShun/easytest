@@ -68,6 +68,7 @@ public class ApiCaseService {
         ApiCase apiCase = new ApiCase(Ids.newId("ac"), request.name().trim(), normalizeMethod(request.method()),
                 blankToNull(request.baseUrl()), request.path().trim(), json(request.headers()), json(request.query()),
                 blankToNull(request.body()), json(request.assertions()), jsonDataset(request.dataset()),
+                json(request.inputContract()), json(request.outputContract()),
                 timeout(request.timeoutSec()), request.enabled() == null || request.enabled(),
                 principal.username(), now, now);
         return view(repository.save(apiCase));
@@ -85,6 +86,8 @@ public class ApiCaseService {
         apiCase.setBody(blankToNull(request.body()));
         apiCase.setAssertionsJson(json(request.assertions()));
         apiCase.setDatasetJson(jsonDataset(request.dataset()));
+        apiCase.setInputContractJson(json(request.inputContract()));
+        apiCase.setOutputContractJson(json(request.outputContract()));
         apiCase.setTimeoutSec(timeout(request.timeoutSec()));
         apiCase.setEnabled(request.enabled() == null || request.enabled());
         apiCase.setUpdatedAt(Instant.now());
@@ -109,7 +112,9 @@ public class ApiCaseService {
                 apiCase.getPath(), readMap(apiCase.getHeadersJson()), readMap(apiCase.getQueryJson()),
                 apiCase.getBody(), readAssertions(apiCase.getAssertionsJson()),
                 readDataset(apiCase.getDatasetJson()), apiCase.getTimeoutSec(),
-                apiCase.isEnabled(), apiCase.getCreatedBy(), apiCase.getCreatedAt(), apiCase.getUpdatedAt());
+                apiCase.isEnabled(), readMap(apiCase.getInputContractJson()),
+                readMap(apiCase.getOutputContractJson()), apiCase.getCreatedBy(), apiCase.getCreatedAt(),
+                apiCase.getUpdatedAt());
     }
 
     private Specification<ApiCase> keywordSpec(String keyword) {

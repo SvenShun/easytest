@@ -44,6 +44,14 @@ public class ApiCase {
     @Column(name = "dataset_json", columnDefinition = "TEXT")
     private String datasetJson;
 
+    /** Variables this reusable component expects from upstream (name -> description). */
+    @Column(name = "input_contract_json", columnDefinition = "TEXT")
+    private String inputContractJson;
+
+    /** Variables this component produces for downstream steps (name -> description/source). */
+    @Column(name = "output_contract_json", columnDefinition = "TEXT")
+    private String outputContractJson;
+
     @Column(name = "timeout_sec", nullable = false)
     private int timeoutSec = 30;
 
@@ -64,6 +72,7 @@ public class ApiCase {
 
     public ApiCase(String id, String name, String method, String baseUrl, String path, String headersJson,
                    String queryJson, String body, String assertionsJson, String datasetJson,
+                   String inputContractJson, String outputContractJson,
                    int timeoutSec, boolean enabled, String createdBy, Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.name = name;
@@ -75,6 +84,8 @@ public class ApiCase {
         this.body = body;
         this.assertionsJson = assertionsJson;
         this.datasetJson = datasetJson;
+        this.inputContractJson = inputContractJson;
+        this.outputContractJson = outputContractJson;
         this.timeoutSec = timeoutSec;
         this.enabled = enabled;
         this.createdBy = createdBy;
@@ -92,6 +103,8 @@ public class ApiCase {
     public String getBody() { return body; }
     public String getAssertionsJson() { return assertionsJson; }
     public String getDatasetJson() { return datasetJson; }
+    public String getInputContractJson() { return inputContractJson; }
+    public String getOutputContractJson() { return outputContractJson; }
     public int getTimeoutSec() { return timeoutSec; }
     public boolean isEnabled() { return enabled; }
     public String getCreatedBy() { return createdBy; }
@@ -107,6 +120,8 @@ public class ApiCase {
     public void setBody(String body) { this.body = body; }
     public void setAssertionsJson(String assertionsJson) { this.assertionsJson = assertionsJson; }
     public void setDatasetJson(String datasetJson) { this.datasetJson = datasetJson; }
+    public void setInputContractJson(String inputContractJson) { this.inputContractJson = inputContractJson; }
+    public void setOutputContractJson(String outputContractJson) { this.outputContractJson = outputContractJson; }
     public void setTimeoutSec(int timeoutSec) { this.timeoutSec = timeoutSec; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }

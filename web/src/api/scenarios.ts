@@ -7,6 +7,8 @@ export interface ApiScenario {
   yaml: string;
   environmentId?: string | null;
   enabled: boolean;
+  sourcePath?: string | null;
+  sourceCommit?: string | null;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -34,6 +36,27 @@ export interface ScenarioGraphNode {
   produces?: string[];
   warnings?: string[];
   children?: ScenarioGraphNode[];
+}
+
+export interface ScenarioGitConfig {
+  repoUrl?: string | null;
+  branch: string;
+  yamlDirectory: string;
+  enabled: boolean;
+  webhookSecretConfigured: boolean;
+  lastCommit?: string | null;
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ScenarioGitSyncResult {
+  commit: string;
+  scanned: number;
+  created: number;
+  updated: number;
+  errors: string[];
+  syncedAt: string;
 }
 
 export interface ScenarioGraph {
@@ -73,6 +96,12 @@ export const apiScenariosApi = {
     request<void>('core', `/api/v1/api-scenarios/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   analyze: (yaml: string) =>
     request<ScenarioGraph>('core', '/api/v1/api-scenarios/analyze', { method: 'POST', body: { yaml } }),
+  gitConfig: () =>
+    request<ScenarioGitConfig>('core', '/api/v1/api-scenarios/git/config'),
+  updateGitConfig: (input: { repoUrl?: string; branch?: string; yamlDirectory?: string; webhookSecret?: string; enabled?: boolean }) =>
+    request<ScenarioGitConfig>('core', '/api/v1/api-scenarios/git/config', { method: 'PUT', body: input }),
+  syncGit: () =>
+    request<ScenarioGitSyncResult>('core', '/api/v1/api-scenarios/git/sync', { method: 'POST' }),
   graph: (id: string) =>
     request<ScenarioGraph>('core', `/api/v1/api-scenarios/${encodeURIComponent(id)}/graph`),
   validate: (yaml: string) =>

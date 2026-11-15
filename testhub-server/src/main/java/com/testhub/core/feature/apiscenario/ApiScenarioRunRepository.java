@@ -9,5 +9,7 @@ import java.util.List;
 public interface ApiScenarioRunRepository extends JpaRepository<ApiScenarioRun, String> {
     Page<ApiScenarioRun> findByScenarioId(String scenarioId, Pageable pageable);
 
+    java.util.Optional<ApiScenarioRun> findTopByScenarioIdOrderByCreatedAtDesc(String scenarioId);
+
     List<ApiScenarioRun> findByStatusIn(Collection<String> statuses);
 }

@@ -37,6 +37,8 @@ interface FormState {
   body: string;
   assertions: string;
   dataset: string;
+  inputContract: string;
+  outputContract: string;
   timeoutSec: string;
   enabled: boolean;
 }
@@ -51,6 +53,8 @@ const EMPTY_FORM: FormState = {
   body: '',
   assertions: DEFAULT_ASSERTIONS,
   dataset: '[]',
+  inputContract: '{}',
+  outputContract: '{}',
   timeoutSec: '30',
   enabled: true,
 };
@@ -114,6 +118,8 @@ export function ApiCasesPage() {
       body: item.body || '',
       assertions: JSON.stringify(item.assertions || [], null, 2),
       dataset: JSON.stringify(item.dataset || [], null, 2),
+      inputContract: JSON.stringify(item.inputContract || {}, null, 2),
+      outputContract: JSON.stringify(item.outputContract || {}, null, 2),
       timeoutSec: String(item.timeoutSec || 30),
       enabled: item.enabled !== false,
     });
@@ -127,16 +133,22 @@ export function ApiCasesPage() {
     let query: Record<string, string>;
     let assertions: Array<Record<string, unknown>>;
     let dataset: Array<Record<string, unknown>>;
+    let inputContract: Record<string, string>;
+    let outputContract: Record<string, string>;
     try {
       headers = JSON.parse(form.headers || '{}');
       query = JSON.parse(form.query || '{}');
       assertions = JSON.parse(form.assertions || '[]');
       dataset = JSON.parse(form.dataset || '[]');
+      inputContract = JSON.parse(form.inputContract || '{}');
+      outputContract = JSON.parse(form.outputContract || '{}');
       if (typeof headers !== 'object' || Array.isArray(headers)) throw new Error('Headers 必须是 JSON 对象');
       if (typeof query !== 'object' || Array.isArray(query)) throw new Error('Query 必须是 JSON 对象');
       if (!Array.isArray(assertions)) throw new Error('断言必须是 JSON 数组');
       if (!Array.isArray(dataset)) throw new Error('数据集必须是 JSON 数组');
       if (dataset.length > 200) throw new Error('数据集最多 200 行');
+      if (!inputContract || typeof inputContract !== 'object' || Array.isArray(inputContract)) throw new Error('输入契约必须是 JSON 对象');
+      if (!outputContract || typeof outputContract !== 'object' || Array.isArray(outputContract)) throw new Error('输出契约必须是 JSON 对象');
     } catch (err) {
       setFormError(`JSON 格式错误：${safeErrorMessage(err)}`);
       return;
@@ -160,6 +172,8 @@ export function ApiCasesPage() {
       body: form.body,
       assertions,
       dataset,
+      inputContract,
+      outputContract,
       timeoutSec: timeout,
       enabled: form.enabled,
     };
@@ -416,6 +430,18 @@ export function ApiCasesPage() {
               onChange={(event) => setForm((prev) => ({ ...prev, dataset: event.target.value }))}
             />
           </Field>
+          <div className="form-grid-2">
+            <Field label="输入变量契约 (JSON 对象)" htmlFor="api-input-contract"
+                   hint='组件依赖的上游变量，例如 {"token":"登录后的 token"}'>
+              <Textarea id="api-input-contract" rows={4} className="mono" value={form.inputContract}
+                onChange={(event) => setForm((prev) => ({ ...prev, inputContract: event.target.value }))} />
+            </Field>
+            <Field label="输出变量契约 (JSON 对象)" htmlFor="api-output-contract"
+                   hint='组件向下游产出的变量，例如 {"userId":"响应中的用户 ID"}'>
+              <Textarea id="api-output-contract" rows={4} className="mono" value={form.outputContract}
+                onChange={(event) => setForm((prev) => ({ ...prev, outputContract: event.target.value }))} />
+            </Field>
+          </div>
           <Field
             label="断言 (JSON)"
             htmlFor="api-assertions"

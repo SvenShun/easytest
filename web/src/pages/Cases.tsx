@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { casesApi, requirementsApi, scriptsApi } from '../api';
+import { apiCasesApi, apiScenariosApi, casesApi, requirementsApi, scriptsApi } from '../api';
 import type {
   CaseDetail,
   CaseInput,
@@ -10,6 +10,8 @@ import type {
   SelectorType,
   StepType,
   Requirement,
+  AutomationLink,
+  AutomationTargetType,
   ReviewAction,
   ReviewStatus,
   ScriptInfo,
@@ -167,6 +169,14 @@ export function CasesPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [automationLinks, setAutomationLinks] = useState<AutomationLink[]>([]);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkType, setLinkType] = useState<AutomationTargetType>('API_CASE');
+  const [linkOptions, setLinkOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [linkTarget, setLinkTarget] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [linkError, setLinkError] = useState('');
 
   const [rejectTarget, setRejectTarget] = useState<CaseDetail | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
@@ -230,6 +240,7 @@ export function CasesPage() {
     try {
       const data = await casesApi.get(id);
       setDetail(data);
+      void casesApi.automationLinks(id).then(setAutomationLinks).catch(() => setAutomationLinks([]));
     } catch (err) {
       setDetail(null);
       setDetailError(safeErrorMessage(err));
@@ -271,6 +282,68 @@ export function CasesPage() {
         });
     }
   }, [highlightParam, items, loading]);
+
+  const loadLinkOptions = async (type: AutomationTargetType) => {
+    setLinkLoading(true);
+    setLinkError('');
+    setLinkTarget('');
+    try {
+      if (type === 'API_CASE') {
+        const data = await apiCasesApi.list('', 1, 200);
+        setLinkOptions(data.items.map((item) => ({ id: item.id, name: `${item.name} · ${item.method} ${item.path}` })));
+      } else if (type === 'API_SCENARIO') {
+        const data = await apiScenariosApi.list('', 1, 200);
+        setLinkOptions(data.items.map((item) => ({ id: item.id, name: item.name })));
+      } else {
+        const data = await casesApi.list({ reviewStatus: 'APPROVED', page: 1, size: 200 });
+        setLinkOptions(data.items.map((item) => ({ id: item.id, name: item.title })));
+      }
+    } catch (err) {
+      setLinkError(safeErrorMessage(err));
+      setLinkOptions([]);
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
+  const openLink = () => {
+    if (!detail) return;
+    setLinkOpen(true);
+    setLinkType('API_CASE');
+    setLinkTarget('');
+    setLinkError('');
+    void loadLinkOptions('API_CASE');
+  };
+
+  const addLink = async () => {
+    if (!detail || !linkTarget) {
+      setLinkError('请选择要关联的自动化用例');
+      return;
+    }
+    setLinkSaving(true);
+    setLinkError('');
+    try {
+      await casesApi.addAutomationLink(detail.id, { targetType: linkType, targetId: linkTarget });
+      setAutomationLinks(await casesApi.automationLinks(detail.id));
+      toastSuccess('自动化用例已关联');
+      setLinkOpen(false);
+    } catch (err) {
+      setLinkError(safeErrorMessage(err));
+    } finally {
+      setLinkSaving(false);
+    }
+  };
+
+  const removeLink = async (link: AutomationLink) => {
+    if (!detail) return;
+    try {
+      await casesApi.removeAutomationLink(detail.id, link.id);
+      setAutomationLinks((prev) => prev.filter((item) => item.id !== link.id));
+      toastSuccess('关联已移除');
+    } catch (err) {
+      toastError(safeErrorMessage(err));
+    }
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -831,6 +904,33 @@ export function CasesPage() {
       </Modal>
 
       {/* 用例详情 */}
+      <Modal open={linkOpen} title="关联自动化用例" size="lg"
+        onClose={() => { if (!linkSaving) setLinkOpen(false); }} closeOnOverlay={!linkSaving}
+        footer={<><Button variant="secondary" onClick={() => setLinkOpen(false)} disabled={linkSaving}>取消</Button>
+          <Button variant="primary" loading={linkSaving} onClick={() => void addLink()}>确认关联</Button></>}>
+        <div className="form-stack">
+          {linkError ? <Callout tone="error" title="关联失败">{linkError}</Callout> : null}
+          <Field label="自动化类型" htmlFor="link-type">
+            <Select id="link-type" value={linkType} onChange={(event) => {
+              const next = event.target.value as AutomationTargetType;
+              setLinkType(next);
+              void loadLinkOptions(next);
+            }}>
+              <option value="API_CASE">接口用例 / 单步组件</option>
+              <option value="API_SCENARIO">API 场景</option>
+              <option value="UI_CASE">UI 自动化用例</option>
+            </Select>
+          </Field>
+          <Field label="选择自动化用例" htmlFor="link-target" hint={linkLoading ? '加载中…' : '仅显示当前类型下可用的用例'}>
+            <Select id="link-target" value={linkTarget} onChange={(event) => setLinkTarget(event.target.value)} disabled={linkLoading}>
+              <option value="">请选择</option>
+              {linkOptions.filter((option) => !automationLinks.some((link) => link.targetType === linkType && link.targetId === option.id))
+                .map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+            </Select>
+          </Field>
+        </div>
+      </Modal>
+
       <Drawer
         open={detailOpen}
         title={
@@ -1004,6 +1104,34 @@ export function CasesPage() {
                   计划触发时若未覆盖执行器，按路由规则自动选择。
                 </span>
               </div>
+            </section>
+
+            <section>
+              <h4 className="detail-section-title">自动化用例关联</h4>
+              <div className="capability-row">
+                <span className="capability-label">关联</span>
+                <Button size="sm" variant="secondary" icon="plus" onClick={openLink}>关联接口/场景/UI 用例</Button>
+                <span className="capability-text">轻量标记，不做断言级映射；显示最近执行状态。</span>
+              </div>
+              {automationLinks.length ? (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead><tr><th>类型</th><th>自动化用例</th><th>最近状态</th><th /></tr></thead>
+                    <tbody>{automationLinks.map((link) => (
+                      <tr key={link.id}>
+                        <td><Pill tone={link.targetType === 'API_SCENARIO' ? 'purple' : link.targetType === 'UI_CASE' ? 'blue' : 'slate'}>
+                          {link.targetType === 'API_CASE' ? '接口用例' : link.targetType === 'API_SCENARIO' ? 'API 场景' : 'UI 用例'}
+                        </Pill></td>
+                        <td>{link.targetName}<div className="cell-sub mono">{link.targetId}</div></td>
+                        <td><Pill tone={link.latestStatus === 'SUCCESS' ? 'green' : link.latestStatus === 'FAILED' ? 'red' : 'gray'}>
+                          {link.latestStatus || '未执行'}
+                        </Pill>{!link.targetEnabled ? <span className="cell-sub">已停用</span> : null}</td>
+                        <td className="td-right"><Button size="sm" variant="ghost" onClick={() => void removeLink(link)}>移除</Button></td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              ) : <div className="field-hint">还没有关联自动化用例。</div>}
             </section>
 
             <section>

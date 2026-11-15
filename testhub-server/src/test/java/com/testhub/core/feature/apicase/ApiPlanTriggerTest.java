@@ -134,6 +134,8 @@ class ApiPlanTriggerTest extends ApiTestSupport {
         JsonNode listed = getJson("/api/v1/api-cases?keyword=登录&size=10", token);
         assertThat(listed.path("items")).hasSize(1);
         assertThat(listed.path("items").get(0).path("assertions")).hasSize(2);
+        assertThat(listed.path("items").get(0).path("inputContract").path("token").asText()).isEqualTo("登录 token");
+        assertThat(listed.path("items").get(0).path("outputContract").path("userId").asText()).isEqualTo("响应 user.id");
 
         Map<String, Object> invalid = apiCaseBody("非法方法");
         invalid.put("method", "TRACE");
@@ -261,6 +263,8 @@ class ApiPlanTriggerTest extends ApiTestSupport {
                 Map.of("type", "JSON_PATH", "path", "$.status", "operator", "EQ", "expected", "UP")));
         body.put("timeoutSec", 30);
         body.put("enabled", true);
+        body.put("inputContract", Map.of("token", "登录 token"));
+        body.put("outputContract", Map.of("userId", "响应 user.id"));
         return body;
     }
 }

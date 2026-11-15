@@ -118,6 +118,19 @@ export interface FailureAnalysis {
   [key: string]: unknown;
 }
 
+export type AutomationTargetType = 'API_CASE' | 'API_SCENARIO' | 'UI_CASE';
+
+export interface AutomationLink {
+  id: string;
+  targetType: AutomationTargetType;
+  targetId: string;
+  targetName: string;
+  targetEnabled: boolean;
+  latestStatus?: string | null;
+  createdBy?: string;
+  createdAt?: string;
+}
+
 export interface CaseDetail {
   id: string;
   title: string;
@@ -230,6 +243,8 @@ export interface ApiCase {
   body?: string | null;
   assertions?: Array<Record<string, unknown>>;
   dataset?: Array<Record<string, unknown>>;
+  inputContract?: Record<string, string>;
+  outputContract?: Record<string, string>;
   timeoutSec: number;
   enabled: boolean;
   createdBy?: string;
@@ -247,6 +262,8 @@ export interface ApiCaseInput {
   body?: string;
   assertions?: Array<Record<string, unknown>>;
   dataset?: Array<Record<string, unknown>>;
+  inputContract?: Record<string, string>;
+  outputContract?: Record<string, string>;
   timeoutSec?: number;
   enabled?: boolean;
 }

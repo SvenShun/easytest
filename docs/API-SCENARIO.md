@@ -229,3 +229,14 @@ API 场景编辑器提供两个视图：
 页面顶部：批量运行、导入 YAML、新建/编辑（YAML 编辑器）。
 页面「YAML 能力入口」卡片可直接插入 HTTP/SQL/Groovy/set/assert/wait/if/loop/once/while/before-after/datasets 模板。
 编辑器内：校验 YAML、CSV 数据集导入。
+
+## Git 源同步
+
+场景 YAML 可以作为 Git 仓库中的源资产，由平台同步为可执行场景：
+
+- `GET/PUT /api/v1/api-scenarios/git/config`：配置仓库、分支、YAML 目录、启用状态和 webhook 密钥；
+- `POST /api/v1/api-scenarios/git/sync`：手动同步；
+- `POST /api/v1/api-scenarios/git/webhook`：GitHub/GitLab webhook。支持 `X-Webhook-Token` 或 GitHub `X-Hub-Signature-256` HMAC；
+- 以 YAML 文件相对路径作为 `sourcePath` 匹配已有场景，更新名称/YAML/commit；不会因 Git 删除文件而删除平台场景。
+
+服务端需要安装 `git`，并能访问仓库；私有仓库使用运行 core 的用户已有 SSH key 或 URL 凭据。Git 配置在「API 场景 → Git 同步」中维护，密钥只写不回显。
