@@ -17,7 +17,8 @@ public interface ApiExecutionClient {
 
     record EngineeringMethod(String id, String name, String description, String methodPath,
                             List<String> inputs, List<String> outputs, List<String> tags,
-                            String layer, List<String> protocols) {
+                            String layer, List<String> protocols, String inputSchema,
+                            String outputSchema) {
     }
 
     record TaskCreated(String taskId, String status) {

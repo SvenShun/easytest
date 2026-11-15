@@ -16,7 +16,7 @@ public class HttpGatewayAtom {
     public ContractResult login(ContractContext context) {
         String username = context.requireString("username");
         String password = context.requireString("password");
-        String body = "{\"username\":\"" + escape(username) + "\",\"password\":\"" + escape(password) + "\"}";
+        String body = com.easytest.iot.template.RequestTemplates.login(username, password);
         HttpAtom.Response response = HttpAtom.postJson(IotConfig.gateway() + "/api/auth/login",
                 body, IotConfig.jsonHeaders(), 10_000);
         context.log("gateway login status=" + response.status());
@@ -35,7 +35,4 @@ public class HttpGatewayAtom {
         return start > 0 && end > start ? body.substring(start, end) : body;
     }
 
-    private String escape(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
 }

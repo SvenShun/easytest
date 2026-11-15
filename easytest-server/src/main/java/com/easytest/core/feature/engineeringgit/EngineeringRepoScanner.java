@@ -118,6 +118,8 @@ public class EngineeringRepoScanner {
                             ? syncUiCase(repo, entry, methodPath) : null;
                     method.setLayer(first(text(entry.get("layer")), "FLOW").toUpperCase(Locale.ROOT));
                     method.setProtocolsJson(json(strings(entry.get("protocols"))));
+                    method.setInputSchema(text(entry.get("inputSchema")));
+                    method.setOutputSchema(text(entry.get("outputSchema")));
                     method.setPayloadJson(payload(repo, entry, base, caseId));
                     method.setUpdatedAt(now);
                     methods.save(method);

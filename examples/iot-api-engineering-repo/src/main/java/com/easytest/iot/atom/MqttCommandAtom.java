@@ -16,8 +16,9 @@ public class MqttCommandAtom {
     public ContractResult sendCommand(ContractContext context) {
         String deviceId = context.requireString("deviceId");
         String command = context.requireString("command");
-        String topic = "iot/device/" + deviceId + "/command";
-        MqttAtom.publish(IotConfig.mqttHost(), IotConfig.mqttPort(), null, topic, command, null, null, 30);
+        String topic = IotConfig.mqttTopic("command", deviceId);
+        MqttAtom.publish(IotConfig.mqttHost(), IotConfig.mqttPort(), null, topic,
+                com.easytest.iot.template.RequestTemplates.deviceCommand(command), null, null, 30);
         context.output("topic", topic);
         return ContractResult.ok("MQTT 指令已发送");
     }

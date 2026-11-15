@@ -182,8 +182,9 @@ public class EngineeringMethodRegistry {
             Class<?> type = Class.forName(className, false, loader);
             if (type.isInterface() || Modifier.isAbstract(type.getModifiers())) return;
             registerClass(type);
-        } catch (Throwable ignored) {
+        } catch (Throwable error) {
             // A jar can contain optional classes with missing dependencies.
+            log.debug("skip engineering class {}: {}", className, error.toString());
         }
     }
 
@@ -191,7 +192,8 @@ public class EngineeringMethodRegistry {
         String name = annotation.name().isBlank() ? path.substring(path.indexOf('#') + 1) : annotation.name();
         return new ContractDescriptor(annotation.id(), name, annotation.description(), path,
                 List.of(annotation.inputs()), List.of(annotation.outputs()), List.of(annotation.tags()),
-                annotation.layer(), List.of(annotation.protocols()));
+                annotation.layer(), List.of(annotation.protocols()),
+                annotation.inputSchema(), annotation.outputSchema());
     }
 
     private URL url(Path path) {

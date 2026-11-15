@@ -8,6 +8,8 @@ methods:
     methodPath: com.easytest.iot.atom.HttpGatewayAtom#login
     inputs: [username, password]
     outputs: [token, status]
+    inputSchema: '{"type":"object","required":["username","password"]}'
+    outputSchema: '{"type":"object","properties":{"token":{"type":"string"}}}'
     artifact: target/iot-api-engineering.jar
   - id: iot.action.device.onboard
     name: 设备接入组合操作
@@ -16,6 +18,7 @@ methods:
     methodPath: com.easytest.iot.action.DeviceOnboardingAction#onboard
     inputs: [homeId, deviceId, token]
     outputs: [bound, eventOffset]
+    inputSchema: '{"type":"object","required":["homeId","deviceId","token"]}'
     artifact: target/iot-api-engineering.jar
   - id: iot.atom.mysql.seedHome
     name: MySQL 造家庭数据

@@ -43,6 +43,14 @@ public ContractResult login(ContractContext context) { ... }
 
 Action/Atom 在平台 API 场景里和 Flow 一样，直接作为 `component` 步骤执行。
 
+方法可声明输入/输出 schema：
+
+```java
+@EasyContract(..., inputSchema = "{\"type\":\"object\",\"required\":[\"username\"]}")
+```
+
+平台方法目录会显示 `schema 已声明`，API 场景选择方法时带有层级/协议提示。
+
 ## 共享 SDK
 
 `engineering-sdk` 与 `contract-api` 一起组成测试工程依赖：
@@ -104,6 +112,26 @@ atom/    HttpGatewayAtom / MysqlSeedAtom / KafkaEventAtom / MqttCommandAtom / Rp
 1. **单接口**：网关登录、RPC 设备查询、Kafka/MQTT 原子操作；DB 造数用 `MysqlSeedAtom`
 2. **端到端**：接口造数，从 gateway 登录开始，HTTP 绑定 -> MQTT 控制 -> Kafka 事件验证
 3. 平台场景复用 action/atom，无需在平台重复实现 HTTP/SQL/MQTT/Kafka/RPC 封装
+
+## 本地 IoT Mock
+
+在没有真实业务系统时，可用本地 mock 跑通 flow：
+
+```bash
+./examples/iot-mock/start.sh
+docker exec -i easytest-mysql mysql -uroot -peasytest < examples/iot-mock/schema.sql
+docker exec easytest-mysql mysql -uroot -peasytest -e "
+  CREATE USER IF NOT EXISTS 'iot'@'%' IDENTIFIED BY 'iot';
+  GRANT ALL PRIVILEGES ON iot_home.* TO 'iot'@'%'; FLUSH PRIVILEGES;"
+```
+
+已验证：
+
+```text
+IoT single login  SUCCESS 1/1 steps passed
+IoT mysql seed    SUCCESS 1/1 steps passed
+IoT e2e           SUCCESS 1/1 steps passed
+```
 
 ## 构建
 

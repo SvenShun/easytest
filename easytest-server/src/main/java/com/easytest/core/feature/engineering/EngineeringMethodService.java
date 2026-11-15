@@ -51,7 +51,7 @@ public class EngineeringMethodService {
             for (ApiExecutionClient.EngineeringMethod method : apiExecutionClient.listEngineeringMethods()) {
                 upsert(method.id(), method.name(), method.description(), method.methodPath(),
                         method.inputs(), method.outputs(), method.tags(), "agent",
-                        method.layer(), method.protocols());
+                        method.layer(), method.protocols(), method.inputSchema(), method.outputSchema());
                 imported++;
             }
         } catch (RuntimeException e) {
@@ -86,7 +86,8 @@ public class EngineeringMethodService {
             upsert(string(map.get("id")), string(map.get("name")), string(map.get("description")),
                     methodPath, strings(map.get("inputs")), strings(map.get("outputs")),
                     strings(map.get("tags")), "manifest",
-                    string(map.get("layer")), strings(map.get("protocols")));
+                    string(map.get("layer")), strings(map.get("protocols")),
+                    string(map.get("inputSchema")), string(map.get("outputSchema")));
             imported++;
         }
         return new SyncResult(imported, methods.findAll().size(), errors);
@@ -94,12 +95,13 @@ public class EngineeringMethodService {
 
     private void upsert(String contractId, String name, String description, String methodPath,
                         List<String> inputs, List<String> outputs, List<String> tags, String source) {
-        upsert(contractId, name, description, methodPath, inputs, outputs, tags, source, "FLOW", List.of());
+        upsert(contractId, name, description, methodPath, inputs, outputs, tags, source, "FLOW", List.of(),
+                null, null);
     }
 
     private void upsert(String contractId, String name, String description, String methodPath,
                         List<String> inputs, List<String> outputs, List<String> tags, String source,
-                        String layer, List<String> protocols) {
+                        String layer, List<String> protocols, String inputSchema, String outputSchema) {
         EngineeringMethod method = methods.findByMethodPath(methodPath)
                 .orElseGet(() -> new EngineeringMethod(Ids.newId("emethod"), contractId, name, description,
                         methodPath, json(inputs), json(outputs), json(tags), source, Instant.now()));
@@ -113,6 +115,8 @@ public class EngineeringMethodService {
         method.setSource(source);
         method.setLayer(layer == null || layer.isBlank() ? "FLOW" : layer.toUpperCase(java.util.Locale.ROOT));
         method.setProtocolsJson(json(protocols));
+        method.setInputSchema(inputSchema);
+        method.setOutputSchema(outputSchema);
         method.setUpdatedAt(Instant.now());
         methods.save(method);
     }
@@ -122,7 +126,8 @@ public class EngineeringMethodService {
                 method.getMethodPath(), readList(method.getInputsJson()), readList(method.getOutputsJson()),
                 readList(method.getTagsJson()), method.getSource(), method.getUpdatedAt(),
                 method.getProjectId(), method.getRepoId(), method.getKind(), method.getPayloadJson(),
-                method.getLayer(), readList(method.getProtocolsJson()));
+                method.getLayer(), readList(method.getProtocolsJson()),
+                method.getInputSchema(), method.getOutputSchema());
     }
 
     private String json(List<String> values) {

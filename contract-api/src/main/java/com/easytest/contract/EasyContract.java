@@ -35,4 +35,10 @@ public @interface EasyContract {
 
     /** Protocols used by this method, e.g. HTTP, RPC, KAFKA, MQTT, SQL, REDIS. */
     String[] protocols() default {};
+
+    /** Optional JSON schema/description for inputs, shown by the platform. */
+    String inputSchema() default "";
+
+    /** Optional JSON schema/description for outputs, shown by the platform. */
+    String outputSchema() default "";
 }

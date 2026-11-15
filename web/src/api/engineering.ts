@@ -10,6 +10,8 @@ export interface EngineeringMethod {
   tags?: string[];
   layer?: string;
   protocols?: string[];
+  inputSchema?: string | null;
+  outputSchema?: string | null;
   source?: string;
   updatedAt?: string;
 }

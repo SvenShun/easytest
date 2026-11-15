@@ -1,0 +1,27 @@
+gateway: http://127.0.0.1:18080
+mysql:
+  home:
+    url: jdbc:mysql://127.0.0.1:3306/iot_home
+    user: iot
+    password: iot
+  user:
+    url: jdbc:mysql://127.0.0.1:3306/iot_user
+    user: iot
+    password: iot
+  device:
+    url: jdbc:mysql://127.0.0.1:3306/iot_device
+    user: iot
+    password: iot
+kafka:
+  bootstrap: 127.0.0.1:9092
+  topics:
+    deviceEvents: iot-device-events
+mqtt:
+  host: 127.0.0.1
+  port: 1883
+  topics:
+    command: iot/device/{deviceId}/command
+    online: iot/device/{deviceId}/online
+redis:
+  host: 127.0.0.1
+  port: 6379

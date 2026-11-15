@@ -21,8 +21,8 @@ public class IotFlows {
             layer = ContractLayer.FLOW, protocols = {"HTTP"}, description = "验证 gateway 登录接口能力/契约",
             inputs = {"username", "password"}, outputs = {"token"}, tags = {"iot", "single"})
     public ContractResult loginContract(ContractContext context) {
-        String body = "{\"username\":\"" + context.requireString("username") + "\",\"password\":\""
-                + context.requireString("password") + "\"}";
+        String body = com.easytest.iot.template.RequestTemplates.login(
+                context.requireString("username"), context.requireString("password"));
         HttpAtom.Response response = HttpAtom.postJson(IotConfig.gateway() + "/api/auth/login",
                 body, IotConfig.jsonHeaders(), 10_000);
         if (!response.ok()) return ContractResult.fail("登录接口失败: " + response.body());
@@ -41,18 +41,19 @@ public class IotFlows {
         String homeId = context.requireString("homeId");
         String deviceId = context.requireString("deviceId");
         HttpAtom.Response login = HttpAtom.postJson(IotConfig.gateway() + "/api/auth/login",
-                "{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}",
+                com.easytest.iot.template.RequestTemplates.login(username, password),
                 IotConfig.jsonHeaders(), 10_000);
         if (!login.ok()) return ContractResult.fail("端到端登录失败");
         HttpAtom.Response bind = HttpAtom.postJson(IotConfig.gateway() + "/api/device/bind",
-                "{\"homeId\":\"" + homeId + "\",\"deviceId\":\"" + deviceId + "\"}",
+                com.easytest.iot.template.RequestTemplates.bindDevice(homeId, deviceId),
                 Map.of("Content-Type", "application/json", "Authorization", "Bearer " + login.body()),
                 10_000);
         if (!bind.ok()) return ContractResult.fail("绑定设备失败");
         MqttAtom.publish(IotConfig.mqttHost(), IotConfig.mqttPort(), null,
-                "iot/device/" + deviceId + "/command", "{\"command\":\"ON\"}", null, null, 30);
-        long offset = KafkaAtom.produce(IotConfig.kafka(), "iot-device-events", deviceId,
-                "{\"event\":\"DEVICE_CONTROLLED\"}", List.of());
+                IotConfig.mqttTopic("command", deviceId),
+                com.easytest.iot.template.RequestTemplates.deviceCommand("ON"), null, null, 30);
+        long offset = KafkaAtom.produce(IotConfig.kafka(), IotConfig.topic("deviceEvents"), deviceId,
+                com.easytest.iot.template.RequestTemplates.deviceEvent("DEVICE_CONTROLLED", deviceId), List.of());
         context.output("token", login.body());
         context.output("eventOffset", offset);
         return ContractResult.ok("端到端链路通过");

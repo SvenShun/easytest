@@ -168,7 +168,7 @@ function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioS
 function StepCard({ step, index, total, depth, onChange, onRemove, onMove, engineeringMethods }: {
   step: ScenarioStep; index: number; total: number; depth: number;
   onChange: (next: ScenarioStep) => void; onRemove: () => void; onMove: (offset: number) => void;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null }>;
 }) {
   const type = String(step.type || 'http').toLowerCase();
   const update = (patch: ScenarioStep) => {
@@ -220,7 +220,7 @@ function StepCard({ step, index, total, depth, onChange, onRemove, onMove, engin
 
 function StepList({ steps, depth, onChange, allowHooks = true, engineeringMethods = [] }: {
   steps: ScenarioStep[]; depth: number; onChange: (next: ScenarioStep[]) => void; allowHooks?: boolean;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null }>;
 }) {
   const [newType, setNewType] = useState('http');
   const update = (index: number, next: ScenarioStep) => onChange(steps.map((item, i) => i === index ? next : item));
@@ -252,7 +252,7 @@ function StepList({ steps, depth, onChange, allowHooks = true, engineeringMethod
 
 export function ScenarioStepEditor({ steps, onChange, engineeringMethods = [] }: {
   steps: ScenarioStep[]; onChange: (steps: ScenarioStep[]) => void;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null }>;
 }) {
   return <StepList steps={steps} depth={0} onChange={onChange} engineeringMethods={engineeringMethods} />;
 }

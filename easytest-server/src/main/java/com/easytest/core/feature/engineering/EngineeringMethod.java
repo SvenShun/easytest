@@ -62,6 +62,12 @@ public class EngineeringMethod {
     @Column(name = "protocols_json", columnDefinition = "TEXT")
     private String protocolsJson;
 
+    @Column(name = "input_schema", columnDefinition = "TEXT")
+    private String inputSchema;
+
+    @Column(name = "output_schema", columnDefinition = "TEXT")
+    private String outputSchema;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -98,6 +104,8 @@ public class EngineeringMethod {
     public String getPayloadJson() { return payloadJson; }
     public String getLayer() { return layer; }
     public String getProtocolsJson() { return protocolsJson; }
+    public String getInputSchema() { return inputSchema; }
+    public String getOutputSchema() { return outputSchema; }
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void setContractId(String contractId) { this.contractId = contractId; }
@@ -114,5 +122,7 @@ public class EngineeringMethod {
     public void setPayloadJson(String payloadJson) { this.payloadJson = payloadJson; }
     public void setLayer(String layer) { this.layer = layer; }
     public void setProtocolsJson(String protocolsJson) { this.protocolsJson = protocolsJson; }
+    public void setInputSchema(String inputSchema) { this.inputSchema = inputSchema; }
+    public void setOutputSchema(String outputSchema) { this.outputSchema = outputSchema; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

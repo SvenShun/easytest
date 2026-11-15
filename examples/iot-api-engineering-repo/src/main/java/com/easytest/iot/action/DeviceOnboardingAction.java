@@ -22,15 +22,16 @@ public class DeviceOnboardingAction {
         String homeId = context.requireString("homeId");
         String deviceId = context.requireString("deviceId");
         String token = context.requireString("token");
-        String body = "{\"homeId\":\"" + homeId + "\",\"deviceId\":\"" + deviceId + "\"}";
+        String body = com.easytest.iot.template.RequestTemplates.bindDevice(homeId, deviceId);
         HttpAtom.Response response = HttpAtom.postJson(IotConfig.gateway() + "/api/device/bind",
                 body, java.util.Map.of("Content-Type", "application/json", "Authorization", "Bearer " + token),
                 10_000);
         if (!response.ok()) return ContractResult.fail("网关绑定设备失败 status=" + response.status());
         MqttAtom.publish(IotConfig.mqttHost(), IotConfig.mqttPort(), null,
-                "iot/device/" + deviceId + "/online", "{\"status\":\"ONLINE\"}", null, null, 30);
-        long offset = KafkaAtom.produce(IotConfig.kafka(), "iot-device-events", deviceId,
-                "{\"event\":\"DEVICE_BOUND\",\"deviceId\":\"" + deviceId + "\"}", List.of());
+                IotConfig.mqttTopic("online", deviceId),
+                com.easytest.iot.template.RequestTemplates.deviceOnline("ONLINE"), null, null, 30);
+        long offset = KafkaAtom.produce(IotConfig.kafka(), IotConfig.topic("deviceEvents"), deviceId,
+                com.easytest.iot.template.RequestTemplates.deviceEvent("DEVICE_BOUND", deviceId), List.of());
         context.output("bound", true);
         context.output("eventOffset", offset);
         return ContractResult.ok("设备接入组合操作完成");

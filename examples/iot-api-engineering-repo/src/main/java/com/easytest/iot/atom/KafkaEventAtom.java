@@ -18,7 +18,7 @@ public class KafkaEventAtom {
     public ContractResult publish(ContractContext context) {
         String key = context.requireString("key");
         String value = context.requireString("value");
-        long offset = KafkaAtom.produce(IotConfig.kafka(), "iot-device-events", key, value, List.of());
+        long offset = KafkaAtom.produce(IotConfig.kafka(), IotConfig.topic("deviceEvents"), key, value, List.of());
         context.output("offset", offset);
         return ContractResult.ok("Kafka 消息已发送");
     }
@@ -27,7 +27,7 @@ public class KafkaEventAtom {
             protocols = {"KAFKA"}, description = "消费设备事件用于端到端断言",
             inputs = {"topic"}, outputs = {"messages"}, tags = {"iot", "kafka"})
     public ContractResult consume(ContractContext context) {
-        String topic = context.input("topic") == null ? "iot-device-events" : context.requireString("topic");
+        String topic = context.input("topic") == null ? IotConfig.topic("deviceEvents") : context.requireString("topic");
         context.output("messages", KafkaAtom.consume(IotConfig.kafka(), topic, null, 1, 10_000));
         return ContractResult.ok("Kafka 消费完成");
     }

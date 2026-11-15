@@ -80,7 +80,7 @@ export function EngineeringMethodsPage() {
                 <tr key={method.id || method.methodPath}>
                   <td>{method.name}<div className="cell-sub mono">{method.methodPath}</div></td>
                   <td><Pill tone={method.layer === 'ATOM' ? 'green' : method.layer === 'ACTION' ? 'blue' : 'gray'}>{method.layer || 'FLOW'}</Pill>{method.protocols?.length ? <div className="cell-sub">{method.protocols.join(' / ')}</div> : null}</td>
-                  <td className="mono">{method.id || '—'}</td>
+                  <td className="mono">{method.id || '—'}{method.inputSchema ? <div className="cell-sub" title={method.inputSchema}>schema 已声明</div> : null}</td>
                   <td>{method.description || '—'}</td>
                   <td><div className="pill-row">{method.inputs?.map((v) => <Pill key={`i-${v}`} tone="blue">in:{v}</Pill>)}{method.outputs?.map((v) => <Pill key={`o-${v}`} tone="green">out:{v}</Pill>)}</div></td>
                   <td><Pill tone="gray">{method.source || '—'}</Pill></td>
