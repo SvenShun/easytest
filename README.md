@@ -10,6 +10,10 @@
 （本地模式与 MySQL/Redis/MinIO/Kafka 模式各一轮），证据见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) 与
 [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md)。
 
+## 部署文档
+
+从其他电脑克隆和部署，请先看 **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**（前提条件、三种部署模式、远程访问、备份、排障）。
+
 ## 组件
 
 | 组件 | 目录 | 端口 | 说明 |
@@ -127,7 +131,8 @@ tail -f logs/core.log
 - [docs/METERSPHERE-INTEGRATION.md](docs/METERSPHERE-INTEGRATION.md) — MeterSphere v3 适配、源码位置、限制
 - [docs/SONIC-INTEGRATION.md](docs/SONIC-INTEGRATION.md) — Sonic driver-core 真机驱动与许可证说明
 - [docs/METERSPHERE-EMBEDDING.md](docs/METERSPHERE-EMBEDDING.md) — 源码级内嵌模块、安装与验证
-- [docs/RUNBOOK.md](docs/RUNBOOK.md) — 部署、环境变量、切换到 MySQL/Redis/MinIO、排障
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — 完整部署手册（推荐先看）
+- [docs/RUNBOOK.md](docs/RUNBOOK.md) — 运维补充、环境变量、MySQL/Redis/MinIO、排障
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — E2E 验收结果与证据
 - [docs/ACCEPTANCE-PART2.md](docs/ACCEPTANCE-PART2.md) — 第二部分（接口自动化）验收
 - [docs/PRODUCT-ALIGNMENT.md](docs/PRODUCT-ALIGNMENT.md) — YAML 源真相、流程图与后续优先级

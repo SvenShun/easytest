@@ -15,7 +15,7 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ptesthub"]
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} >/dev/null 2>&1"]
       interval: 5s
       timeout: 5s
       retries: 40

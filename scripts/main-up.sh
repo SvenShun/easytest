@@ -26,14 +26,16 @@ mkdir -p logs data/pids
 JAR="$(ls testhub-server/target/testhub-server-*.jar | grep -v original | head -1)"
 if [ -z "$JAR" ]; then echo "core jar not found" >&2; exit 1; fi
 
+PUBLIC_BASE_URL="${TESTHUB_PUBLIC_BASE_URL:-http://127.0.0.1:8080}"
+INTERNAL_BASE_URL="${TESTHUB_INTERNAL_BASE_URL:-$PUBLIC_BASE_URL}"
 echo "==> starting core with MySQL + MinIO"
 TESTHUB_METERSPHERE_WRITEBACK=false \
 SPRING_PROFILES_ACTIVE=mysql \
 SPRING_DATASOURCE_URL="jdbc:mysql://127.0.0.1:3306/testhub_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8" \
 SPRING_DATASOURCE_USERNAME=root \
 SPRING_DATASOURCE_PASSWORD=testhub \
-TESTHUB_PUBLIC_BASE_URL="http://127.0.0.1:8080" \
-TESTHUB_INTERNAL_BASE_URL="http://127.0.0.1:8080" \
+TESTHUB_PUBLIC_BASE_URL="$PUBLIC_BASE_URL" \
+TESTHUB_INTERNAL_BASE_URL="$INTERNAL_BASE_URL" \
 TESTHUB_ARTIFACT_STORE=minio \
 TESTHUB_ARTIFACT_DIR="$ROOT/data/core-artifacts" \
 TESTHUB_MINIO_ENDPOINT="http://127.0.0.1:9000" \

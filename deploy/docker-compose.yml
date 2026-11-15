@@ -9,7 +9,7 @@ services:
       - mysql-data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ptesthub"]
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} >/dev/null 2>&1"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -57,9 +57,10 @@ services:
       TESTHUB_SERVICE_TOKEN: ${TESTHUB_SERVICE_TOKEN:-change-me-service-token}
       TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
       TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
-      TESTHUB_PUBLIC_BASE_URL: http://127.0.0.1:8080
+      TESTHUB_PUBLIC_BASE_URL: ${TESTHUB_PUBLIC_BASE_URL:-http://127.0.0.1:8080}
       TESTHUB_UI_EXECUTION_BASE_URL: http://ui-execution:8081
       TESTHUB_API_EXECUTION_URLS: http://api-execution:8084
+      TESTHUB_APIEXEC_CALLBACK_URL: http://core:8080
       TESTHUB_INTERNAL_BASE_URL: http://core:8080
       TESTHUB_ARTIFACT_DIR: /data/artifacts
       TESTHUB_ARTIFACT_STORE: minio
@@ -106,7 +107,8 @@ services:
       TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
       TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
       TESTHUB_CORE_URL: http://core:8080
-      TESTHUB_APIEXEC_PUBLIC_URL: http://127.0.0.1:8084
+      TESTHUB_APIEXEC_PUBLIC_URL: ${TESTHUB_APIEXEC_PUBLIC_URL:-http://127.0.0.1:8084}
+      TESTHUB_APIEXEC_CALLBACK_URL: http://core:8080
       TESTHUB_APIEXEC_WORKERS: 4
     depends_on:
       mysql:
@@ -128,7 +130,7 @@ services:
       TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
       TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
       TESTHUB_CORE_URL: http://core:8080
-      TESTHUB_UIEXEC_PUBLIC_URL: http://127.0.0.1:8081
+      TESTHUB_UIEXEC_PUBLIC_URL: ${TESTHUB_UIEXEC_PUBLIC_URL:-http://127.0.0.1:8081}
       TESTHUB_UIEXEC_CALLBACK_URL: http://ui-execution:8081
       TESTHUB_QUEUE_STORE: redis
       SPRING_DATA_REDIS_HOST: redis
@@ -190,7 +192,7 @@ services:
       - core
       - ui-execution
     ports:
-      - "5173:80"
+      - "${TESTHUB_WEB_PORT:-5173}:80"
 
 volumes:
   mysql-data:

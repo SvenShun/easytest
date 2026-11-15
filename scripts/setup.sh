@@ -14,6 +14,6 @@ agents/ai-runtime/.venv/bin/pip install -q -r agents/ai-runtime/requirements.txt
 
 echo "==> Web console"
 export npm_config_cache="$ROOT/.npm-cache"
-(cd web && npm install --no-fund --no-audit)
+(cd web && npm install --no-fund --no-audit && npm run build)
 
 echo "done"
