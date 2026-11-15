@@ -40,16 +40,17 @@ export function AgentsPage() {
         <CardHead title="接口 Agent" description="api-execution 注册节点；槽位=worker 数，activeTasks=正在执行任务数" icon="api" />
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Agent</th><th>地址</th><th>能力</th><th>负载</th><th>最近心跳</th></tr></thead>
+            <thead><tr><th>Agent</th><th>地址</th><th>能力</th><th>负载</th><th>状态</th><th>最近心跳</th></tr></thead>
             <tbody>
-              {loading ? <SkeletonRows rows={3} cols={5} /> : apiAgents.length === 0 ? (
-                <tr><td colSpan={5}><EmptyState compact icon="api" title="暂无接口 Agent" description="启动 api-execution 后会自动注册" /></td></tr>
+              {loading ? <SkeletonRows rows={3} cols={6} /> : apiAgents.length === 0 ? (
+                <tr><td colSpan={6}><EmptyState compact icon="api" title="暂无接口 Agent" description="启动 api-execution 后会自动注册" /></td></tr>
               ) : apiAgents.map((agent) => (
                 <tr key={agent.agentId}>
                   <td>{agent.name}<div className="cell-sub mono">{agent.agentId}</div></td>
                   <td className="mono">{agent.baseUrl}</td>
                   <td>{agent.capabilities.map((cap) => <Pill key={cap} tone="blue">{cap}</Pill>)}</td>
                   <td>{agent.activeTasks} / {agent.slots}</td>
+                  <td><Pill tone={agent.status === 'DRAINING' ? 'orange' : 'green'}>{agent.status || 'UP'}</Pill></td>
                   <td>{formatDateTime(agent.lastSeenAt)}</td>
                 </tr>
               ))}
