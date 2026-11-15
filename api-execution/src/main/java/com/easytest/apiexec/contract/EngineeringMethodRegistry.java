@@ -99,6 +99,23 @@ public class EngineeringMethodRegistry {
         }
     }
 
+    /** Writes an uploaded JAR into the engineering directory and reloads methods. */
+    public synchronized void installJar(String filename, byte[] content) {
+        try {
+            Path dir = Paths.get(properties.getEngineeringDir() == null ? "data/engineering"
+                    : properties.getEngineeringDir()).toAbsolutePath().normalize();
+            Files.createDirectories(dir);
+            String safe = filename == null || filename.isBlank() ? "engineering-upload.jar" : filename;
+            safe = safe.replaceAll("[^A-Za-z0-9._-]", "_");
+            if (!safe.endsWith(".jar")) safe += ".jar";
+            Files.write(dir.resolve(safe), content);
+            reload();
+            log.info("engineering artifact installed: {}", safe);
+        } catch (IOException e) {
+            throw new IllegalStateException("安装工程 JAR 失败: " + e.getMessage(), e);
+        }
+    }
+
     /** Test/embedding hook: register a class without a jar. */
     public synchronized void registerClass(Class<?> type) {
         loaded = true;

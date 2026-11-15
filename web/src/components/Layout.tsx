@@ -44,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/kb', label: 'UI 知识库', icon: 'devices', roles: ['ADMIN', 'TESTER'] },
       { path: '/agents', label: '执行节点', icon: 'server', roles: ['ADMIN', 'TESTER'] },
       { path: '/engineering-methods', label: '工程方法', icon: 'code', roles: ['ADMIN', 'TESTER'] },
+      { path: '/engineering-repos', label: 'Git 工程', icon: 'code', roles: ['ADMIN', 'TESTER'] },
       { path: '/projects', label: '项目', icon: 'cases', roles: ['ADMIN', 'TESTER'] },
       { path: '/scripts', label: 'UI 脚本', icon: 'code', roles: ['ADMIN', 'TESTER'] },
       { path: '/plans', label: '测试计划', icon: 'plans', roles: ['ADMIN', 'TESTER'] },
@@ -89,6 +90,8 @@ export function routeTitle(route: RouteState): string {
       return '执行节点';
     case 'engineering-methods':
       return '工程方法';
+    case 'engineering-repos':
+      return 'Git 工程';
     case 'projects':
       return '项目';
     case 'scripts':

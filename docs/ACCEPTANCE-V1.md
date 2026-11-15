@@ -2,6 +2,14 @@
 
 ## 交付范围
 
+### Git 测试工程仓库（新增）
+
+- 多仓库接入（API/UI、地址、分支、目录）
+- 约定 manifest 扫描
+- API 方法自动注册/artifact 上传到 Agent
+- UI 方法生成 STEP 用例并可下发
+- webhook + 定时 commit 检测重扫
+
 ### P0 契约执行
 
 - `contract-api` SDK：`@EasyContract`、`ContractContext`、`ContractResult`

@@ -12,6 +12,9 @@ public interface ApiExecutionClient {
 
     List<EngineeringMethod> listEngineeringMethods();
 
+    /** Installs an engineering JAR on API agents and reloads contract methods. */
+    void uploadEngineeringArtifact(String filename, byte[] content);
+
     record EngineeringMethod(String id, String name, String description, String methodPath,
                             List<String> inputs, List<String> outputs, List<String> tags) {
     }

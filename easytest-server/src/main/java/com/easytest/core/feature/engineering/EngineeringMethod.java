@@ -42,6 +42,20 @@ public class EngineeringMethod {
     @Column(name = "source", length = 64)
     private String source;
 
+    @Column(name = "project_id", length = 64)
+    private String projectId = "default";
+
+    @Column(name = "repo_id", length = 64)
+    private String repoId;
+
+    /** API | UI. */
+    @Column(name = "kind", length = 16)
+    private String kind = "API";
+
+    /** UI steps / artifact / script metadata for repository methods. */
+    @Column(name = "payload_json", columnDefinition = "TEXT")
+    private String payloadJson;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -72,6 +86,10 @@ public class EngineeringMethod {
     public String getOutputsJson() { return outputsJson; }
     public String getTagsJson() { return tagsJson; }
     public String getSource() { return source; }
+    public String getProjectId() { return projectId; }
+    public String getRepoId() { return repoId; }
+    public String getKind() { return kind; }
+    public String getPayloadJson() { return payloadJson; }
     public Instant getUpdatedAt() { return updatedAt; }
 
     public void setContractId(String contractId) { this.contractId = contractId; }
@@ -82,5 +100,9 @@ public class EngineeringMethod {
     public void setOutputsJson(String outputsJson) { this.outputsJson = outputsJson; }
     public void setTagsJson(String tagsJson) { this.tagsJson = tagsJson; }
     public void setSource(String source) { this.source = source; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
+    public void setRepoId(String repoId) { this.repoId = repoId; }
+    public void setKind(String kind) { this.kind = kind; }
+    public void setPayloadJson(String payloadJson) { this.payloadJson = payloadJson; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 }

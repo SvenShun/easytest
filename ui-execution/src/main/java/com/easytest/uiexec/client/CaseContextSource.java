@@ -11,6 +11,11 @@ public interface CaseContextSource {
 
     ExecutionContext fetch(String caseId);
 
+    /** Fetch under a project context when the backend supports it. */
+    default ExecutionContext fetch(String caseId, String projectId) {
+        return fetch(caseId);
+    }
+
     /** Short identifier used in logs and audit. */
     String backend();
 }

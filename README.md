@@ -202,3 +202,5 @@ MySQL / Redis / MinIO / Kafka 已完成真实验收（Kafka 仅承载任务事�
 EasyTest is released under the **GNU Affero General Public License v3.0** (see [LICENSE](LICENSE)).
 Third-party components and their obligations are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 and [docs/LEGAL.md](docs/LEGAL.md).
+
+- [Git 测试工程接入](docs/GIT-ENGINEERING-REPOS.md)

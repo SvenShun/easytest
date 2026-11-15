@@ -39,6 +39,10 @@ public class EngineeringMethodService {
         return methods.findAll().stream().map(this::view).toList();
     }
 
+    public List<MethodView> listByRepo(String repoId) {
+        return methods.findByRepoId(repoId).stream().map(this::view).toList();
+    }
+
     @Transactional
     public SyncResult syncFromAgents() {
         int imported = 0;
@@ -106,7 +110,8 @@ public class EngineeringMethodService {
     private MethodView view(EngineeringMethod method) {
         return new MethodView(method.getId(), method.getContractId(), method.getName(), method.getDescription(),
                 method.getMethodPath(), readList(method.getInputsJson()), readList(method.getOutputsJson()),
-                readList(method.getTagsJson()), method.getSource(), method.getUpdatedAt());
+                readList(method.getTagsJson()), method.getSource(), method.getUpdatedAt(),
+                method.getProjectId(), method.getRepoId(), method.getKind(), method.getPayloadJson());
     }
 
     private String json(List<String> values) {

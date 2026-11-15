@@ -43,11 +43,17 @@ public class CoreClient {
     }
 
     public ExecutionContext fetchExecutionContext(String caseId) {
+        return fetchExecutionContext(caseId, null);
+    }
+
+    public ExecutionContext fetchExecutionContext(String caseId, String projectId) {
         try {
-            ExecutionContext context = client.get()
-                    .uri("/internal/v1/cases/{caseId}/execution-context", caseId)
-                    .retrieve()
-                    .body(ExecutionContext.class);
+            var request = client.get()
+                    .uri("/internal/v1/cases/{caseId}/execution-context", caseId);
+            if (projectId != null && !projectId.isBlank()) {
+                request = request.header("X-Project-Id", projectId);
+            }
+            ExecutionContext context = request.retrieve().body(ExecutionContext.class);
             if (context == null) {
                 throw new CoreClientException("core 返回空的执行上下文", 502);
             }

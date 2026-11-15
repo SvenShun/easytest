@@ -210,6 +210,37 @@ public class RestApiExecutionClient implements ApiExecutionClient {
         return new ArrayList<>(methods.values());
     }
 
+    @Override
+    public void uploadEngineeringArtifact(String filename, byte[] content) {
+        RuntimeException last = null;
+        for (String baseUrl : candidateUrls(java.util.Set.of("COMPONENT"))) {
+            try {
+                org.springframework.core.io.ByteArrayResource resource =
+                        new org.springframework.core.io.ByteArrayResource(content) {
+                            @Override
+                            public String getFilename() {
+                                return filename;
+                            }
+                        };
+                org.springframework.util.LinkedMultiValueMap<String, Object> parts =
+                        new org.springframework.util.LinkedMultiValueMap<>();
+                parts.add("file", resource);
+                client.post()
+                        .uri(baseUrl + "/api/v1/api-execution/engineering/upload")
+                        .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
+                        .body(parts)
+                        .retrieve()
+                        .body(JsonNode.class);
+                log.info("engineering artifact uploaded worker={} file={}", baseUrl, filename);
+                return;
+            } catch (RuntimeException e) {
+                last = e;
+                log.warn("engineering artifact upload failed worker={}: {}", baseUrl, e.getMessage());
+            }
+        }
+        throw last == null ? ApiException.conflict("没有可用的 API Agent 部署工程 JAR") : last;
+    }
+
     private List<String> texts(JsonNode node, String field) {
         JsonNode value = node == null ? null : node.get(field);
         if (value == null || !value.isArray()) return List.of();

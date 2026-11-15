@@ -1,0 +1,19 @@
+schemaVersion: 1
+repoType: api
+methods:
+  - id: git.login
+    name: Git 仓库登录
+    description: 来自独立 API 自动化工程仓库的登录测试方法
+    methodPath: com.example.gitdemo.GitDemoCases#login
+    inputs: [username, password]
+    outputs: [token, userId]
+    tags: [git, login]
+    artifact: target/git-demo-api.jar
+  - id: git.health
+    name: Git 仓库健康检查
+    description: 来自独立 API 自动化工程仓库的健康检查方法
+    methodPath: com.example.gitdemo.GitDemoCases#health
+    inputs: []
+    outputs: [status]
+    tags: [git, health]
+    artifact: target/git-demo-api.jar

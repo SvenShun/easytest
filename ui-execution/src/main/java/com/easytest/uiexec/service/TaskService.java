@@ -157,9 +157,12 @@ public class TaskService {
             throw ApiException.badRequest("STEP 任务至少需要一个启用的步骤");
         }
 
+        String effectiveProject = hasText(projectIdOverride) ? projectIdOverride.trim()
+                : hasText(request.projectId()) ? request.projectId().trim() : "default";
         ExecutionContext context;
         try {
-            context = caseContextSource.fetch(caseId);
+            context = caseContextSource.fetch(caseId, effectiveProject);
+            if (context == null) context = caseContextSource.fetch(caseId);
         } catch (CoreClientException e) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "CORE_UNAVAILABLE", e.getMessage());
         }
@@ -184,8 +187,7 @@ public class TaskService {
         String createdBy = request.createdBy() == null || request.createdBy().isBlank() ? actor : request.createdBy();
         TaskEntity task = new TaskEntity(Ids.newId("task"), caseId, decision.executorType(), TaskStatus.PENDING,
                 timeoutSec, stepTimeoutSec, Instant.now());
-        task.setProjectId(hasText(projectIdOverride) ? projectIdOverride.trim()
-                : hasText(request.projectId()) ? request.projectId().trim() : "default");
+        task.setProjectId(effectiveProject);
         if (context.script() != null) {
             task.setScriptId(context.script().id());
             task.setScriptContractId(context.script().contractId());
@@ -278,7 +280,8 @@ public class TaskService {
         }
         ExecutionContext context;
         try {
-            context = caseContextSource.fetch(task.getCaseId());
+            context = caseContextSource.fetch(task.getCaseId(), task.getProjectId());
+            if (context == null) context = caseContextSource.fetch(task.getCaseId());
         } catch (CoreClientException e) {
             finishLocked(task, TaskStatus.FAILED, FailureCategory.EXECUTOR_UNAVAILABLE,
                     "获取执行上下文失败: " + e.getMessage());

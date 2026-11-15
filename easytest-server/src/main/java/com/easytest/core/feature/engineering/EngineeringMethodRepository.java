@@ -8,4 +8,12 @@ public interface EngineeringMethodRepository extends JpaRepository<EngineeringMe
     Optional<EngineeringMethod> findByMethodPath(String methodPath);
 
     boolean existsByMethodPath(String methodPath);
+
+    java.util.List<EngineeringMethod> findByProjectIdOrderByUpdatedAtDesc(String projectId);
+
+    long countByRepoId(String repoId);
+
+    java.util.List<EngineeringMethod> findByRepoId(String repoId);
+
+    void deleteByRepoId(String repoId);
 }

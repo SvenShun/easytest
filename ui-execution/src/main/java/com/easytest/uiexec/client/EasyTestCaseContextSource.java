@@ -21,6 +21,11 @@ public class EasyTestCaseContextSource implements CaseContextSource {
     }
 
     @Override
+    public ExecutionContext fetch(String caseId, String projectId) {
+        return coreClient.fetchExecutionContext(caseId, projectId);
+    }
+
+    @Override
     public String backend() {
         return "easytest";
     }

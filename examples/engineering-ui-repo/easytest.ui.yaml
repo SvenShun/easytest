@@ -1,0 +1,53 @@
+schemaVersion: 1
+repoType: ui
+cases:
+  - id: ui.git.login
+    name: Git 仓库 UI 登录
+    description: 来自独立 UI 自动化工程仓库的 STEP 用例
+    app: com.easytest.demo
+    tags: [git, ui, login]
+    inputs: []
+    outputs: [loggedIn]
+    steps:
+      - seq: 1
+        stepType: LAUNCH
+        value: com.easytest.demo
+        timeoutMs: 15000
+      - seq: 2
+        stepType: CLICK
+        selectorType: TEXT
+        selector: 登录
+        timeoutMs: 10000
+      - seq: 3
+        stepType: INPUT
+        selectorType: TEXT
+        selector: 用户名
+        value: tester
+        timeoutMs: 10000
+      - seq: 4
+        stepType: ASSERT_TEXT
+        selectorType: TEXT
+        selector: 登录成功
+        assertValue: 登录成功
+        timeoutMs: 10000
+  - id: ui.git.smoke
+    name: Git 仓库 UI 冒烟
+    description: 来自独立 UI 自动化工程仓库的首页启动用例
+    app: com.easytest.demo
+    tags: [git, ui, smoke]
+    steps:
+      - seq: 1
+        stepType: LAUNCH
+        value: com.easytest.demo
+        timeoutMs: 15000
+      - seq: 2
+        stepType: WAIT_FOR
+        selectorType: TEXT
+        selector: 首页
+        timeoutMs: 10000
+      - seq: 3
+        stepType: ASSERT_NOT_TEXT
+        selectorType: TEXT
+        selector: 崩溃
+        assertValue: 崩溃
+        timeoutMs: 5000

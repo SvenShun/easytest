@@ -10,7 +10,8 @@ public final class EngineeringMethodDtos {
 
     public record MethodView(String id, String contractId, String name, String description, String methodPath,
                              List<String> inputs, List<String> outputs, List<String> tags,
-                             String source, Instant updatedAt) {
+                             String source, Instant updatedAt, String projectId, String repoId,
+                             String kind, String payloadJson) {
     }
 
     public record ManifestImportRequest(String yaml) {

@@ -19,5 +19,6 @@ export { uiexecApi } from './uiexec';
 export { apiAgentsApi } from './apiagents';
 export { engineeringMethodsApi } from './engineering';
 export { projectsApi } from './projects';
+export { engineeringReposApi } from './engineeringRepos';
 export type { TaskListParams } from './uiexec';
 export { ApiError, TOKEN_KEY, USER_KEY, clearToken, getToken, saveToken, request } from './client';
