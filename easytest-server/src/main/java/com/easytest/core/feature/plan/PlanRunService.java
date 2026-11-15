@@ -596,6 +596,7 @@ public class PlanRunService {
         payload.put("iteration", dataRow.isEmpty() ? 0 : 0);
         payload.put("request", request);
         payload.put("assertions", environmentResolver.applyAssertions(view.assertions(), environment, dataRow));
+        payload.put("requiredCapabilities", List.of("HTTP"));
         payload.put("createdBy", actor);
         return payload;
     }

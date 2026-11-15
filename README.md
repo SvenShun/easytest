@@ -25,6 +25,8 @@
 | ai-runtime | `agents/ai-runtime/` | 8095 | 设备侧 AI 执行期决策器（Python）：截图+UI 树 → 模型决策 → 动作 → 轨迹 |
 | web | `web/` | 5173 | React 控制台 |
 | ws-scrcpy（可选） | `tools/ws-scrcpy/` | 8000 | 真机实时画面（scrcpy H.264 → WebCodecs），设备管理弹窗内嵌 |
+| contract-api | `contract-api/` | — | 测试工程契约 SDK：`@EasyContract`、上下文/结果、方法元数据 |
+| api-engineering 示例 | `examples/api-engineering/` | — | Java 测试工程/复杂用例示例 |
 | common | `common/` | — | JWT/角色/服务令牌/异常/加密等共享能力 |
 
 中间件：MySQL 8（业务库）、Redis 7（设备 FIFO）、MinIO（产物）、Kafka 3.8（任务事件流）；
@@ -106,6 +108,8 @@ EASYTEST_INFRA=docker EASYTEST_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 ## 关键设计
 
 - **执行器路由**：计划层可覆盖；未指定时有脚本→传统脚本，无脚本→AI Runtime；接口用例固定 api-execution。
+- **契约执行**：场景 `component` 步骤引用测试工程 `@EasyContract` 方法；工程 JAR 由 api-execution Agent 加载。
+- **API Agent**：注册/心跳、能力、槽位、负载，core 按能力和最低负载选择；执行节点页可见。
 - **环境与鉴权**：环境提供 Base URL/公共 Headers/变量，支持 Bearer/Basic/API Key/登录接口提取 Token；登录每次计划触发执行一次。
 - **数据驱动**：接口用例数据集一行一次执行，运行项带 `[i/n]` 和 `iteration`，行字段可用 `${field}`/`${data.field}`。
 - **共享队列**：api-execution 可多实例部署，Redis List 共享任务队列，任务记录 `workerId`。

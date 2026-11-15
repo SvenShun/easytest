@@ -145,6 +145,7 @@ public class ApiScenarioService {
             payload.put("environment", environment(envId));
             payload.put("variables", variables);
             payload.put("timeoutSec", timeout);
+            payload.put("requiredCapabilities", requiredCapabilities(scenario.getYamlText()));
             payload.put("createdBy", actor);
             if (planId != null) payload.put("planId", planId);
             if (planRunId != null) payload.put("planRunId", planRunId);
@@ -245,6 +246,24 @@ public class ApiScenarioService {
         }
         return create(new ScenarioRequest(request.name(), request.description(), request.yaml(),
                 request.environmentId(), request.enabled()));
+    }
+
+    private List<String> requiredCapabilities(String yaml) {
+        java.util.LinkedHashSet<String> capabilities = new java.util.LinkedHashSet<>();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(?m)^\\s*type\\s*:\s*([A-Za-z]+)")
+                .matcher(yaml == null ? "" : yaml);
+        while (matcher.find()) {
+            String type = matcher.group(1).toUpperCase(Locale.ROOT);
+            switch (type) {
+                case "HTTP" -> capabilities.add("HTTP");
+                case "SQL" -> capabilities.add("SQL");
+                case "GROOVY" -> capabilities.add("GROOVY");
+                case "COMPONENT" -> capabilities.add("COMPONENT");
+                default -> { }
+            }
+        }
+        if (capabilities.isEmpty()) capabilities.add("HTTP");
+        return new ArrayList<>(capabilities);
     }
 
     public ScenarioGraph analyze(String yaml) {

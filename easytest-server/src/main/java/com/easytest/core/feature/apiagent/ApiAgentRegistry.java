@@ -57,6 +57,23 @@ public class ApiAgentRegistry {
         return agents.values().stream().sorted(Comparator.comparing(Agent::agentId)).toList();
     }
 
+    /** Atomically reserves one slot on the least-loaded matching agent. */
+    public synchronized String reserve(Set<String> requiredCapabilities) {
+        evictStale();
+        Set<String> required = requiredCapabilities == null ? Set.of() : requiredCapabilities;
+        Agent selected = agents.values().stream()
+                .filter(agent -> agent.activeTasks() < agent.slots())
+                .filter(agent -> agent.capabilities().containsAll(required))
+                .min(Comparator.comparingInt(Agent::activeTasks)
+                        .thenComparing(Agent::lastSeenAt))
+                .orElse(null);
+        if (selected == null) return null;
+        Agent next = new Agent(selected.agentId(), selected.name(), selected.baseUrl(),
+                selected.capabilities(), selected.slots(), selected.activeTasks() + 1, selected.lastSeenAt());
+        agents.put(selected.agentId(), next);
+        return selected.baseUrl();
+    }
+
     public List<String> availableBaseUrls(Set<String> requiredCapabilities) {
         evictStale();
         Set<String> required = requiredCapabilities == null ? Set.of() : requiredCapabilities;

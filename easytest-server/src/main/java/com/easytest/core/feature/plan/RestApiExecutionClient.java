@@ -54,7 +54,10 @@ public class RestApiExecutionClient implements ApiExecutionClient {
 
     @Override
     public TaskCreated createTask(Map<String, Object> payload) {
-        List<String> candidates = candidateUrls(java.util.Set.of());
+        java.util.Set<String> requiredCapabilities = requiredCapabilities(payload);
+        String reserved = agentRegistry != null && agentRegistry.hasAgents()
+                ? agentRegistry.reserve(requiredCapabilities) : null;
+        List<String> candidates = reserved != null ? List.of(reserved) : candidateUrls(requiredCapabilities);
         if (candidates.isEmpty()) {
             throw ApiException.conflict("没有可用的 API Agent（能力/槽位不足）");
         }
@@ -119,6 +122,21 @@ public class RestApiExecutionClient implements ApiExecutionClient {
             throw last;
         }
         return tasks;
+    }
+
+    @SuppressWarnings("unchecked")
+    private java.util.Set<String> requiredCapabilities(Map<String, Object> payload) {
+        Object value = payload == null ? null : payload.get("requiredCapabilities");
+        if (value instanceof java.util.Collection<?> collection) {
+            java.util.Set<String> result = new java.util.LinkedHashSet<>();
+            collection.forEach(item -> {
+                if (item != null && !String.valueOf(item).isBlank()) {
+                    result.add(String.valueOf(item).toUpperCase(java.util.Locale.ROOT));
+                }
+            });
+            return result;
+        }
+        return java.util.Set.of();
     }
 
     private List<String> candidateUrls(java.util.Set<String> requiredCapabilities) {
