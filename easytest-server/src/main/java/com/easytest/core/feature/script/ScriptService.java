@@ -17,7 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /** Script project upload / metadata / bundle access. */
 @Service
@@ -40,6 +42,12 @@ public class ScriptService {
 
     @Transactional
     public ScriptView upload(MultipartFile file, String name, String scriptType, String entryCommand) {
+        return upload(file, name, scriptType, entryCommand, null);
+    }
+
+    @Transactional
+    public ScriptView upload(MultipartFile file, String name, String scriptType, String entryCommand,
+                             String manifestYaml) {
         if (file == null || file.isEmpty()) {
             throw ApiException.badRequest("脚本文件不能为空");
         }
@@ -52,7 +60,11 @@ public class ScriptService {
         }
         ScriptType type = parseType(scriptType);
         String scriptName = isBlank(name) ? originalName : name.trim();
-        String command = isBlank(entryCommand) ? DEFAULT_ENTRY_COMMAND : entryCommand.trim();
+        ScriptManifest manifest = parseManifest(manifestYaml);
+        String command = isBlank(entryCommand)
+                ? (manifest == null || isBlank(manifest.entryCommand()) ? DEFAULT_ENTRY_COMMAND
+                : manifest.entryCommand().trim())
+                : entryCommand.trim();
         AuthPrincipal principal = CurrentUser.require();
         String id = Ids.newId("script");
         String objectKey = "scripts/" + id + ".zip";
@@ -65,6 +77,12 @@ public class ScriptService {
         artifactStore.put(objectKey, content);
         ScriptProject project = new ScriptProject(id, scriptName, type, command, objectKey, content.length,
                 principal.username(), Instant.now());
+        if (manifest != null) {
+            project.setContractId(manifest.id());
+            project.setDescription(manifest.description());
+            project.setInputContractJson(json(manifest.inputs()));
+            project.setOutputContractJson(json(manifest.outputs()));
+        }
         ScriptProject saved = repository.save(project);
         auditService.record(AuditService.SCRIPT_UPLOAD, "script:" + id,
                 "name=" + scriptName + ",sizeBytes=" + content.length);
@@ -118,6 +136,51 @@ public class ScriptService {
         } catch (IllegalArgumentException e) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SCRIPT_TYPE", "不支持的脚本类型: " + value);
         }
+    }
+
+    private ScriptManifest parseManifest(String yaml) {
+        if (isBlank(yaml)) return null;
+        Map<?, ?> root;
+        try {
+            Object loaded = new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.SafeConstructor(
+                    new org.yaml.snakeyaml.LoaderOptions())).load(yaml);
+            if (!(loaded instanceof Map<?, ?> map)) {
+                throw ApiException.badRequest("script manifest 必须是 YAML 对象");
+            }
+            root = map;
+        } catch (ApiException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw ApiException.badRequest("script manifest 解析失败: " + e.getMessage());
+        }
+        String id = text(root.get("id"));
+        if (id == null) {
+            throw ApiException.badRequest("script manifest 缺少 id");
+        }
+        return new ScriptManifest(id, text(root.get("description")), text(root.get("entryCommand")),
+                strings(root.get("inputs")), strings(root.get("outputs")));
+    }
+
+    private String json(List<String> values) {
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(
+                    values == null ? List.of() : values);
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private List<String> strings(Object value) {
+        if (!(value instanceof java.util.List<?> list)) return List.of();
+        return list.stream().filter(item -> item != null).map(String::valueOf).toList();
+    }
+
+    private String text(Object value) {
+        return value == null || String.valueOf(value).isBlank() ? null : String.valueOf(value);
+    }
+
+    private record ScriptManifest(String id, String description, String entryCommand,
+                                  List<String> inputs, List<String> outputs) {
     }
 
     private static boolean isBlank(String value) {

@@ -45,6 +45,23 @@ scriptType = JUNIT / PYTEST / ...（按现有脚本类型）
 entryCommand = sh run.sh
 ```
 
+上传时可附带 `manifest` 表单字段（YAML）：
+
+```yaml
+schemaVersion: 1
+id: ui.login
+name: 登录脚本
+description: 使用测试工程代码驱动登录
+entryCommand: sh run.sh
+inputs: [username, password]
+outputs: [token]
+```
+
+- 平台保存 `contractId/description/inputs/outputs`
+- 用例详情显示脚本契约
+- `entryCommand` 未显式传入时使用 manifest 中的入口
+- 缺少 `id` 的 manifest 会被 400 拒绝
+
 device-agent 下载脚本包、执行、解析 JUnit XML 并回传结果/工件。
 
 ## 设备与项目

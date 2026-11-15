@@ -1072,7 +1072,15 @@ export function CasesPage() {
                     <div className="script-meta">
                       类型：{SCRIPT_TYPE_LABEL[detail.script.scriptType] || detail.script.scriptType}
                       {detail.script.entryCommand ? ` · 入口命令：${detail.script.entryCommand}` : ''}
+                      {detail.script.contractId ? ` · 契约：${detail.script.contractId}` : ''}
                     </div>
+                    {detail.script.description ? <div className="script-meta">{detail.script.description}</div> : null}
+                    {detail.script.inputs?.length || detail.script.outputs?.length ? (
+                      <div className="script-meta">
+                        {detail.script.inputs?.length ? `输入：${detail.script.inputs.join(', ')}` : ''}
+                        {detail.script.outputs?.length ? ` · 输出：${detail.script.outputs.join(', ')}` : ''}
+                      </div>
+                    ) : null}
                   </div>
                   <Pill tone="blue">传统脚本</Pill>
                 </div>

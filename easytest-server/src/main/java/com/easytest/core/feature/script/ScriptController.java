@@ -28,8 +28,9 @@ public class ScriptController {
     public ScriptView upload(@RequestParam("file") MultipartFile file,
                              @RequestParam(required = false) String name,
                              @RequestParam String scriptType,
-                             @RequestParam(required = false) String entryCommand) {
-        return scriptService.upload(file, name, scriptType, entryCommand);
+                             @RequestParam(required = false) String entryCommand,
+                             @RequestParam(required = false) String manifest) {
+        return scriptService.upload(file, name, scriptType, entryCommand, manifest);
     }
 
     @GetMapping

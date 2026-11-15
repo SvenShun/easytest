@@ -28,6 +28,18 @@ public class ScriptProject {
     @Column(name = "entry_command", length = 512)
     private String entryCommand;
 
+    @Column(name = "contract_id", length = 128)
+    private String contractId;
+
+    @Column(name = "description", length = 2000)
+    private String description;
+
+    @Column(name = "input_contract_json", columnDefinition = "TEXT")
+    private String inputContractJson;
+
+    @Column(name = "output_contract_json", columnDefinition = "TEXT")
+    private String outputContractJson;
+
     @Column(name = "object_key", length = 512)
     private String objectKey;
 
@@ -70,6 +82,29 @@ public class ScriptProject {
     public String getEntryCommand() {
         return entryCommand;
     }
+
+    public java.util.List<String> getInputs() { return readList(inputContractJson); }
+    public java.util.List<String> getOutputs() { return readList(outputContractJson); }
+
+    private static java.util.List<String> readList(String json) {
+        if (json == null || json.isBlank()) return java.util.List.of();
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(json,
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() { });
+        } catch (Exception e) {
+            return java.util.List.of();
+        }
+    }
+
+    public String getContractId() { return contractId; }
+    public String getDescription() { return description; }
+    public String getInputContractJson() { return inputContractJson; }
+    public String getOutputContractJson() { return outputContractJson; }
+
+    public void setContractId(String contractId) { this.contractId = contractId; }
+    public void setDescription(String description) { this.description = description; }
+    public void setInputContractJson(String inputContractJson) { this.inputContractJson = inputContractJson; }
+    public void setOutputContractJson(String outputContractJson) { this.outputContractJson = outputContractJson; }
 
     public String getObjectKey() {
         return objectKey;

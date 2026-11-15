@@ -85,6 +85,10 @@ export interface ScriptInfo {
   scriptType: ScriptType;
   entryCommand?: string;
   sizeBytes?: number;
+  contractId?: string;
+  description?: string;
+  inputs?: string[];
+  outputs?: string[];
   createdBy?: string;
   createdAt?: string;
 }
@@ -94,6 +98,10 @@ export interface CaseScriptRef {
   name: string;
   scriptType: ScriptType;
   entryCommand?: string;
+  contractId?: string;
+  description?: string;
+  inputs?: string[];
+  outputs?: string[];
 }
 
 export interface CaseCapability {
