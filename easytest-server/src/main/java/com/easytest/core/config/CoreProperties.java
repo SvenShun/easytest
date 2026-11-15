@@ -23,6 +23,9 @@ public class CoreProperties {
     /** Comma-separated base URLs of api-execution workers (round-robin). */
     private String apiExecutionBaseUrls = "http://127.0.0.1:8084";
 
+    /** Seconds to wait for an API agent slot before failing a plan trigger. */
+    private int apiAgentWaitSeconds = 10;
+
     /** Lifetime of a script bundle download ticket. */
     private Duration ticketTtl = Duration.ofMinutes(15);
 
@@ -59,6 +62,14 @@ public class CoreProperties {
 
     public void setUiExecutionBaseUrl(String uiExecutionBaseUrl) {
         this.uiExecutionBaseUrl = uiExecutionBaseUrl;
+    }
+
+    public int getApiAgentWaitSeconds() {
+        return apiAgentWaitSeconds;
+    }
+
+    public void setApiAgentWaitSeconds(int apiAgentWaitSeconds) {
+        this.apiAgentWaitSeconds = apiAgentWaitSeconds;
     }
 
     public Duration getTicketTtl() {

@@ -105,10 +105,23 @@ java -cp contract-api/target/classes:examples/api-engineering/target/api-enginee
 
 「工程方法」页面可执行同步/导入；场景编辑器工程组件步骤提供 methodPath 下拉提示。
 
+## 保存时校验
+
+平台在创建/更新场景和只校验接口时检查：
+
+- `component.methodPath` 是否在平台工程方法注册表中；
+- 方法声明的必填 `inputs` 是否都出现在步骤 `inputs` 中。
+
+未注册示例会返回 400：
+
+```text
+契约校验失败: 工程方法未注册: no.such#method（先在执行节点同步工程方法）
+```
+
 ## 尚未完成
 
 - manifest 自动写入 Git/平台注册表（当前支持手动/Agent 同步）
-- 平台保存时校验 methodPath 是否存在/输入输出是否匹配
+- 方法输出契约与后续变量类型/必填校验
 - 工程 commit 与方法契约版本绑定到每次执行（当前场景运行记录 Git sourcePath/sourceCommit，方法契约记录在组件报告中）
 - Git 工程 commit 固化到执行记录
 - Python 工程 SDK

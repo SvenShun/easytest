@@ -11,6 +11,7 @@ import com.easytest.core.feature.apienv.ApiEnvironment;
 import com.easytest.core.feature.apienv.ApiEnvironmentRepository;
 import com.easytest.core.feature.apienv.ApiEnvironmentResolver;
 import com.easytest.core.feature.apiscenario.ApiScenarioDtos.*;
+import com.easytest.core.feature.engineering.EngineeringContractValidator;
 import com.easytest.core.feature.notification.NotificationService;
 import com.easytest.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
@@ -40,11 +41,13 @@ public class ApiScenarioService {
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
     private final ScenarioGraphAnalyzer graphAnalyzer;
+    private final EngineeringContractValidator contractValidator;
 
     public ApiScenarioService(ApiScenarioRepository scenarios, ApiScenarioRunRepository runs,
                               ApiEnvironmentRepository environments, ApiEnvironmentResolver environmentResolver,
                               ScenarioExecutionClient executionClient, ObjectMapper objectMapper,
-                              NotificationService notificationService, ScenarioGraphAnalyzer graphAnalyzer) {
+                              NotificationService notificationService, ScenarioGraphAnalyzer graphAnalyzer,
+                              EngineeringContractValidator contractValidator) {
         this.scenarios = scenarios;
         this.runs = runs;
         this.environments = environments;
@@ -53,6 +56,7 @@ public class ApiScenarioService {
         this.objectMapper = objectMapper;
         this.notificationService = notificationService;
         this.graphAnalyzer = graphAnalyzer;
+        this.contractValidator = contractValidator;
     }
 
     public PageResponse<ScenarioView> list(String keyword, Integer page, Integer size) {
@@ -95,7 +99,15 @@ public class ApiScenarioService {
     }
 
     public JsonNode validate(String yaml) {
+        validateContracts(yaml);
         return executionClient.validate(yaml);
+    }
+
+    private void validateContracts(String yaml) {
+        List<String> errors = contractValidator.validate(yaml);
+        if (!errors.isEmpty()) {
+            throw ApiException.badRequest("契约校验失败: " + String.join("; ", errors));
+        }
     }
 
     public RunView run(String scenarioId, RunRequest request) {
@@ -301,6 +313,9 @@ public class ApiScenarioService {
     }
 
     private void validate(ScenarioRequest request) {
+        if (request != null && request.yaml() != null) {
+            validateContracts(request.yaml());
+        }
         if (request == null || request.name() == null || request.name().isBlank()) {
             throw ApiException.badRequest("场景名称不能为空");
         }

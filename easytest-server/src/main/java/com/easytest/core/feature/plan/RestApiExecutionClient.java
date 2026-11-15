@@ -31,6 +31,7 @@ public class RestApiExecutionClient implements ApiExecutionClient {
     private final RestClient client;
     private final List<String> baseUrls;
     private final ApiAgentRegistry agentRegistry;
+    private final int agentWaitSeconds;
     private final AtomicInteger cursor = new AtomicInteger();
 
     public RestApiExecutionClient(CoreProperties coreProperties, SecurityProperties securityProperties,
@@ -44,6 +45,7 @@ public class RestApiExecutionClient implements ApiExecutionClient {
                 .defaultHeader("Content-Type", "application/json")
                 .build();
         this.agentRegistry = agentRegistry;
+        this.agentWaitSeconds = Math.max(0, coreProperties.getApiAgentWaitSeconds());
         String raw = coreProperties.getApiExecutionBaseUrls();
         this.baseUrls = Arrays.stream((raw == null || raw.isBlank() ? "http://127.0.0.1:8084" : raw).split(","))
                 .map(String::trim)
@@ -55,8 +57,21 @@ public class RestApiExecutionClient implements ApiExecutionClient {
     @Override
     public TaskCreated createTask(Map<String, Object> payload) {
         java.util.Set<String> requiredCapabilities = requiredCapabilities(payload);
-        String reserved = agentRegistry != null && agentRegistry.hasAgents()
-                ? agentRegistry.reserve(requiredCapabilities) : null;
+        String reserved = null;
+        if (agentRegistry != null && agentRegistry.hasAgents()) {
+            long deadline = System.currentTimeMillis() + agentWaitSeconds * 1000L;
+            do {
+                reserved = agentRegistry.reserve(requiredCapabilities);
+                if (reserved != null || !agentRegistry.hasAgents()) break;
+                if (System.currentTimeMillis() >= deadline) break;
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            } while (true);
+        }
         List<String> candidates = reserved != null ? List.of(reserved) : candidateUrls(requiredCapabilities);
         if (candidates.isEmpty()) {
             throw ApiException.conflict("没有可用的 API Agent（能力/槽位不足）");
