@@ -11,4 +11,10 @@
     <artifactId>easytest-contract-api</artifactId>
     <name>easytest-contract-api</name>
     <description>Test engineering contract annotations, context and manifest model</description>
+    <dependencies>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+    </dependencies>
 </project>

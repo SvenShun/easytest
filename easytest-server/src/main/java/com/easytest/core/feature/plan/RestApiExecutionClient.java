@@ -149,6 +149,40 @@ public class RestApiExecutionClient implements ApiExecutionClient {
         return new ArrayList<>(candidates);
     }
 
+    @Override
+    public List<EngineeringMethod> listEngineeringMethods() {
+        java.util.LinkedHashMap<String, EngineeringMethod> methods = new java.util.LinkedHashMap<>();
+        for (String baseUrl : candidateUrls(java.util.Set.of())) {
+            try {
+                JsonNode response = client.get()
+                        .uri(baseUrl + "/api/v1/api-execution/contracts")
+                        .retrieve()
+                        .body(JsonNode.class);
+                JsonNode data = unwrap(response);
+                JsonNode items = data != null && data.isArray() ? data : data == null ? null : data.path("items");
+                if (items == null || !items.isArray()) continue;
+                for (JsonNode item : items) {
+                    String path = text(item, "methodPath");
+                    if (path == null) continue;
+                    methods.put(path, new EngineeringMethod(text(item, "id"), text(item, "name"),
+                            text(item, "description"), path, texts(item, "inputs"),
+                            texts(item, "outputs"), texts(item, "tags")));
+                }
+            } catch (RuntimeException e) {
+                log.warn("engineering methods query failed worker={}: {}", baseUrl, e.getMessage());
+            }
+        }
+        return new ArrayList<>(methods.values());
+    }
+
+    private List<String> texts(JsonNode node, String field) {
+        JsonNode value = node == null ? null : node.get(field);
+        if (value == null || !value.isArray()) return List.of();
+        List<String> result = new ArrayList<>();
+        value.forEach(item -> result.add(item.asText()));
+        return result;
+    }
+
     private JsonNode unwrap(JsonNode response) {
         if (response != null && response.has("data") && !response.get("data").isNull()) {
             return response.get("data");

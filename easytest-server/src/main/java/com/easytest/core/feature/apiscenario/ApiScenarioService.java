@@ -135,6 +135,8 @@ public class ApiScenarioService {
         Instant now = Instant.now();
         ApiScenarioRun run = new ApiScenarioRun(Ids.newId("scenario-run"), scenario.getId(), scenario.getName(),
                 blank(envId), json(variables), actor, now);
+        run.setSourcePath(scenario.getSourcePath());
+        run.setSourceCommit(scenario.getSourceCommit());
         run = runs.save(run);
         try {
             Map<String, Object> payload = new LinkedHashMap<>();
@@ -228,7 +230,7 @@ public class ApiScenarioService {
                 failed++;
                 results.add(new RunView(Ids.newId("scenario-run"), id, null, null, "FAILED",
                         request.environmentId(), e.getMessage(), "EXECUTION_UNAVAILABLE", null, null, null,
-                        Map.of(), CurrentUser.require().username(), Instant.now(), Instant.now()));
+                        Map.of(), null, null, CurrentUser.require().username(), Instant.now(), Instant.now()));
             }
         }
         return new BatchRunView(results, results.size() - failed, failed);
@@ -329,7 +331,8 @@ public class ApiScenarioService {
         return new RunView(run.getId(), run.getScenarioId(), run.getScenarioName(), run.getTaskId(),
                 run.getStatus(), run.getEnvironmentId(), run.getSummary(), run.getFailureReason(),
                 run.getDurationMs(), readJson(run.getStepsJson()), readJson(run.getReportJson()),
-                readMap(run.getVariablesJson()), run.getCreatedBy(), run.getCreatedAt(), run.getFinishedAt());
+                readMap(run.getVariablesJson()), run.getSourcePath(), run.getSourceCommit(),
+                run.getCreatedBy(), run.getCreatedAt(), run.getFinishedAt());
     }
 
     private Specification<ApiScenario> spec(String keyword) {

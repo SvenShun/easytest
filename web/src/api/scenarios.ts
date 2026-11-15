@@ -79,6 +79,8 @@ export interface ScenarioRun {
   steps?: ScenarioStep[] | null;
   report?: unknown;
   variables?: Record<string, unknown>;
+  sourcePath?: string | null;
+  sourceCommit?: string | null;
   createdBy?: string;
   createdAt?: string;
   finishedAt?: string | null;

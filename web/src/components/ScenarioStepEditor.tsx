@@ -46,7 +46,7 @@ export function JsonField({ label, value, onChange }: { label: string; value: un
   );
 }
 
-function StepFields({ step, update }: { step: ScenarioStep; update: (patch: ScenarioStep) => void }) {
+function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioStep; update: (patch: ScenarioStep) => void; engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }> }) {
   const type = String(step.type || '').toLowerCase();
   switch (type) {
     case 'http':
@@ -98,7 +98,10 @@ function StepFields({ step, update }: { step: ScenarioStep; update: (patch: Scen
       return (
         <div className="step-fields">
           <Field label="工程方法 path" hint="测试工程中 @EasyContract 标注的方法，例如 com.example.LoginCases#login">
-            <Input value={step.methodPath || ''} onChange={(e) => update({ methodPath: e.target.value })} />
+            <Input list="engineering-method-options" value={step.methodPath || ''} onChange={(e) => update({ methodPath: e.target.value })} />
+            <datalist id="engineering-method-options">
+              {engineeringMethods.map((item) => <option key={item.methodPath} value={item.methodPath}>{item.name}{item.description ? ` · ${item.description}` : ''}</option>)}
+            </datalist>
           </Field>
           <Field label="行为说明" hint="平台展示用；复杂用例由工程代码实现">
             <Input value={step.description || ''} onChange={(e) => update({ description: e.target.value })} />
@@ -139,9 +142,10 @@ function StepFields({ step, update }: { step: ScenarioStep; update: (patch: Scen
   }
 }
 
-function StepCard({ step, index, total, depth, onChange, onRemove, onMove }: {
+function StepCard({ step, index, total, depth, onChange, onRemove, onMove, engineeringMethods }: {
   step: ScenarioStep; index: number; total: number; depth: number;
   onChange: (next: ScenarioStep) => void; onRemove: () => void; onMove: (offset: number) => void;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }>;
 }) {
   const type = String(step.type || 'http').toLowerCase();
   const update = (patch: ScenarioStep) => {
@@ -167,11 +171,11 @@ function StepCard({ step, index, total, depth, onChange, onRemove, onMove }: {
           <Button size="sm" variant="ghost" onClick={onRemove}>删除</Button>
         </div>
       </div>
-      <StepFields step={step} update={update} />
+      <StepFields step={step} update={update} engineeringMethods={engineeringMethods} />
       {childKey.map((key) => rows(step[key]).length || type === 'if' || type === 'loop' || type === 'once' || type === 'while' ? (
         <div className="structured-children" key={key}>
           <div className="structured-children-title">{key === 'elseSteps' ? 'else 分支' : '子步骤'}</div>
-          <StepList steps={rows(step[key])} depth={depth + 1}
+          <StepList steps={rows(step[key])} depth={depth + 1} engineeringMethods={engineeringMethods}
             onChange={(children) => update({ [key]: children })}
             allowHooks={false} />
         </div>
@@ -181,7 +185,7 @@ function StepCard({ step, index, total, depth, onChange, onRemove, onMove }: {
           {(['before', 'after'] as const).map((key) => (
             <details key={key}>
               <summary>{key === 'before' ? '前置处理器' : '后置处理器'}（{rows(step[key]).length}）</summary>
-              <StepList steps={rows(step[key])} depth={depth + 1}
+              <StepList steps={rows(step[key])} depth={depth + 1} engineeringMethods={engineeringMethods}
                 onChange={(hooks) => update({ [key]: hooks.length ? hooks : undefined })} allowHooks={false} />
             </details>
           ))}
@@ -191,8 +195,9 @@ function StepCard({ step, index, total, depth, onChange, onRemove, onMove }: {
   );
 }
 
-function StepList({ steps, depth, onChange, allowHooks = true }: {
+function StepList({ steps, depth, onChange, allowHooks = true, engineeringMethods = [] }: {
   steps: ScenarioStep[]; depth: number; onChange: (next: ScenarioStep[]) => void; allowHooks?: boolean;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }>;
 }) {
   const [newType, setNewType] = useState('http');
   const update = (index: number, next: ScenarioStep) => onChange(steps.map((item, i) => i === index ? next : item));
@@ -208,6 +213,7 @@ function StepList({ steps, depth, onChange, allowHooks = true }: {
     <div className="structured-step-list">
       {steps.map((step, index) => (
         <StepCard key={`${depth}-${index}`} step={step} index={index} total={steps.length} depth={depth}
+          engineeringMethods={engineeringMethods}
           onChange={(next) => update(index, next)} onRemove={() => remove(index)} onMove={(offset) => move(index, offset)} />
       ))}
       <div className="row-actions">
@@ -221,6 +227,9 @@ function StepList({ steps, depth, onChange, allowHooks = true }: {
   );
 }
 
-export function ScenarioStepEditor({ steps, onChange }: { steps: ScenarioStep[]; onChange: (steps: ScenarioStep[]) => void }) {
-  return <StepList steps={steps} depth={0} onChange={onChange} />;
+export function ScenarioStepEditor({ steps, onChange, engineeringMethods = [] }: {
+  steps: ScenarioStep[]; onChange: (steps: ScenarioStep[]) => void;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null }>;
+}) {
+  return <StepList steps={steps} depth={0} onChange={onChange} engineeringMethods={engineeringMethods} />;
 }

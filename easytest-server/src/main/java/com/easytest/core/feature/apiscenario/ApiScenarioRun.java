@@ -60,6 +60,12 @@ public class ApiScenarioRun {
     @Column(name = "notification_sent", nullable = false)
     private boolean notificationSent;
 
+    @Column(name = "source_path", length = 1000)
+    private String sourcePath;
+
+    @Column(name = "source_commit", length = 80)
+    private String sourceCommit;
+
     protected ApiScenarioRun() {
     }
 
@@ -90,7 +96,11 @@ public class ApiScenarioRun {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getFinishedAt() { return finishedAt; }
     public boolean isNotificationSent() { return notificationSent; }
+    public String getSourcePath() { return sourcePath; }
+    public String getSourceCommit() { return sourceCommit; }
     public void setNotificationSent(boolean notificationSent) { this.notificationSent = notificationSent; }
+    public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }
+    public void setSourceCommit(String sourceCommit) { this.sourceCommit = sourceCommit; }
 
     public void setTaskId(String taskId) { this.taskId = taskId; }
     public void setStatus(String status) { this.status = status; }

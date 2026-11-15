@@ -450,11 +450,19 @@ public class ScenarioExecutor {
         Map<String, Object> resolvedInputs = new LinkedHashMap<>();
         inputs.forEach((key, value) -> resolvedInputs.put(key, resolve(value, variables)));
         requestView.put("methodPath", methodPath);
+        requestView.put("description", first(text(step.get("description")),
+                text(step.get("methodDescription"))));
         requestView.put("inputs", resolvedInputs);
         long timeoutMs = Math.max(1, Math.min(integer(step.get("timeoutMs"), 30_000), 600_000));
         EngineeringMethodRegistry.Execution execution = engineeringMethods.execute(methodPath, resolvedInputs, timeoutMs);
         responseView.put("passed", execution.passed());
         responseView.put("summary", execution.summary());
+        if (execution.contractId() != null) responseView.put("contractId", execution.contractId());
+        if (execution.contractName() != null) responseView.put("contractName", execution.contractName());
+        if (execution.contractDescription() != null) {
+            responseView.put("contractDescription", execution.contractDescription());
+        }
+        responseView.put("methodPath", execution.methodPath());
         if (!execution.logs().isEmpty()) responseView.put("logs", execution.logs());
         if (!execution.outputs().isEmpty()) {
             responseView.put("outputs", execution.outputs());

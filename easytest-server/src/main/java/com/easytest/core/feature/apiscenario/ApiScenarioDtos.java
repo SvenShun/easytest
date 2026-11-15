@@ -27,7 +27,8 @@ public final class ApiScenarioDtos {
     public record RunView(String id, String scenarioId, String scenarioName, String taskId, String status,
                           String environmentId, String summary, String failureReason, Long durationMs,
                           JsonNode steps, JsonNode report, Map<String, Object> variables,
-                          String createdBy, Instant createdAt, Instant finishedAt) {
+                          String sourcePath, String sourceCommit, String createdBy, Instant createdAt,
+                          Instant finishedAt) {
     }
 
     public record RunListView(List<RunView> items, long total, int page, int size) {

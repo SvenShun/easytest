@@ -128,7 +128,7 @@ public class EngineeringMethodRegistry {
         list();
         Entry entry = methods.get(methodPath);
         if (entry == null) {
-            return Execution.fail("工程方法未注册: " + methodPath, "METHOD_NOT_FOUND");
+            return Execution.fail("工程方法未注册: " + methodPath, "METHOD_NOT_FOUND", null, methodPath);
         }
         ContractContext context = new ContractContext(inputs);
         Future<Object> future = executor.submit(() -> invoke(entry, context));
@@ -139,13 +139,15 @@ public class EngineeringMethodRegistry {
             if (result != null) outputs.putAll(result.outputs());
             boolean passed = result == null || result.passed();
             return new Execution(passed, result == null ? "contract method completed" : result.summary(),
-                    outputs, List.copyOf(context.logs()), null);
+                    outputs, List.copyOf(context.logs()), null, entry.descriptor.id(),
+                    entry.descriptor.name(), entry.descriptor.description(), entry.path);
         } catch (java.util.concurrent.TimeoutException e) {
             future.cancel(true);
-            return Execution.fail("契约方法超时: " + methodPath, "TIMEOUT");
+            return Execution.fail("契约方法超时: " + methodPath, "TIMEOUT", entry.descriptor, entry.path);
         } catch (Exception e) {
             Throwable cause = e.getCause() == null ? e : e.getCause();
-            return Execution.fail("契约方法执行失败: " + cause.getMessage(), "METHOD_FAILED");
+            return Execution.fail("契约方法执行失败: " + cause.getMessage(), "METHOD_FAILED",
+                    entry.descriptor, entry.path);
         }
     }
 
@@ -197,9 +199,13 @@ public class EngineeringMethodRegistry {
     }
 
     public record Execution(boolean passed, String summary, Map<String, Object> outputs,
-                            List<String> logs, String failureReason) {
-        static Execution fail(String summary, String reason) {
-            return new Execution(false, summary, Map.of(), List.of(), reason);
+                            List<String> logs, String failureReason, String contractId,
+                            String contractName, String contractDescription, String methodPath) {
+        static Execution fail(String summary, String reason, ContractDescriptor descriptor, String methodPath) {
+            return new Execution(false, summary, Map.of(), List.of(), reason,
+                    descriptor == null ? null : descriptor.id(),
+                    descriptor == null ? null : descriptor.name(),
+                    descriptor == null ? null : descriptor.description(), methodPath);
         }
     }
 }

@@ -87,9 +87,23 @@ steps:
 
 示例工程：[examples/api-engineering](../examples/api-engineering/README.md)。
 
+## Manifest 生成
+
+`contract-api` 提供 manifest 生成器：
+
+```bash
+cp examples/api-engineering/target/api-engineering-example-1.0.0.jar /tmp/
+java -cp contract-api/target/classes:examples/api-engineering/target/api-engineering-example-1.0.0.jar:<snakeyaml.jar> \
+  com.easytest.contract.ContractManifestGenerator /tmp/api-engineering-example-1.0.0.jar /tmp/easytest-contract.yaml
+```
+
+输出包含 `id/name/description/methodPath/inputs/outputs/tags`。Agent 加载 JAR 后，平台通过
+`GET /api/v1/engineering-methods` 获取方法列表，场景编辑器工程组件步骤提供 methodPath 下拉提示。
+
 ## 尚未完成
 
-- 自动扫描工程源码生成 manifest（目前方法通过 JAR 扫描注册，平台契约需要填写 methodPath/描述）
+- manifest 自动写入 Git/平台注册表（目前由 Agent 扫描 JAR + 编辑器 datalist 提供）
+- 平台保存时校验 methodPath 是否存在/输入输出是否匹配
 - Git 工程 commit 固化到执行记录
 - Python 工程 SDK
 - 平台端契约方法列表/补全 UI（目前可在场景表单手工填写）

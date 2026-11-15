@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiEnvironmentsApi, apiScenariosApi } from '../api';
+import { apiEnvironmentsApi, apiScenariosApi, engineeringMethodsApi } from '../api';
 import type { ApiEnvironment } from '../api/types';
 import type { ApiScenario, ScenarioGitConfig, ScenarioGitSyncResult, ScenarioGraph, ScenarioGraphNode, ScenarioRun, ScenarioStep } from '../api/scenarios';
+import type { EngineeringMethod } from '../api/engineering';
 import { canManageCases, useAuth } from '../auth';
 import { cx, formatDateTime, safeErrorMessage } from '../utils';
 import {
@@ -258,6 +259,7 @@ export function ApiScenariosPage() {
   const [gitSaving, setGitSaving] = useState(false);
   const [gitError, setGitError] = useState('');
   const [gitResult, setGitResult] = useState<ScenarioGitSyncResult | null>(null);
+  const [engineeringMethods, setEngineeringMethods] = useState<EngineeringMethod[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -810,6 +812,7 @@ export function ApiScenariosPage() {
                   </div>
                   <JsonField label="数据集 datasets" value={draft.datasets} onChange={(datasets) => setDraft({ ...draft, datasets })} />
                   <ScenarioStepEditor steps={Array.isArray(draft.steps) ? draft.steps : []}
+                    engineeringMethods={engineeringMethods}
                     onChange={(steps) => setDraft({ ...draft, steps })} />
                 </>
               ) : null}
@@ -869,6 +872,7 @@ export function ApiScenariosPage() {
                 <div className="summary-chip"><span className="summary-chip-label">状态</span><span className="summary-chip-value"><StatusPill meta={{ label: run.status, tone: run.status === 'SUCCESS' ? 'green' : run.status === 'FAILED' ? 'red' : 'blue' }} /></span></div>
                 <div className="summary-chip"><span className="summary-chip-label">摘要</span><span className="summary-chip-value">{run.summary || '—'}</span></div>
                 <div className="summary-chip"><span className="summary-chip-label">耗时</span><span className="summary-chip-value">{run.durationMs ?? '—'} ms</span></div>
+                {run.sourcePath ? <div className="summary-chip"><span className="summary-chip-label">契约源</span><span className="summary-chip-value mono">{run.sourcePath}{run.sourceCommit ? ` @ ${run.sourceCommit.slice(0, 8)}` : ''}</span></div> : null}
               </div>
               {steps.map((step) => (
                 <details key={step.seq} className="scenario-step" open={step.status !== 'OK'}>

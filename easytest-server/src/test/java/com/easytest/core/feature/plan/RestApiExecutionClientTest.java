@@ -27,6 +27,15 @@ class RestApiExecutionClientTest {
     @Test
     void listsTasksByPlanRunAgainstAbsoluteWorkerUrl() throws Exception {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/api/v1/api-execution/contracts", exchange -> {
+            byte[] raw = "[{\"id\":\"demo.login\",\"name\":\"Login\",\"description\":\"code login\","
+                    .concat("\"methodPath\":\"com.example.Login#login\",\"inputs\":[\"username\"],\"outputs\":[\"token\"]}]")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, raw.length);
+            exchange.getResponseBody().write(raw);
+            exchange.close();
+        });
         server.createContext("/api/v1/api-execution/tasks", exchange -> {
             String query = exchange.getRequestURI().getQuery();
             String body = "{\"items\":[{\"taskId\":\"api-task-1\",\"status\":\"SUCCESS\","
@@ -52,5 +61,9 @@ class RestApiExecutionClientTest {
         assertThat(tasks).hasSize(1);
         assertThat(tasks.get(0).taskId()).isEqualTo("api-task-1");
         assertThat(tasks.get(0).status()).isEqualTo("SUCCESS");
+        List<ApiExecutionClient.EngineeringMethod> methods = client.listEngineeringMethods();
+        assertThat(methods).hasSize(1);
+        assertThat(methods.get(0).methodPath()).isEqualTo("com.example.Login#login");
+        assertThat(methods.get(0).outputs()).containsExactly("token");
     }
 }

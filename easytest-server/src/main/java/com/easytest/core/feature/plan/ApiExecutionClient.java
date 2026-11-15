@@ -10,6 +10,12 @@ public interface ApiExecutionClient {
 
     List<TaskSnapshot> listTasksByPlanRun(String planRunId);
 
+    List<EngineeringMethod> listEngineeringMethods();
+
+    record EngineeringMethod(String id, String name, String description, String methodPath,
+                            List<String> inputs, List<String> outputs, List<String> tags) {
+    }
+
     record TaskCreated(String taskId, String status) {
     }
 
