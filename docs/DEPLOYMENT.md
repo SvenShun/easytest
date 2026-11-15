@@ -1,4 +1,4 @@
-# TestHub 完整部署手册
+# EasyTest 完整部署手册
 
 本文档面向**另一台电脑从 GitHub 克隆后部署**，覆盖本地演示、推荐的主机部署、完整 Docker Compose、远程访问、升级、备份和排障。
 
@@ -17,7 +17,7 @@
 
 | 服务 | 目录 | 默认端口 | 用途 |
 |---|---|---:|---|
-| core | `testhub-server/` | 8080 | 用户、用例、计划、报告、API 场景、静态 Web |
+| core | `easytest-server/` | 8080 | 用户、用例、计划、报告、API 场景、静态 Web |
 | ui-execution | `ui-execution/` | 8081 | UI 执行编排、设备 FIFO、轨迹 |
 | api-execution | `api-execution/` | 8084 | 接口/API 场景执行、断言、回调 |
 | device-agent | `device-agent/` | 8090 | 设备 Agent、ADB、脚本执行 |
@@ -29,12 +29,12 @@
 
 | 组件 | 端口 | 默认账号 |
 |---|---:|---|
-| MySQL 8 | 3306 | `root / testhub`（仅开发默认） |
+| MySQL 8 | 3306 | `root / easytest`（仅开发默认） |
 | Redis 7 | 6379 | 无密码（仅开发默认） |
-| MinIO | 9000 / 9001 | `testhub / testhub123` |
+| MinIO | 9000 / 9001 | `easytest / easytest123` |
 | Kafka 3.8 | 9092 | 无认证 |
 
-数据库名：`testhub_core`、`testhub_uiexec`、`testhub_apiexec`。首次启动由 `deploy/mysql-init/01-databases.sql` 创建。
+数据库名：`easytest_core`、`easytest_uiexec`、`easytest_apiexec`。首次启动由 `deploy/mysql-init/01-databases.sql` 创建。
 
 ### 1.2 演示账号
 
@@ -92,7 +92,7 @@ docker info
 ### 2.3 可选
 
 - Android `adb` + USB 真机：真实设备执行时需要；没有真机可用 `simulated` 模拟设备。
-- JDK 21：只有部署 MeterSphere 对比环境才需要；TestHub 本身不需要。
+- JDK 21：只有部署 MeterSphere 对比环境才需要；EasyTest 本身不需要。
 - Python 虚拟环境由 `make setup` 自动创建。
 
 ### 2.4 端口和资源
@@ -201,7 +201,7 @@ make infra
 make build
 
 # 3. 以真实中间件启动全部服务
-TESTHUB_INFRA=docker ./scripts/dev-up.sh
+EASYTEST_INFRA=docker ./scripts/dev-up.sh
 ```
 
 也可以分步执行：
@@ -210,7 +210,7 @@ TESTHUB_INFRA=docker ./scripts/dev-up.sh
 ./scripts/infra-up.sh
 ./scripts/mvn.sh -q -DskipTests package
 (cd web && npm run build)
-TESTHUB_INFRA=docker ./scripts/dev-up.sh
+EASYTEST_INFRA=docker ./scripts/dev-up.sh
 ```
 
 访问：
@@ -226,11 +226,11 @@ TESTHUB_INFRA=docker ./scripts/dev-up.sh
 停止：
 
 ```bash
-make down          # 停 TestHub 应用
+make down          # 停 EasyTest 应用
 make infra-down    # 停中间件（默认保留数据卷）
 ```
 
-> 中间件容器名为 `testhub-mysql`、`testhub-redis`、`testhub-minio`、`testhub-kafka`。
+> 中间件容器名为 `easytest-mysql`、`easytest-redis`、`easytest-minio`、`easytest-kafka`。
 > 如果端口被其他 MySQL/Redis 占用，先停止占用进程，或修改 `deploy/docker-compose.infra.yml` 的宿主机端口并同步修改环境变量。
 
 ### 模式 C：完整 Docker Compose
@@ -239,14 +239,14 @@ make infra-down    # 停中间件（默认保留数据卷）
 
 ```bash
 cp deploy/.env.example deploy/.env
-# 编辑 deploy/.env：修改数据库/MinIO 密码、四个 TESTHUB_* secret、对外 URL
+# 编辑 deploy/.env：修改数据库/MinIO 密码、四个 EASYTEST_* secret、对外 URL
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps
 ```
 
 访问：
 
-- Web（nginx 静态站点）：`http://127.0.0.1:${TESTHUB_WEB_PORT:-5173}`
+- Web（nginx 静态站点）：`http://127.0.0.1:${EASYTEST_WEB_PORT:-5173}`
 - core API：`http://127.0.0.1:8080`
 - 其他服务端口见 `deploy/docker-compose.yml`
 
@@ -273,11 +273,11 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v
 以服务器 IP `192.168.1.50` 为例，在启动前：
 
 ```bash
-export TESTHUB_PUBLIC_BASE_URL="http://192.168.1.50:8080"
-export TESTHUB_UIEXEC_PUBLIC_URL="http://192.168.1.50:8081"
-export TESTHUB_APIEXEC_PUBLIC_URL="http://192.168.1.50:8084"
-export TESTHUB_INTERNAL_BASE_URL="http://192.168.1.50:8080"
-TESTHUB_INFRA=docker ./scripts/dev-up.sh
+export EASYTEST_PUBLIC_BASE_URL="http://192.168.1.50:8080"
+export EASYTEST_UIEXEC_PUBLIC_URL="http://192.168.1.50:8081"
+export EASYTEST_APIEXEC_PUBLIC_URL="http://192.168.1.50:8084"
+export EASYTEST_INTERNAL_BASE_URL="http://192.168.1.50:8080"
+EASYTEST_INFRA=docker ./scripts/dev-up.sh
 ```
 
 然后访问：
@@ -295,10 +295,10 @@ http://192.168.1.50:8080
 ```nginx
 server {
     listen 443 ssl;
-    server_name testhub.example.com;
+    server_name easytest.example.com;
 
-    ssl_certificate     /etc/ssl/testhub/fullchain.pem;
-    ssl_certificate_key /etc/ssl/testhub/privkey.pem;
+    ssl_certificate     /etc/ssl/easytest/fullchain.pem;
+    ssl_certificate_key /etc/ssl/easytest/privkey.pem;
 
     client_max_body_size 1024m;
 
@@ -314,16 +314,16 @@ server {
 同时设置：
 
 ```bash
-export TESTHUB_PUBLIC_BASE_URL="https://testhub.example.com"
-export TESTHUB_UIEXEC_PUBLIC_URL="https://testhub.example.com:8081" # 若单独暴露 8081
-export TESTHUB_APIEXEC_PUBLIC_URL="https://testhub.example.com:8084"
+export EASYTEST_PUBLIC_BASE_URL="https://easytest.example.com"
+export EASYTEST_UIEXEC_PUBLIC_URL="https://easytest.example.com:8081" # 若单独暴露 8081
+export EASYTEST_APIEXEC_PUBLIC_URL="https://easytest.example.com:8084"
 ```
 
 core 的 CORS 允许跨域；生产仍建议只通过网关访问，内网服务不直接暴露。
 
 ### 5.2 浏览器端地址
 
-Web 默认使用“当前页面主机名 + 8080/8081”。如果保存过错误的本地地址，进入页面右上角 **系统设置** 修改 Core/UI Execution 地址，或清空浏览器 localStorage 中的 `testhub.config.*` 后刷新。
+Web 默认使用“当前页面主机名 + 8080/8081”。如果保存过错误的本地地址，进入页面右上角 **系统设置** 修改 Core/UI Execution 地址，或清空浏览器 localStorage 中的 `easytest.config.*` 后刷新。
 
 ---
 
@@ -333,12 +333,12 @@ Web 默认使用“当前页面主机名 + 8080/8081”。如果保存过错误�
 
 | 变量 | 用途 |
 |---|---|
-| `TESTHUB_JWT_SECRET` | JWT HS256 密钥，所有服务一致 |
-| `TESTHUB_SERVICE_TOKEN` | 服务间 `/internal/**` 令牌 |
-| `TESTHUB_AGENT_TOKEN` | Agent 注册/心跳/回调令牌 |
-| `TESTHUB_ENCRYPTION_KEY` | 模型 API Key 落库加密密钥 |
+| `EASYTEST_JWT_SECRET` | JWT HS256 密钥，所有服务一致 |
+| `EASYTEST_SERVICE_TOKEN` | 服务间 `/internal/**` 令牌 |
+| `EASYTEST_AGENT_TOKEN` | Agent 注册/心跳/回调令牌 |
+| `EASYTEST_ENCRYPTION_KEY` | 模型 API Key 落库加密密钥 |
 
-`TESTHUB_ENCRYPTION_KEY` 一旦更换，旧密钥加密的数据无法解密；升级时保持稳定。
+`EASYTEST_ENCRYPTION_KEY` 一旦更换，旧密钥加密的数据无法解密；升级时保持稳定。
 
 生成随机值：
 
@@ -350,24 +350,24 @@ openssl rand -hex 32
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `TESTHUB_INFRA` | `local` | `docker` 使用 MySQL/Redis/MinIO/Kafka |
-| `TESTHUB_PUBLIC_BASE_URL` | `http://127.0.0.1:8080` | 浏览器/报告使用的外部 core 地址 |
-| `TESTHUB_UI_EXECUTION_BASE_URL` | `http://127.0.0.1:8081` | core 调 ui-execution |
-| `TESTHUB_API_EXECUTION_URLS` | `http://127.0.0.1:8084` | core 调 api-execution，可逗号分隔多实例 |
-| `TESTHUB_UIEXEC_PUBLIC_URL` | `http://127.0.0.1:8081` | UI 报告/产物外部地址 |
-| `TESTHUB_APIEXEC_PUBLIC_URL` | `http://127.0.0.1:8084` | API 报告外部地址 |
-| `TESTHUB_QUEUE_STORE` | `memory` / Docker 模式 `redis` | 设备 FIFO 队列 |
-| `TESTHUB_APIEXEC_QUEUE` | `memory` / Docker 模式 `redis` | API 任务队列 |
-| `TESTHUB_ARTIFACT_STORE` | `local` / Docker 模式 `minio` | 产物存储 |
-| `TESTHUB_EVENT_BUS` | `local` / Docker 模式 `kafka` | 任务事件流 |
-| `TESTHUB_AGENT_MODE` | `simulated` | `simulated` / `adb` / `auto` |
-| `TESTHUB_AGENT_DATA_DIR` | `./data/agent` | Agent 缓存/脚本目录 |
-| `TESTHUB_SCRCPY_WEB` | `auto` | 设为 `0` 可禁用 ws-scrcpy 自动启动 |
-| `TESTHUB_AGENT_ADB` | `adb` | adb 可执行文件路径 |
+| `EASYTEST_INFRA` | `local` | `docker` 使用 MySQL/Redis/MinIO/Kafka |
+| `EASYTEST_PUBLIC_BASE_URL` | `http://127.0.0.1:8080` | 浏览器/报告使用的外部 core 地址 |
+| `EASYTEST_UI_EXECUTION_BASE_URL` | `http://127.0.0.1:8081` | core 调 ui-execution |
+| `EASYTEST_API_EXECUTION_URLS` | `http://127.0.0.1:8084` | core 调 api-execution，可逗号分隔多实例 |
+| `EASYTEST_UIEXEC_PUBLIC_URL` | `http://127.0.0.1:8081` | UI 报告/产物外部地址 |
+| `EASYTEST_APIEXEC_PUBLIC_URL` | `http://127.0.0.1:8084` | API 报告外部地址 |
+| `EASYTEST_QUEUE_STORE` | `memory` / Docker 模式 `redis` | 设备 FIFO 队列 |
+| `EASYTEST_APIEXEC_QUEUE` | `memory` / Docker 模式 `redis` | API 任务队列 |
+| `EASYTEST_ARTIFACT_STORE` | `local` / Docker 模式 `minio` | 产物存储 |
+| `EASYTEST_EVENT_BUS` | `local` / Docker 模式 `kafka` | 任务事件流 |
+| `EASYTEST_AGENT_MODE` | `simulated` | `simulated` / `adb` / `auto` |
+| `EASYTEST_AGENT_DATA_DIR` | `./data/agent` | Agent 缓存/脚本目录 |
+| `EASYTEST_SCRCPY_WEB` | `auto` | 设为 `0` 可禁用 ws-scrcpy 自动启动 |
+| `EASYTEST_AGENT_ADB` | `adb` | adb 可执行文件路径 |
 | `SPRING_DATASOURCE_*` | 由脚本设置 | MySQL 连接 |
 | `SPRING_DATA_REDIS_HOST/PORT` | 由脚本设置 | Redis |
-| `TESTHUB_MINIO_*` | 由脚本设置 | MinIO |
-| `TESTHUB_KAFKA_BOOTSTRAP` | 由脚本设置 | Kafka |
+| `EASYTEST_MINIO_*` | 由脚本设置 | MinIO |
+| `EASYTEST_KAFKA_BOOTSTRAP` | 由脚本设置 | Kafka |
 
 AI Runtime 使用 `PORT`（默认 8095）。模型 Key 在页面 **系统设置 → 模型配置** 中维护，不放在仓库环境文件里。
 
@@ -436,7 +436,7 @@ python3 scripts/part2_smoke.py   # 接口自动化
 2. 打开 **API 场景**，新建/编辑场景，切换 **表单编辑 / YAML 源码**，点击 **校验 YAML** 和 **流程预览**。
 3. 打开 **接口用例**，确认可以调试单接口。
 4. 打开 **测试计划**，挂载用例并触发。
-5. 打开 **设备池**：模式 A/B 默认应有模拟设备；真实设备需切换 `TESTHUB_AGENT_MODE=adb`。
+5. 打开 **设备池**：模式 A/B 默认应有模拟设备；真实设备需切换 `EASYTEST_AGENT_MODE=adb`。
 
 ---
 
@@ -444,7 +444,7 @@ python3 scripts/part2_smoke.py   # 接口自动化
 
 部署到共享网络/公网前逐项确认：
 
-- [ ] 修改 `TESTHUB_JWT_SECRET`、`TESTHUB_SERVICE_TOKEN`、`TESTHUB_AGENT_TOKEN`、`TESTHUB_ENCRYPTION_KEY`
+- [ ] 修改 `EASYTEST_JWT_SECRET`、`EASYTEST_SERVICE_TOKEN`、`EASYTEST_AGENT_TOKEN`、`EASYTEST_ENCRYPTION_KEY`
 - [ ] 修改 MySQL root 密码、MinIO 凭据，并同步 `deploy/.env` / 启动环境
 - [ ] 修改/删除演示账号，至少修改 `admin` 密码
 - [ ] MySQL/Redis/MinIO 只绑定内网，不映射到公网端口
@@ -467,7 +467,7 @@ git pull --ff-only
 make setup       # 重新装依赖并构建 Web（首次升级建议执行）
 make build       # Java + Web
 make down
-TESTHUB_INFRA=docker ./scripts/dev-up.sh
+EASYTEST_INFRA=docker ./scripts/dev-up.sh
 ```
 
 只升级主服务时：
@@ -481,7 +481,7 @@ make main-up
 
 | 操作 | 模式 A/B | 完整 Compose |
 |---|---|---|
-| 启动 | `make up` / `TESTHUB_INFRA=docker ./scripts/dev-up.sh` | `docker compose -f deploy/docker-compose.yml up -d` |
+| 启动 | `make up` / `EASYTEST_INFRA=docker ./scripts/dev-up.sh` | `docker compose -f deploy/docker-compose.yml up -d` |
 | 停止应用 | `make down` | `docker compose ... down` |
 | 停止中间件 | `make infra-down` | 同上 |
 | 状态 | `./scripts/status.sh` | `docker compose ... ps` |
@@ -510,8 +510,8 @@ make main-up
 ```bash
 make db-backup
 # 等价于
-docker exec testhub-mysql mysqldump -uroot -ptesthub \
-  --databases testhub_core testhub_uiexec testhub_apiexec > backup.sql
+docker exec easytest-mysql mysqldump -uroot -peasytest \
+  --databases easytest_core easytest_uiexec easytest_apiexec > backup.sql
 ```
 
 `make db-backup` 会把文件写入 `backups/`。生产环境请改用独立备份账号，不要使用 root。
@@ -519,7 +519,7 @@ docker exec testhub-mysql mysqldump -uroot -ptesthub \
 恢复：
 
 ```bash
-docker exec -i testhub-mysql mysql -uroot -ptesthub < backup.sql
+docker exec -i easytest-mysql mysql -uroot -peasytest < backup.sql
 ```
 
 H2 模式直接备份 `data/db/` 和 `data/core-artifacts/`。
@@ -551,18 +551,18 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env down -v
 | `Permission denied: ~/.m2/repository` | 始终用 `./scripts/mvn.sh`；它把仓库放到工作区 `.m2/repository` |
 | `EACCES` / npm 日志目录不可写 | 设置 `npm_config_cache=$PWD/.npm-cache` 后重试 `make setup` |
 | 8080 已被占用 | `lsof -nP -iTCP:8080 -sTCP:LISTEN`；停止旧进程或改端口 |
-| 打开页面空白 | 先 `make build` 确认 `web/dist/index.html`；确认 core 用 `TESTHUB_WEB_STATIC_DIR=web/dist` 启动 |
+| 打开页面空白 | 先 `make build` 确认 `web/dist/index.html`；确认 core 用 `EASYTEST_WEB_STATIC_DIR=web/dist` 启动 |
 | core 起不来 | `tail -100 logs/core.log`；检查 MySQL 连接、数据库是否存在、密钥长度 |
 | MySQL 认证失败 | 检查 `SPRING_DATASOURCE_PASSWORD` 是否与 `deploy/.env`/容器一致；旧数据卷可能保留了旧密码 |
-| MySQL 数据库不存在 | `docker exec testhub-mysql mysql -uroot -p... -e "CREATE DATABASE ..."`；或删除数据卷重新初始化 |
-| MinIO 启动失败/产物 404 | 检查 `TESTHUB_MINIO_ENDPOINT`、bucket、access/secret；模式 A 不需要 MinIO |
+| MySQL 数据库不存在 | `docker exec easytest-mysql mysql -uroot -p... -e "CREATE DATABASE ..."`；或删除数据卷重新初始化 |
+| MinIO 启动失败/产物 404 | 检查 `EASYTEST_MINIO_ENDPOINT`、bucket、access/secret；模式 A 不需要 MinIO |
 | 页面能登录但没有执行服务 | 使用模式 A/B 的 `make up`，不要只运行 `main-up`；`main-up` 隐藏执行入口 |
-| 远程页面请求 `127.0.0.1` | 设置 `TESTHUB_PUBLIC_BASE_URL` 等对外 URL，或在系统设置中修改 Core/UI Execution 地址 |
+| 远程页面请求 `127.0.0.1` | 设置 `EASYTEST_PUBLIC_BASE_URL` 等对外 URL，或在系统设置中修改 Core/UI Execution 地址 |
 | Docker 镜像拉取超时 | 当前网络可能无法访问 Docker Hub；使用 `deploy/docker-compose.infra.yml` 中的 ECR Public/Chainguard/Strimzi 镜像，或改用模式 A/B |
 | H2 文件锁 | `make down` 后删除 `data/db/*.lock.db` 再启动 |
-| 设备池为空 | 检查 `logs/agent.log` 与 `TESTHUB_AGENT_MODE`；真机需要 adb、USB 权限和 Android 驱动 |
+| 设备池为空 | 检查 `logs/agent.log` 与 `EASYTEST_AGENT_MODE`；真机需要 adb、USB 权限和 Android 驱动 |
 | API 任务一直 PENDING | 检查 api-execution 健康、Redis/内存队列、worker 日志 `logs/apiexec.log` |
-| 计划触发失败 | 确认 core → ui-execution/api-execution 的 URL 可达；检查 `TESTHUB_UI_EXECUTION_BASE_URL`、`TESTHUB_API_EXECUTION_URLS` |
+| 计划触发失败 | 确认 core → ui-execution/api-execution 的 URL 可达；检查 `EASYTEST_UI_EXECUTION_BASE_URL`、`EASYTEST_API_EXECUTION_URLS` |
 
 ---
 
@@ -586,7 +586,7 @@ ssh -T git@github.com   # 私有 SSH 仓库
 
 ```text
 common/            共享 JWT/角色/异常/CORS
-testhub-server/    core：用户、需求、用例、计划、API 场景、报告
+easytest-server/    core：用户、需求、用例、计划、API 场景、报告
 ui-execution/      UI 执行编排
 api-execution/     接口/API 场景执行
 device-agent/      设备 Agent
@@ -614,7 +614,7 @@ examples/          演示脚本工程
 
 ## 14. 可选：MeterSphere / Sonic 对比环境
 
-本仓库的 TestHub 部署**不依赖** MeterSphere 或 Sonic。若要部署对比环境，参见 [COMPARE-DEPLOY.md](COMPARE-DEPLOY.md)；它使用 `upstream/` 下的源码，`upstream/` 被 `.gitignore` 忽略，需要在目标机器重新拉取源码并单独构建，不属于 TestHub 主部署流程。
+本仓库的 EasyTest 部署**不依赖** MeterSphere 或 Sonic。若要部署对比环境，参见 [COMPARE-DEPLOY.md](COMPARE-DEPLOY.md)；它使用 `upstream/` 下的源码，`upstream/` 被 `.gitignore` 忽略，需要在目标机器重新拉取源码并单独构建，不属于 EasyTest 主部署流程。
 
 ---
 

@@ -818,7 +818,7 @@ export function SettingsPage() {
             {DEFAULT_CONFIG.uexecUrl}；也可通过 VITE_CORE_URL / VITE_UEXEC_URL 环境变量覆盖默认值。
           </Callout>
           <div className="form-grid-2">
-            <Field label="Core 服务地址" htmlFor="settings-core-url" hint="testhub-server，默认 8080">
+            <Field label="Core 服务地址" htmlFor="settings-core-url" hint="easytest-server，默认 8080">
               <Input
                 id="settings-core-url"
                 value={coreUrl}

@@ -33,7 +33,7 @@ def call(base, method, path, body=None, token=None, expect=(200, 201, 204), serv
     if token:
         headers["Authorization"] = "Bearer " + token
     if service_token:
-        headers["X-Service-Token"] = "testhub-dev-service-token"
+        headers["X-Service-Token"] = "easytest-dev-service-token"
     req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=30) as r:

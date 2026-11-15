@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start the MinIO object store used by TESTHUB_ARTIFACT_STORE=minio.
+# Start the MinIO object store used by EASYTEST_ARTIFACT_STORE=minio.
 # It is part of deploy/docker-compose.infra.yml.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

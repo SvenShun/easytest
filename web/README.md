@@ -1,4 +1,4 @@
-# TestHub V1 · Web 控制台
+# EasyTest V1 · Web 控制台
 
 React 18 + Vite 5 + TypeScript 的测试平台控制台，对接 `docs/API-CONTRACT.md` 定义的 core（8080）与 ui-execution（8081）服务。
 
@@ -41,7 +41,7 @@ npm run preview
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| `VITE_CORE_URL` | `http://127.0.0.1:8080` | testhub-server（登录、用例、计划、AI、系统设置） |
+| `VITE_CORE_URL` | `http://127.0.0.1:8080` | easytest-server（登录、用例、计划、AI、系统设置） |
 | `VITE_UEXEC_URL` | `http://127.0.0.1:8081` | ui-execution（任务、设备、统计、Skills、审计） |
 
 可在 `web/.env.local` 中覆盖（参考 `.env.example`）：
@@ -53,10 +53,10 @@ VITE_UEXEC_URL=http://127.0.0.1:8081
 
 运行期也可以在**登录页「服务地址设置」**或**系统设置 → 客户端服务地址**中修改，修改后立即对后续请求生效，并持久化到浏览器 localStorage：
 
-- `testhub.config.coreUrl`
-- `testhub.config.uexecUrl`
-- `testhub.token`（JWT）
-- `testhub.user`（当前用户快照）
+- `easytest.config.coreUrl`
+- `easytest.config.uexecUrl`
+- `easytest.token`（JWT）
+- `easytest.user`（当前用户快照）
 
 > 服务地址与登录态都是**浏览器本地配置**，不同浏览器/设备互不影响。生产部署建议通过环境变量或反向代理固定地址。
 

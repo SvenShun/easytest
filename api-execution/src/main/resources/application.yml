@@ -31,26 +31,26 @@ spring:
       repositories:
         enabled: false
 
-testhub:
+easytest:
   apiexec:
-    # TESTHUB_APIEXEC_CALLBACK_URL is accepted as a compatibility alias (dev-up.sh).
-    core-base-url: ${TESTHUB_CORE_URL:${TESTHUB_APIEXEC_CALLBACK_URL:http://127.0.0.1:8080}}
-    public-base-url: ${TESTHUB_APIEXEC_PUBLIC_URL:http://127.0.0.1:8084}
-    # Optional callback-token override; blank reuses testhub.security.service-token.
-    service-token: ${TESTHUB_APIEXEC_SERVICE_TOKEN:}
-    workers: ${TESTHUB_APIEXEC_WORKERS:4}
+    # EASYTEST_APIEXEC_CALLBACK_URL is accepted as a compatibility alias (dev-up.sh).
+    core-base-url: ${EASYTEST_CORE_URL:${EASYTEST_APIEXEC_CALLBACK_URL:http://127.0.0.1:8080}}
+    public-base-url: ${EASYTEST_APIEXEC_PUBLIC_URL:http://127.0.0.1:8084}
+    # Optional callback-token override; blank reuses easytest.security.service-token.
+    service-token: ${EASYTEST_APIEXEC_SERVICE_TOKEN:}
+    workers: ${EASYTEST_APIEXEC_WORKERS:4}
     # memory (default, in-process) or redis (shared queue across instances).
-    queue: ${TESTHUB_APIEXEC_QUEUE:memory}
-    redis-key-prefix: ${TESTHUB_APIEXEC_REDIS_KEY_PREFIX:testhub:apiexec:}
+    queue: ${EASYTEST_APIEXEC_QUEUE:memory}
+    redis-key-prefix: ${EASYTEST_APIEXEC_REDIS_KEY_PREFIX:easytest:apiexec:}
     # Blank means hostname + random suffix; workers are {instance-id}-{index}.
-    instance-id: ${TESTHUB_APIEXEC_INSTANCE_ID:}
-    default-timeout-sec: ${TESTHUB_APIEXEC_DEFAULT_TIMEOUT_SEC:30}
-    callback-enabled: ${TESTHUB_APIEXEC_CALLBACK_ENABLED:true}
+    instance-id: ${EASYTEST_APIEXEC_INSTANCE_ID:}
+    default-timeout-sec: ${EASYTEST_APIEXEC_DEFAULT_TIMEOUT_SEC:30}
+    callback-enabled: ${EASYTEST_APIEXEC_CALLBACK_ENABLED:true}
   security:
-    jwt-secret: ${TESTHUB_JWT_SECRET:testhub-dev-jwt-secret-change-me-0123456789abcdef}
-    service-token: ${TESTHUB_SERVICE_TOKEN:${TESTHUB_APIEXEC_SERVICE_TOKEN:testhub-dev-service-token}}
-    agent-token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
-    encryption-key: ${TESTHUB_ENCRYPTION_KEY:testhub-dev-encryption-key-change-me}
+    jwt-secret: ${EASYTEST_JWT_SECRET:easytest-dev-jwt-secret-change-me-0123456789abcdef}
+    service-token: ${EASYTEST_SERVICE_TOKEN:${EASYTEST_APIEXEC_SERVICE_TOKEN:easytest-dev-service-token}}
+    agent-token: ${EASYTEST_AGENT_TOKEN:easytest-dev-agent-token}
+    encryption-key: ${EASYTEST_ENCRYPTION_KEY:easytest-dev-encryption-key-change-me}
 
 management:
   endpoints:
@@ -61,6 +61,6 @@ management:
     health:
       show-details: never
   health:
-    # The memory queue does not need Redis; opt in with TESTHUB_APIEXEC_REDIS_HEALTH=true.
+    # The memory queue does not need Redis; opt in with EASYTEST_APIEXEC_REDIS_HEALTH=true.
     redis:
-      enabled: ${TESTHUB_APIEXEC_REDIS_HEALTH:false}
+      enabled: ${EASYTEST_APIEXEC_REDIS_HEALTH:false}

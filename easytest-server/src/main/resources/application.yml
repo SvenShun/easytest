@@ -1,0 +1,68 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: easytest-server
+  datasource:
+    url: jdbc:h2:file:./data/db/core;MODE=MySQL;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: 60MB
+      max-request-size: 60MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+easytest:
+  security:
+    jwt-secret: ${EASYTEST_JWT_SECRET:easytest-dev-jwt-secret-change-me-0123456789abcdef}
+    token-ttl: ${EASYTEST_TOKEN_TTL:12h}
+    service-token: ${EASYTEST_SERVICE_TOKEN:easytest-dev-service-token}
+    agent-token: ${EASYTEST_AGENT_TOKEN:easytest-dev-agent-token}
+    encryption-key: ${EASYTEST_ENCRYPTION_KEY:easytest-dev-encryption-key-change-me}
+  core:
+    public-base-url: ${EASYTEST_PUBLIC_BASE_URL:http://127.0.0.1:8080}
+    internal-base-url: ${EASYTEST_INTERNAL_BASE_URL:}
+    ui-execution-base-url: ${EASYTEST_UI_EXECUTION_BASE_URL:http://127.0.0.1:8081}
+    api-execution-base-urls: ${EASYTEST_API_EXECUTION_URLS:http://127.0.0.1:8084}
+    ticket-ttl: 15m
+    credential-ttl: 15m
+  metersphere:
+    # Plan-result write-back (POST /test-plan/functional/case/run)
+    enabled: ${EASYTEST_METERSPHERE_WRITEBACK:false}
+    base-url: ${EASYTEST_METERSHPHERE_BASE_URL:http://127.0.0.1:8082}
+    project-id: ${EASYTEST_METERSHPHERE_PROJECT_ID:}
+    token: ${EASYTEST_METERSHPHERE_TOKEN:}
+    csrf-token: ${EASYTEST_METERSHPHERE_CSRF_TOKEN:}
+    username: ${EASYTEST_METERSHPHERE_USERNAME:}
+    password: ${EASYTEST_METERSHPHERE_PASSWORD:}
+  web:
+    static-dir: ${EASYTEST_WEB_STATIC_DIR:web/dist}
+  artifact:
+    store: ${EASYTEST_ARTIFACT_STORE:local}
+    local-dir: ${EASYTEST_ARTIFACT_DIR:./data/core-artifacts}
+    minio:
+      endpoint: ${EASYTEST_MINIO_ENDPOINT:http://127.0.0.1:9000}
+      access-key: ${EASYTEST_MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${EASYTEST_MINIO_SECRET_KEY:minioadmin}
+      bucket: ${EASYTEST_MINIO_BUCKET:easytest}
+
+logging:
+  level:
+    com.easytest: INFO

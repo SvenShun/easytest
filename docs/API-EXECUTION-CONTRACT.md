@@ -4,8 +4,8 @@
 
 ## 1. 部署形态
 
-- `api-execution` 为独立 Spring Boot 服务，默认端口 **8084**，库 `testhub_apiexec`。
-- 可水平扩容：主服务配置多个 base URL（`TESTHUB_API_EXECUTION_URLS`，逗号分隔），按轮询分发任务。
+- `api-execution` 为独立 Spring Boot 服务，默认端口 **8084**，库 `easytest_apiexec`。
+- 可水平扩容：主服务配置多个 base URL（`EASYTEST_API_EXECUTION_URLS`，逗号分隔），按轮询分发任务。
 - 执行器无状态于业务库之外；任务落自己的库，重启后未完成任务标记 FAILED（V1）。
 - 主服务与执行服务之间使用 `X-Service-Token`；回调走 `/internal/v1/plan-runs/items/result`。
 
@@ -170,7 +170,7 @@ X-Service-Token: ...
 
 ### 7.3 共享队列
 
-- `testhub.apiexec.queue=memory|redis`（`TESTHUB_APIEXEC_QUEUE`）。
-- Redis key：`testhub:apiexec:queue`；多实例 worker 从同一队列取任务。
-- 任务记录 `workerId = {instanceId}-{workerIndex}`；实例 ID 可用 `TESTHUB_APIEXEC_INSTANCE_ID` 固定。
+- `easytest.apiexec.queue=memory|redis`（`EASYTEST_APIEXEC_QUEUE`）。
+- Redis key：`easytest:apiexec:queue`；多实例 worker 从同一队列取任务。
+- 任务记录 `workerId = {instanceId}-{workerIndex}`；实例 ID 可用 `EASYTEST_APIEXEC_INSTANCE_ID` 固定。
 - 排队取消会从队列移除；运行中取消写 Redis 取消标记并置 CANCELLED。

@@ -1,10 +1,10 @@
-# Sonic 能力移植进度（TestHub）
+# Sonic 能力移植进度（EasyTest）
 
 依据本地 Sonic 源码研究：[SONIC-PORT-INVENTORY.md](SONIC-PORT-INVENTORY.md)。
 
 ## 已落地
 
-| Sonic 能力 | TestHub 实现 |
+| Sonic 能力 | EasyTest 实现 |
 |---|---|
 | 设备发现/热插拔 | device-agent ADB 轮询（5s）+ `/agent/devices/refresh`；设备可分组 |
 | 设备池/在线状态 | Web 设备池、设备分组筛选、Agent 列表/重命名/停用、设备占用（10 分钟租约） |

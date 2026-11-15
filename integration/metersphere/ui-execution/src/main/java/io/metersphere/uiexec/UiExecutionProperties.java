@@ -8,10 +8,10 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "metersphere.uiexec")
 public class UiExecutionProperties {
 
-    /** Device sub-server agent base URL (TestHub device-agent protocol). */
+    /** Device sub-server agent base URL (EasyTest device-agent protocol). */
     private String agentBaseUrl = "http://127.0.0.1:8090";
     /** Shared agent token. */
-    private String agentToken = "testhub-dev-agent-token";
+    private String agentToken = "easytest-dev-agent-token";
     /** Base URL the agent uses to reach MeterSphere callbacks. */
     private String callbackBaseUrl = "http://127.0.0.1:8082";
     /** Device used when the request does not specify one. */

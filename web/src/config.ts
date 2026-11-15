@@ -5,8 +5,8 @@ export interface AppConfig {
   uexecUrl: string;
 }
 
-const CORE_KEY = 'testhub.config.coreUrl';
-const UEXEC_KEY = 'testhub.config.uexecUrl';
+const CORE_KEY = 'easytest.config.coreUrl';
+const UEXEC_KEY = 'easytest.config.uexecUrl';
 
 const env = import.meta.env as Record<string, string | undefined>;
 

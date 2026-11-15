@@ -5,28 +5,28 @@ spring:
   application:
     name: device-agent
 
-testhub:
+easytest:
   agent:
-    name: ${TESTHUB_AGENT_NAME:device-agent-1}
-    host: ${TESTHUB_AGENT_HOST:127.0.0.1}
-    base-url: ${TESTHUB_AGENT_BASE_URL:http://127.0.0.1:8090}
-    ui-execution-url: ${TESTHUB_UIEXEC_URL:http://127.0.0.1:8081}
-    token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
-    runtime-url: ${TESTHUB_RUNTIME_URL:http://127.0.0.1:8095}
+    name: ${EASYTEST_AGENT_NAME:device-agent-1}
+    host: ${EASYTEST_AGENT_HOST:127.0.0.1}
+    base-url: ${EASYTEST_AGENT_BASE_URL:http://127.0.0.1:8090}
+    ui-execution-url: ${EASYTEST_UIEXEC_URL:http://127.0.0.1:8081}
+    token: ${EASYTEST_AGENT_TOKEN:easytest-dev-agent-token}
+    runtime-url: ${EASYTEST_RUNTIME_URL:http://127.0.0.1:8095}
     # simulated | adb | sonic | auto
-    mode: ${TESTHUB_AGENT_MODE:simulated}
+    mode: ${EASYTEST_AGENT_MODE:simulated}
     # Sonic UIA2 mode: point each device at the UIA2/WDA server started by Sonic-Agent.
     sonic:
-      adb: ${TESTHUB_SONIC_ADB:adb}
+      adb: ${EASYTEST_SONIC_ADB:adb}
       devices: []
       # - serial: emulator-5554
       #   name: Pixel 7
       #   model: sdk_gphone64
       #   uiaUrl: http://127.0.0.1:6790
       #   tags: [android, sonic]
-    data-dir: ${TESTHUB_AGENT_DATA_DIR:./data/agent}
+    data-dir: ${EASYTEST_AGENT_DATA_DIR:./data/agent}
     heartbeat-interval-sec: 20
 
 logging:
   level:
-    com.testhub.agent: INFO
+    com.easytest.agent: INFO

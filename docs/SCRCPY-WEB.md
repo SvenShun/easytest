@@ -8,7 +8,7 @@
 - 视频：**ws-scrcpy**（MIT）把 scrcpy 的 H.264 流通过 WebSocket 推到浏览器，使用 **WebCodecs** 解码。
 - 控制：页面覆盖层把鼠标坐标换算成设备坐标，调用现有 ADB 接口下发 `tap/swipe`。
   - 这样不依赖 ws-scrcpy 原生控制通道，MIUI/不同 ROM 下也能操作。
-- 端口：ws-scrcpy `:8000`；TestHub 页面 `:8080`；两者同主机，iframe 直接加载。
+- 端口：ws-scrcpy `:8000`；EasyTest 页面 `:8080`；两者同主机，iframe 直接加载。
 
 ## 2. 安装与启动
 

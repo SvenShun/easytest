@@ -1,8 +1,8 @@
 import { getConfig } from '../config';
 import type { Page } from './types';
 
-export const TOKEN_KEY = 'testhub.token';
-export const USER_KEY = 'testhub.user';
+export const TOKEN_KEY = 'easytest.token';
+export const USER_KEY = 'easytest.user';
 
 export class ApiError extends Error {
   status: number;

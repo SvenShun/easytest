@@ -1,4 +1,4 @@
-# TestHub V1 运维手册（RUNBOOK）
+# EasyTest V1 运维手册（RUNBOOK）
 
 ## 1. 本地开发
 
@@ -30,19 +30,19 @@ make main-down                     # 只停 core 与静态站点，保留中间�
 
 ```bash
 make infra                                  # Docker: MySQL 8.0 / Redis 7 / MinIO
-TESTHUB_INFRA=docker ./scripts/dev-up.sh    # 应用切到 MySQL + Redis + MinIO
+EASYTEST_INFRA=docker ./scripts/dev-up.sh    # 应用切到 MySQL + Redis + MinIO
 make e2e
 make down && make infra-down
 ```
 
-中间件端口：MySQL `3306`（root/testhub）、Redis `6379`、MinIO `9000`（控制台 `9001`，testhub/testhub123）、
+中间件端口：MySQL `3306`（root/easytest）、Redis `6379`、MinIO `9000`（控制台 `9001`，easytest/easytest123）、
 Kafka `9092`（KRaft 单节点）。
 
-Kafka 主题（`TESTHUB_EVENT_BUS=kafka` 时启用）：
+Kafka 主题（`EASYTEST_EVENT_BUS=kafka` 时启用）：
 
 ```bash
-docker exec testhub-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --list
-docker exec testhub-kafka /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server 127.0.0.1:9092 --topic ui-execution.task.result --from-beginning
+docker exec easytest-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --list
+docker exec easytest-kafka /opt/kafka/bin/kafka-console-consumer.sh   --bootstrap-server 127.0.0.1:9092 --topic ui-execution.task.result --from-beginning
 ```
 
 事件体见 `docs/API-CONTRACT.md` 附录 A。当前 Kafka 只承载任务事件（下发/结果），任务下发仍走 HTTP。
@@ -58,13 +58,13 @@ make ms-install-module            # 注入 ui-execution 模块与补丁
 make ms-build                     # JDK 21 + 工作区 Maven 仓库
 make ms-up                        # :8082 / 管理 :7171，日志 logs/metersphere.log
 eval "$(make -s ms-token)"        # X-AUTH-TOKEN / CSRF-TOKEN / PROJECT
-TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
+EASYTEST_INFRA=docker EASYTEST_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 make ms-down
 ```
 
 - 账号 `admin/metersphere`；默认项目 `100001100001`。
-- 计划结果回写：`TESTHUB_METERSPHERE_WRITEBACK=true` + 映射接口（见 METERSPHERE-INTEGRATION §4.1）。
-- 推荐配置 `TESTHUB_METERSHPHERE_USERNAME/PASSWORD` 自动登录；仅配 token 时 12h 后需刷新。
+- 计划结果回写：`EASYTEST_METERSPHERE_WRITEBACK=true` + 映射接口（见 METERSPHERE-INTEGRATION §4.1）。
+- 推荐配置 `EASYTEST_METERSHPHERE_USERNAME/PASSWORD` 自动登录；仅配 token 时 12h 后需刷新。
 - MeterSphere 会话默认 12h，过期后重新执行 `make ms-token` 并重启 ui-execution。
 - 数据库必须使用 `utf8mb4_general_ci`；日志已用 `deploy/metersphere/logback-spring.xml` 覆盖。
 - 详见 `docs/METERSPHERE-INTEGRATION.md`。
@@ -74,12 +74,12 @@ make ms-down
 | 能力 | 默认（dev） | 切换方式 |
 |---|---|---|
 | 元数据 | H2 文件库 `data/db/{core,uiexec}` | `SPRING_PROFILES_ACTIVE=mysql` + `SPRING_DATASOURCE_*` |
-| 设备 FIFO 队列 | 进程内内存队列 | `TESTHUB_QUEUE_STORE=redis` + `SPRING_DATA_REDIS_HOST` |
-| 产物（截图/报告/脚本包） | 本地文件 `data/artifacts`、`data/core-artifacts` | `TESTHUB_ARTIFACT_STORE=minio` + `TESTHUB_MINIO_*`（或用 `TESTHUB_INFRA=docker`） |
+| 设备 FIFO 队列 | 进程内内存队列 | `EASYTEST_QUEUE_STORE=redis` + `SPRING_DATA_REDIS_HOST` |
+| 产物（截图/报告/脚本包） | 本地文件 `data/artifacts`、`data/core-artifacts` | `EASYTEST_ARTIFACT_STORE=minio` + `EASYTEST_MINIO_*`（或用 `EASYTEST_INFRA=docker`） |
 | AI 模型 | `mock`（离线确定性） | 系统设置里改为 `openai`/`deepseek` 并填 endpoint/key/model |
-| 用例源 | TestHub case-management | `TESTHUB_CASE_SOURCE=metersphere` + MeterSphere 连接配置（见 METERSPHERE-INTEGRATION.md） |
-| 设备 | 模拟设备（2 台） | `TESTHUB_AGENT_MODE=adb`（需 adb 与真机） |
-| 任务事件 | 本地结构化日志 | `TESTHUB_EVENT_BUS=kafka` + `TESTHUB_KAFKA_BOOTSTRAP`（`TESTHUB_INFRA=docker` 自动开启） |
+| 用例源 | EasyTest case-management | `EASYTEST_CASE_SOURCE=metersphere` + MeterSphere 连接配置（见 METERSPHERE-INTEGRATION.md） |
+| 设备 | 模拟设备（2 台） | `EASYTEST_AGENT_MODE=adb`（需 adb 与真机） |
+| 任务事件 | 本地结构化日志 | `EASYTEST_EVENT_BUS=kafka` + `EASYTEST_KAFKA_BOOTSTRAP`（`EASYTEST_INFRA=docker` 自动开启） |
 
 ## 3. 环境变量
 
@@ -87,49 +87,49 @@ make ms-down
 
 | 变量 | 默认（仅 dev） | 说明 |
 |---|---|---|
-| `TESTHUB_JWT_SECRET` | `testhub-dev-jwt-secret-...` | HS256 密钥，所有服务必须一致 |
-| `TESTHUB_SERVICE_TOKEN` | `testhub-dev-service-token` | 服务间 `/internal/**` 令牌 |
-| `TESTHUB_AGENT_TOKEN` | `testhub-dev-agent-token` | Agent 注册/心跳/回调令牌 |
-| `TESTHUB_ENCRYPTION_KEY` | `testhub-dev-encryption-key-change-me` | 模型 API Key 落库加密密钥；变更后旧密钥无法解密 |
+| `EASYTEST_JWT_SECRET` | `easytest-dev-jwt-secret-...` | HS256 密钥，所有服务必须一致 |
+| `EASYTEST_SERVICE_TOKEN` | `easytest-dev-service-token` | 服务间 `/internal/**` 令牌 |
+| `EASYTEST_AGENT_TOKEN` | `easytest-dev-agent-token` | Agent 注册/心跳/回调令牌 |
+| `EASYTEST_ENCRYPTION_KEY` | `easytest-dev-encryption-key-change-me` | 模型 API Key 落库加密密钥；变更后旧密钥无法解密 |
 
-### testhub-server（core）
+### easytest-server（core）
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | H2 文件库 | 推荐 `jdbc:mysql://host:3306/testhub_core?...` |
-| `TESTHUB_PUBLIC_BASE_URL` | `http://127.0.0.1:8080` | 对外访问地址 |
-| `TESTHUB_INTERNAL_BASE_URL` | 同 public | Agent 下载脚本包用的内部地址（容器内填 `http://core:8080`） |
-| `TESTHUB_UIEXEC_BASE_URL` | `http://127.0.0.1:8081` | 触发计划时调用 ui-execution |
-| `TESTHUB_ARTIFACT_DIR` | `./data/core-artifacts` | 脚本包存储目录 |
-| `TESTHUB_ARTIFACT_STORE` | `local` | `minio` 启用对象存储 |
+| `SPRING_DATASOURCE_URL` | H2 文件库 | 推荐 `jdbc:mysql://host:3306/easytest_core?...` |
+| `EASYTEST_PUBLIC_BASE_URL` | `http://127.0.0.1:8080` | 对外访问地址 |
+| `EASYTEST_INTERNAL_BASE_URL` | 同 public | Agent 下载脚本包用的内部地址（容器内填 `http://core:8080`） |
+| `EASYTEST_UIEXEC_BASE_URL` | `http://127.0.0.1:8081` | 触发计划时调用 ui-execution |
+| `EASYTEST_ARTIFACT_DIR` | `./data/core-artifacts` | 脚本包存储目录 |
+| `EASYTEST_ARTIFACT_STORE` | `local` | `minio` 启用对象存储 |
 | `MINIO_ENDPOINT` / `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` / `MINIO_BUCKET` | — | MinIO 配置 |
 
 ### ui-execution
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | H2 文件库 | 推荐 `jdbc:mysql://host:3306/testhub_uiexec?...` |
-| `TESTHUB_CORE_URL` | `http://127.0.0.1:8080` | 内部回调/用例上下文 |
-| `TESTHUB_UIEXEC_PUBLIC_URL` | `http://127.0.0.1:8081` | 产物/报告对外 URL |
-| `TESTHUB_UIEXEC_CALLBACK_URL` | 同 public | Agent 回调地址（容器内填 `http://ui-execution:8081`） |
-| `TESTHUB_QUEUE_STORE` | `memory` | `redis` |
+| `SPRING_DATASOURCE_URL` | H2 文件库 | 推荐 `jdbc:mysql://host:3306/easytest_uiexec?...` |
+| `EASYTEST_CORE_URL` | `http://127.0.0.1:8080` | 内部回调/用例上下文 |
+| `EASYTEST_UIEXEC_PUBLIC_URL` | `http://127.0.0.1:8081` | 产物/报告对外 URL |
+| `EASYTEST_UIEXEC_CALLBACK_URL` | 同 public | Agent 回调地址（容器内填 `http://ui-execution:8081`） |
+| `EASYTEST_QUEUE_STORE` | `memory` | `redis` |
 | `SPRING_DATA_REDIS_HOST` / `PORT` | `127.0.0.1` / `6379` | Redis |
-| `TESTHUB_ARTIFACT_DIR` | `./data/artifacts` | 本地产物目录 |
-| `TESTHUB_ARTIFACT_STORE` | `local` | `minio` |
-| `TESTHUB_AGENT_OFFLINE_SECONDS` | `90` | 心跳超时判定离线 |
-| `TESTHUB_EVENT_BUS` | `local` | `kafka` 发布任务事件 |
-| `TESTHUB_KAFKA_BOOTSTRAP` | `127.0.0.1:9092` | Kafka broker |
+| `EASYTEST_ARTIFACT_DIR` | `./data/artifacts` | 本地产物目录 |
+| `EASYTEST_ARTIFACT_STORE` | `local` | `minio` |
+| `EASYTEST_AGENT_OFFLINE_SECONDS` | `90` | 心跳超时判定离线 |
+| `EASYTEST_EVENT_BUS` | `local` | `kafka` 发布任务事件 |
+| `EASYTEST_KAFKA_BOOTSTRAP` | `127.0.0.1:9092` | Kafka broker |
 
 ### device-agent
 
 | 变量 | 默认 | 说明 |
 |---|---|---|
-| `TESTHUB_AGENT_NAME` | `device-agent-1` | 注册幂等键 |
-| `TESTHUB_AGENT_BASE_URL` | `http://127.0.0.1:8090` | core（ui-execution）回调本 Agent 的地址 |
-| `TESTHUB_UIEXEC_URL` | `http://127.0.0.1:8081` | 注册/心跳 |
-| `TESTHUB_RUNTIME_URL` | `http://127.0.0.1:8095` | AI Runtime 地址 |
-| `TESTHUB_AGENT_MODE` | `simulated` | `simulated` / `adb` / `auto` |
-| `TESTHUB_AGENT_DATA_DIR` | `./data/agent` | 脚本解压、Skills 缓存 |
+| `EASYTEST_AGENT_NAME` | `device-agent-1` | 注册幂等键 |
+| `EASYTEST_AGENT_BASE_URL` | `http://127.0.0.1:8090` | core（ui-execution）回调本 Agent 的地址 |
+| `EASYTEST_UIEXEC_URL` | `http://127.0.0.1:8081` | 注册/心跳 |
+| `EASYTEST_RUNTIME_URL` | `http://127.0.0.1:8095` | AI Runtime 地址 |
+| `EASYTEST_AGENT_MODE` | `simulated` | `simulated` / `adb` / `auto` |
+| `EASYTEST_AGENT_DATA_DIR` | `./data/agent` | 脚本解压、Skills 缓存 |
 
 ### ai-runtime
 
@@ -141,20 +141,20 @@ make ms-down
 
 ```bash
 export SPRING_PROFILES_ACTIVE=mysql
-export SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:3306/testhub_core?useSSL=false&serverTimezone=UTC'
+export SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:3306/easytest_core?useSSL=false&serverTimezone=UTC'
 export SPRING_DATASOURCE_USERNAME=root
-export SPRING_DATASOURCE_PASSWORD=testhub
+export SPRING_DATASOURCE_PASSWORD=easytest
 
-export TESTHUB_QUEUE_STORE=redis
+export EASYTEST_QUEUE_STORE=redis
 export SPRING_DATA_REDIS_HOST=127.0.0.1
 
-export TESTHUB_ARTIFACT_STORE=minio
+export EASYTEST_ARTIFACT_STORE=minio
 export MINIO_ENDPOINT=http://127.0.0.1:9000
-export MINIO_ACCESS_KEY=testhub
-export MINIO_SECRET_KEY=testhub123
+export MINIO_ACCESS_KEY=easytest
+export MINIO_SECRET_KEY=easytest123
 ```
 
-数据库需预先创建 `testhub_core`、`testhub_uiexec`（见 `deploy/mysql-init/01-databases.sql`）。
+数据库需预先创建 `easytest_core`、`easytest_uiexec`（见 `deploy/mysql-init/01-databases.sql`）。
 V1 使用 JPA `ddl-auto=update` 自动建表，生产环境应先引入 Flyway 再关闭自动更新（TODO）。
 
 ## 5. Docker Compose
@@ -180,7 +180,7 @@ docker compose up -d --build
 | AI 任务 `EXECUTOR_UNAVAILABLE` | 系统设置里视觉模型未配置，或没有在线设备 |
 | AI 任务 `SKILLS_UNAVAILABLE` | Skills 指针指向的 Git 不可达且 Agent 无本地缓存；可清空指针或修正仓库 |
 | 任务一直 `PENDING` | 设备被占用/离线；看设备队列与 Agent 心跳 |
-| 失败报告 404 | `TESTHUB_UIEXEC_PUBLIC_URL` 与实际访问地址不一致 |
+| 失败报告 404 | `EASYTEST_UIEXEC_PUBLIC_URL` 与实际访问地址不一致 |
 | 中文截图乱码/空白 | 无字体环境；本地 dev 正常，容器内已安装 fontconfig/dejavu |
 
 ## 7. 重置环境
@@ -195,7 +195,7 @@ make up
 
 ## 8. 生产上线检查清单
 
-- [ ] 修改全部默认密钥：`TESTHUB_JWT_SECRET`、`TESTHUB_SERVICE_TOKEN`、`TESTHUB_AGENT_TOKEN`、`TESTHUB_ENCRYPTION_KEY`
+- [ ] 修改全部默认密钥：`EASYTEST_JWT_SECRET`、`EASYTEST_SERVICE_TOKEN`、`EASYTEST_AGENT_TOKEN`、`EASYTEST_ENCRYPTION_KEY`
 - [ ] 修改种子账号密码，删除演示账号
 - [ ] 使用 MySQL + Redis + MinIO，关闭 `ddl-auto=update`，引入 Flyway
 - [ ] TLS 终止在网关，限制 `/internal/**` 仅服务网段可达
@@ -209,18 +209,18 @@ make up
 
 ### 9.1 部署位置
 
-- 容器：`testhub-mysql`（镜像 `public.ecr.aws/docker/library/mysql:8.0`）
+- 容器：`easytest-mysql`（镜像 `public.ecr.aws/docker/library/mysql:8.0`）
 - 宿主机端口：`3306`
-- 数据卷：`deploy_testhub-mysql-data`，容器内路径 `/var/lib/mysql`
-- 账号（开发默认）：`root / testhub`
+- 数据卷：`deploy_easytest-mysql-data`，容器内路径 `/var/lib/mysql`
+- 账号（开发默认）：`root / easytest`
 
 库：
 
 | 库 | 用途 |
 |---|---|
-| `testhub_core` | 主服务：用户、需求、用例、脚本、计划、AI、配置、审计 |
-| `testhub_uiexec` | ui-execution：设备、Agent、任务、步骤、队列、失败报告、Skills 指针 |
-| `testhub_apiexec` | api-execution：接口任务、请求/响应、断言结果、报告 |
+| `easytest_core` | 主服务：用户、需求、用例、脚本、计划、AI、配置、审计 |
+| `easytest_uiexec` | ui-execution：设备、Agent、任务、步骤、队列、失败报告、Skills 指针 |
+| `easytest_apiexec` | api-execution：接口任务、请求/响应、断言结果、报告 |
 | `metersphere` | MeterSphere 源码实例（含内嵌 ui-execution 的 `ui_execution_*` 表） |
 
 主服务核心表：`app_user`、`req_item`、`client_case`、`case_review`、`script_project`、
@@ -229,7 +229,7 @@ make up
 ### 9.2 访问方式
 
 ```bash
-# 项目内快捷入口（进入 testhub_core）
+# 项目内快捷入口（进入 easytest_core）
 make db
 
 # 指定库
@@ -237,13 +237,13 @@ make db
 ./scripts/db.sh metersphere
 
 # 直接用本机 mysql 客户端
-mysql -h127.0.0.1 -P3306 -uroot -ptesthub testhub_core
+mysql -h127.0.0.1 -P3306 -uroot -peasytest easytest_core
 
 # 不装客户端也可以
-docker exec -it testhub-mysql mysql -uroot -ptesthub testhub_core
+docker exec -it easytest-mysql mysql -uroot -peasytest easytest_core
 ```
 
-GUI（DBeaver / Navicat / TablePlus）：Host `127.0.0.1`，Port `3306`，User `root`，Password `testhub`，Database `testhub_core`。
+GUI（DBeaver / Navicat / TablePlus）：Host `127.0.0.1`，Port `3306`，User `root`，Password `easytest`，Database `easytest_core`。
 
 ### 9.3 常用操作
 
@@ -262,15 +262,15 @@ make db-backup                       # 输出到 backups/backup-时间.sql
 make db-backup my.sql
 
 # 恢复（会覆盖同名库中的对象，先停主服务更稳妥）
-docker exec -i testhub-mysql mysql -uroot -ptesthub < backups/my.sql
+docker exec -i easytest-mysql mysql -uroot -peasytest < backups/my.sql
 ```
 
 ### 9.5 注意
 
 - `3306` 目前映射到 `0.0.0.0`，同一局域网可访问；生产必须改密、限制来源、加 TLS，不要直接暴露公网。
 - 数据在 Docker named volume 中，删除 volume（`docker compose -f deploy/docker-compose.infra.yml down -v`）会清空全部数据。
-- 接口执行：`./scripts/dev-up.sh` 会启动 api-execution；主服务用 `TESTHUB_API_EXECUTION_URLS`（逗号分隔）配置多个实例。
-- 共享队列：Docker 模式下自动 `TESTHUB_APIEXEC_QUEUE=redis`；`make apiexec-scale` 启动 :8085 第二实例，
-  `TESTHUB_APIEXEC_SECOND_URL=http://127.0.0.1:8085 make part3` 验收，`make apiexec-scale-down` 停止。
+- 接口执行：`./scripts/dev-up.sh` 会启动 api-execution；主服务用 `EASYTEST_API_EXECUTION_URLS`（逗号分隔）配置多个实例。
+- 共享队列：Docker 模式下自动 `EASYTEST_APIEXEC_QUEUE=redis`；`make apiexec-scale` 启动 :8085 第二实例，
+  `EASYTEST_APIEXEC_SECOND_URL=http://127.0.0.1:8085 make part3` 验收，`make apiexec-scale-down` 停止。
 - 环境与数据驱动：页面「环境管理」配置变量/鉴权；接口用例「数据集」一行一次执行；计划创建/编辑选择环境。
-- 其他中间件：Redis `127.0.0.1:6379`；MinIO API `9000`、控制台 `http://127.0.0.1:9001`（`testhub/testhub123`）；Kafka `127.0.0.1:9092`。
+- 其他中间件：Redis `127.0.0.1:6379`；MinIO API `9000`、控制台 `http://127.0.0.1:9001`（`easytest/easytest123`）；Kafka `127.0.0.1:9092`。

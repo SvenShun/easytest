@@ -8,12 +8,12 @@
 | 能力 | 实现 |
 |---|---|
 | ADB 设备发现 | `adb devices -l` 解析 serial/model，`mode=adb/auto` |
-| 热插拔 | `DeviceManager` 定时刷新（`testhub.agent.device-refresh-ms`，默认 15s）+ `POST /agent/devices/refresh` |
+| 热插拔 | `DeviceManager` 定时刷新（`easytest.agent.device-refresh-ms`，默认 15s）+ `POST /agent/devices/refresh` |
 | 截图 | `/device/{serial}/screenshot`（`adb exec-out screencap -p`） |
 | UI 树 | `adb shell uiautomator dump` + 解析节点/文本/clickable/editable/bounds |
 | 动作 | click/tap、input、swipe、back、home、launch、wait（ADB 命令） |
 | APK 安装 | `POST /device/{serial}/install`（multipart，`adb install -r`） |
-| 配置 | `testhub.agent.adb`、`testhub.agent.device-refresh-ms` |
+| 配置 | `easytest.agent.adb`、`easytest.agent.device-refresh-ms` |
 
 ## 2. 自动验收（假 adb）
 
@@ -57,16 +57,16 @@ adb devices -l
 2. 以 ADB 模式启动 device-agent（替换 adb 路径）：
 
 ```bash
-TESTHUB_AGENT_MODE=adb \
-TESTHUB_AGENT_ADB=/Users/you/Library/Android/sdk/platform-tools/adb \
-TESTHUB_AGENT_DEVICE_REFRESH_MS=5000 \
+EASYTEST_AGENT_MODE=adb \
+EASYTEST_AGENT_ADB=/Users/you/Library/Android/sdk/platform-tools/adb \
+EASYTEST_AGENT_DEVICE_REFRESH_MS=5000 \
 ./scripts/mvn.sh -q -pl device-agent spring-boot:run
 ```
 
 3. 检查：
 
 ```bash
-curl -H "X-Agent-Token: testhub-dev-agent-token" http://127.0.0.1:8090/agent/devices
+curl -H "X-Agent-Token: easytest-dev-agent-token" http://127.0.0.1:8090/agent/devices
 curl -o /tmp/s.png http://127.0.0.1:8090/device/<serial>/screenshot
 curl http://127.0.0.1:8090/device/<serial>/ui-tree
 ```
@@ -74,7 +74,7 @@ curl http://127.0.0.1:8090/device/<serial>/ui-tree
 4. 安装 APK：
 
 ```bash
-curl -H "X-Agent-Token: testhub-dev-agent-token" \
+curl -H "X-Agent-Token: easytest-dev-agent-token" \
   -F file=@app-debug.apk "http://127.0.0.1:8090/device/<serial>/install?replace=true"
 ```
 

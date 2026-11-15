@@ -16,8 +16,8 @@ import urllib.error
 import urllib.request
 import uuid
 
-CORE = os.environ.get("TESTHUB_CORE_URL", "http://127.0.0.1:8080")
-UEXEC = os.environ.get("TESTHUB_UIEXEC_URL", "http://127.0.0.1:8081")
+CORE = os.environ.get("EASYTEST_CORE_URL", "http://127.0.0.1:8080")
+UEXEC = os.environ.get("EASYTEST_UIEXEC_URL", "http://127.0.0.1:8081")
 
 
 class CheckError(RuntimeError):
@@ -49,7 +49,7 @@ def request(method: str, base: str, path: str, token: str | None = None,
 
 def multipart(base: str, path: str, token: str, field: str, filename: str,
               content: bytes, extra: dict[str, str] | None = None) -> object:
-    boundary = "----testhub" + uuid.uuid4().hex
+    boundary = "----easytest" + uuid.uuid4().hex
     parts = []
     for key, value in (extra or {}).items():
         parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{key}\"\r\n\r\n{value}\r\n".encode())
@@ -117,7 +117,7 @@ def main() -> int:
     if uia2:
         def launch():
             result = request("POST", UEXEC, f"/api/v1/ui-execution/devices/{device_id}/action",
-                             token, {"action": "launch", "app": "com.testhub.demo"})
+                             token, {"action": "launch", "app": "com.easytest.demo"})
             if not result.get("ok"):
                 raise CheckError(result.get("message") or "launch failed")
             time.sleep(2.0)

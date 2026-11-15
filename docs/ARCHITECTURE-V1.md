@@ -1,6 +1,6 @@
-# TestHub V1 实现架构
+# EasyTest V1 实现架构
 
-> 本文描述 **V1 实际实现**的架构，与《TestHub 架构设计文档》的对应关系和偏差见 `docs/V1-SCOPE.md`。
+> 本文描述 **V1 实际实现**的架构，与《EasyTest 架构设计文档》的对应关系和偏差见 `docs/V1-SCOPE.md`。
 
 ## 1. 部署视图
 
@@ -12,7 +12,7 @@
         ┌──────────────────────────┴──────────────────────────┐
         ▼                                                     ▼
 ┌───────────────────────┐                        ┌────────────────────────────┐
-│  testhub-server :8080 │◄── X-Service-Token ───►│  ui-execution :8081        │
+│  easytest-server :8080 │◄── X-Service-Token ───►│  ui-execution :8081        │
 │  case-management      │   /internal/**          │  执行器路由 / 设备 FIFO     │
 │  test-plan            │                        │  状态机 / 轨迹 / 失败报告   │
 │  system-setting       │                        │  Skills 指针                │
@@ -38,7 +38,7 @@ V1 未实现投屏，设备状态由 Agent 心跳同步。
 
 ## 2. 服务与模块边界
 
-### testhub-server（主服务器，模块化单体）
+### easytest-server（主服务器，模块化单体）
 
 | 模块包 | 职责 | 未来拆分 |
 |---|---|---|
@@ -84,7 +84,7 @@ V1 未实现投屏，设备状态由 Agent 心跳同步。
 | `client` | 回调 core 计划结果 |
 | `domain` | `api_task` 持久化 |
 
-主服务按 `TESTHUB_API_EXECUTION_URLS` 轮询分发，可横向扩容；对账合并所有实例结果。
+主服务按 `EASYTEST_API_EXECUTION_URLS` 轮询分发，可横向扩容；对账合并所有实例结果。
 
 ### device-agent / ai-runtime
 
@@ -98,7 +98,7 @@ Agent 负责「设备」与「执行器进程」；AI Runtime 只负责「决策
 ```mermaid
 sequenceDiagram
   participant U as 测试工程师
-  participant P as testhub-server
+  participant P as easytest-server
   participant X as ui-execution
   participant A as device-agent
   U->>P: POST /plans/{id}/trigger
@@ -152,7 +152,7 @@ sequenceDiagram
 
 ## 4. 数据模型（V1）
 
-### core（`testhub_core`）
+### core（`easytest_core`）
 
 | 表 | 关键字段 |
 |---|---|
@@ -169,13 +169,13 @@ sequenceDiagram
 | `plan_run` / `plan_run_item` | 运行与逐用例结果（task_id、failure_reason、report_url） |
 | `ai_job` | id, requirement_id, model_id, prompt_version, status, output_case_ids |
 
-### api-execution（`testhub_apiexec`）
+### api-execution（`easytest_apiexec`）
 
 | 表 | 关键字段 |
 |---|---|
 | `api_task` | id, plan_run_id, case_id, method, url, request/response, assertions, status, worker_id, failure_reason, report_json |
 
-### ui-execution（`testhub_uiexec`）
+### ui-execution（`easytest_uiexec`）
 
 | 表 | 关键字段 |
 |---|---|

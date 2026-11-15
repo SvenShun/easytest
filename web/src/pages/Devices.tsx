@@ -95,7 +95,7 @@ export function DevicesPage() {
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const [apkFile, setApkFile] = useState<File | null>(null);
   const [installBusy, setInstallBusy] = useState(false);
-  const [appPackage, setAppPackage] = useState('com.testhub.demo');
+  const [appPackage, setAppPackage] = useState('com.easytest.demo');
   const [actionBusy, setActionBusy] = useState(false);
   const [tapX, setTapX] = useState('540');
   const [tapY, setTapY] = useState('1200');
@@ -1127,7 +1127,7 @@ export function DevicesPage() {
               <span className="meta-label">启动应用</span>
               <Input
                 value={appPackage}
-                placeholder="com.testhub.demo"
+                placeholder="com.easytest.demo"
                 onChange={(event) => setAppPackage(event.target.value)}
               />
               <Button variant="secondary" loading={actionBusy} onClick={() => void launchApp()}>

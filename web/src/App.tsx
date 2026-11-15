@@ -117,7 +117,7 @@ function AppRoutes() {
   }, [route.path, route.segments.length, first]);
 
   useEffect(() => {
-    document.title = `${routeTitle(route)} · TestHub`;
+    document.title = `${routeTitle(route)} · EasyTest`;
   }, [route]);
 
   if (!authenticated || isLogin) {

@@ -2,7 +2,7 @@ services:
   mysql:
     image: public.ecr.aws/docker/library/mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-easytest}
       TZ: UTC
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
@@ -36,8 +36,8 @@ services:
     user: root
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-testhub}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-testhub123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-easytest}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-easytest123}
     volumes:
       - minio-data:/data
     ports:
@@ -50,24 +50,24 @@ services:
       dockerfile: deploy/Dockerfile.core
     environment:
       SPRING_PROFILES_ACTIVE: mysql
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/testhub_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/easytest_core?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
-      TESTHUB_JWT_SECRET: ${TESTHUB_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
-      TESTHUB_SERVICE_TOKEN: ${TESTHUB_SERVICE_TOKEN:-change-me-service-token}
-      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
-      TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
-      TESTHUB_PUBLIC_BASE_URL: ${TESTHUB_PUBLIC_BASE_URL:-http://127.0.0.1:8080}
-      TESTHUB_UI_EXECUTION_BASE_URL: http://ui-execution:8081
-      TESTHUB_API_EXECUTION_URLS: http://api-execution:8084
-      TESTHUB_APIEXEC_CALLBACK_URL: http://core:8080
-      TESTHUB_INTERNAL_BASE_URL: http://core:8080
-      TESTHUB_ARTIFACT_DIR: /data/artifacts
-      TESTHUB_ARTIFACT_STORE: minio
-      TESTHUB_MINIO_ENDPOINT: http://minio:9000
-      TESTHUB_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-testhub}
-      TESTHUB_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-testhub123}
-      TESTHUB_MINIO_BUCKET: testhub-core
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-easytest}
+      EASYTEST_JWT_SECRET: ${EASYTEST_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
+      EASYTEST_SERVICE_TOKEN: ${EASYTEST_SERVICE_TOKEN:-change-me-service-token}
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN:-change-me-agent-token}
+      EASYTEST_ENCRYPTION_KEY: ${EASYTEST_ENCRYPTION_KEY:-change-me-encryption-key}
+      EASYTEST_PUBLIC_BASE_URL: ${EASYTEST_PUBLIC_BASE_URL:-http://127.0.0.1:8080}
+      EASYTEST_UI_EXECUTION_BASE_URL: http://ui-execution:8081
+      EASYTEST_API_EXECUTION_URLS: http://api-execution:8084
+      EASYTEST_APIEXEC_CALLBACK_URL: http://core:8080
+      EASYTEST_INTERNAL_BASE_URL: http://core:8080
+      EASYTEST_ARTIFACT_DIR: /data/artifacts
+      EASYTEST_ARTIFACT_STORE: minio
+      EASYTEST_MINIO_ENDPOINT: http://minio:9000
+      EASYTEST_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-easytest}
+      EASYTEST_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-easytest123}
+      EASYTEST_MINIO_BUCKET: easytest-core
     volumes:
       - core-artifacts:/data/artifacts
     depends_on:
@@ -85,10 +85,10 @@ services:
     command:
       - >-
         /opt/kafka/bin/kafka-storage.sh format -t MkU3OEVBNTcwNTJENDM2Qk
-        -c /opt/kafka/config/testhub/server.properties --ignore-formatted &&
-        exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/testhub/server.properties
+        -c /opt/kafka/config/easytest/server.properties --ignore-formatted &&
+        exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/easytest/server.properties
     volumes:
-      - ./kafka:/opt/kafka/config/testhub:ro
+      - ./kafka:/opt/kafka/config/easytest:ro
       - kafka-data:/tmp/kraft-logs
     ports:
       - "9092:9092"
@@ -99,17 +99,17 @@ services:
       dockerfile: deploy/Dockerfile.apiexec
     environment:
       SPRING_PROFILES_ACTIVE: mysql
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/testhub_apiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/easytest_apiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
-      TESTHUB_JWT_SECRET: ${TESTHUB_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
-      TESTHUB_SERVICE_TOKEN: ${TESTHUB_SERVICE_TOKEN:-change-me-service-token}
-      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
-      TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
-      TESTHUB_CORE_URL: http://core:8080
-      TESTHUB_APIEXEC_PUBLIC_URL: ${TESTHUB_APIEXEC_PUBLIC_URL:-http://127.0.0.1:8084}
-      TESTHUB_APIEXEC_CALLBACK_URL: http://core:8080
-      TESTHUB_APIEXEC_WORKERS: 4
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-easytest}
+      EASYTEST_JWT_SECRET: ${EASYTEST_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
+      EASYTEST_SERVICE_TOKEN: ${EASYTEST_SERVICE_TOKEN:-change-me-service-token}
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN:-change-me-agent-token}
+      EASYTEST_ENCRYPTION_KEY: ${EASYTEST_ENCRYPTION_KEY:-change-me-encryption-key}
+      EASYTEST_CORE_URL: http://core:8080
+      EASYTEST_APIEXEC_PUBLIC_URL: ${EASYTEST_APIEXEC_PUBLIC_URL:-http://127.0.0.1:8084}
+      EASYTEST_APIEXEC_CALLBACK_URL: http://core:8080
+      EASYTEST_APIEXEC_WORKERS: 4
     depends_on:
       mysql:
         condition: service_healthy
@@ -122,26 +122,26 @@ services:
       dockerfile: deploy/Dockerfile.uiexec
     environment:
       SPRING_PROFILES_ACTIVE: mysql
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/testhub_uiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/easytest_uiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
-      TESTHUB_JWT_SECRET: ${TESTHUB_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
-      TESTHUB_SERVICE_TOKEN: ${TESTHUB_SERVICE_TOKEN:-change-me-service-token}
-      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
-      TESTHUB_ENCRYPTION_KEY: ${TESTHUB_ENCRYPTION_KEY:-change-me-encryption-key}
-      TESTHUB_CORE_URL: http://core:8080
-      TESTHUB_UIEXEC_PUBLIC_URL: ${TESTHUB_UIEXEC_PUBLIC_URL:-http://127.0.0.1:8081}
-      TESTHUB_UIEXEC_CALLBACK_URL: http://ui-execution:8081
-      TESTHUB_QUEUE_STORE: redis
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-easytest}
+      EASYTEST_JWT_SECRET: ${EASYTEST_JWT_SECRET:-change-me-jwt-secret-please-32bytes}
+      EASYTEST_SERVICE_TOKEN: ${EASYTEST_SERVICE_TOKEN:-change-me-service-token}
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN:-change-me-agent-token}
+      EASYTEST_ENCRYPTION_KEY: ${EASYTEST_ENCRYPTION_KEY:-change-me-encryption-key}
+      EASYTEST_CORE_URL: http://core:8080
+      EASYTEST_UIEXEC_PUBLIC_URL: ${EASYTEST_UIEXEC_PUBLIC_URL:-http://127.0.0.1:8081}
+      EASYTEST_UIEXEC_CALLBACK_URL: http://ui-execution:8081
+      EASYTEST_QUEUE_STORE: redis
       SPRING_DATA_REDIS_HOST: redis
-      TESTHUB_EVENT_BUS: kafka
-      TESTHUB_KAFKA_BOOTSTRAP: kafka:9092
-      TESTHUB_ARTIFACT_STORE: minio
-      TESTHUB_ARTIFACT_DIR: /data/artifacts
-      TESTHUB_MINIO_ENDPOINT: http://minio:9000
-      TESTHUB_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-testhub}
-      TESTHUB_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-testhub123}
-      TESTHUB_MINIO_BUCKET: testhub-ui
+      EASYTEST_EVENT_BUS: kafka
+      EASYTEST_KAFKA_BOOTSTRAP: kafka:9092
+      EASYTEST_ARTIFACT_STORE: minio
+      EASYTEST_ARTIFACT_DIR: /data/artifacts
+      EASYTEST_MINIO_ENDPOINT: http://minio:9000
+      EASYTEST_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-easytest}
+      EASYTEST_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-easytest123}
+      EASYTEST_MINIO_BUCKET: easytest-ui
     volumes:
       - ui-artifacts:/data/artifacts
     depends_on:
@@ -168,14 +168,14 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.agent
     environment:
-      TESTHUB_AGENT_NAME: device-agent-docker
-      TESTHUB_AGENT_HOST: device-agent
-      TESTHUB_AGENT_BASE_URL: http://device-agent:8090
-      TESTHUB_UIEXEC_URL: http://ui-execution:8081
-      TESTHUB_RUNTIME_URL: http://ai-runtime:8095
-      TESTHUB_AGENT_TOKEN: ${TESTHUB_AGENT_TOKEN:-change-me-agent-token}
-      TESTHUB_AGENT_MODE: simulated
-      TESTHUB_AGENT_DATA_DIR: /data/agent
+      EASYTEST_AGENT_NAME: device-agent-docker
+      EASYTEST_AGENT_HOST: device-agent
+      EASYTEST_AGENT_BASE_URL: http://device-agent:8090
+      EASYTEST_UIEXEC_URL: http://ui-execution:8081
+      EASYTEST_RUNTIME_URL: http://ai-runtime:8095
+      EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN:-change-me-agent-token}
+      EASYTEST_AGENT_MODE: simulated
+      EASYTEST_AGENT_DATA_DIR: /data/agent
     volumes:
       - agent-data:/data/agent
     depends_on:
@@ -192,7 +192,7 @@ services:
       - core
       - ui-execution
     ports:
-      - "${TESTHUB_WEB_PORT:-5173}:80"
+      - "${EASYTEST_WEB_PORT:-5173}:80"
 
 volumes:
   mysql-data:

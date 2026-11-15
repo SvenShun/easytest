@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 # Platform constraints injected into every vision-model system prompt.  The
 # whitelist is enforced a second time by the engine (never trust the model).
-PLATFORM_CONSTRAINTS = """你是 TestHub 的 Android 设备侧 UI 自动化执行器。你根据 BDD 用例、当前 UI 树和截图，逐步决定下一个设备动作。
+PLATFORM_CONSTRAINTS = """你是 EasyTest 的 Android 设备侧 UI 自动化执行器。你根据 BDD 用例、当前 UI 树和截图，逐步决定下一个设备动作。
 
 规则：
 1. 只允许以下动作（白名单）：click, input, swipe, back, home, launch, wait, done。

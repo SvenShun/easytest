@@ -21,7 +21,7 @@
 ### 2.1 单实例（环境 + 数据驱动）
 
 ```bash
-make up                 # 或 TESTHUB_INFRA=docker ./scripts/dev-up.sh
+make up                 # 或 EASYTEST_INFRA=docker ./scripts/dev-up.sh
 make part3
 ```
 
@@ -45,7 +45,7 @@ PART 3 RESULT: 14 checks passed, 0 failed
 
 ```bash
 make apiexec-scale      # 启动 :8085，Redis 共享队列
-TESTHUB_APIEXEC_SECOND_URL=http://127.0.0.1:8085 make part3
+EASYTEST_APIEXEC_SECOND_URL=http://127.0.0.1:8085 make part3
 make apiexec-scale-down
 ```
 
@@ -58,7 +58,7 @@ PART 3 RESULT: 16 checks passed, 0 failed
   `apiexec-local-1-1..4` 与 `apiexec-local-2-1..2`；
 - 共享运行：`run_e1ed04d54ed942b994fc`。
 
-前提：主栈以 Docker 模式启动（Redis 可用），`TESTHUB_APIEXEC_QUEUE=redis`（`dev-up` 在 `TESTHUB_INFRA=docker` 时自动设置）。
+前提：主栈以 Docker 模式启动（Redis 可用），`EASYTEST_APIEXEC_QUEUE=redis`（`dev-up` 在 `EASYTEST_INFRA=docker` 时自动设置）。
 
 ## 3. 实现位置
 
@@ -71,7 +71,7 @@ PART 3 RESULT: 16 checks passed, 0 failed
 **200 个全绿**（Java 152 + Python 48）：
 
 - api-execution 32（含队列/恢复测试）
-- testhub-server 42（含环境解析、登录鉴权、数据驱动迭代测试）
+- easytest-server 42（含环境解析、登录鉴权、数据驱动迭代测试）
 - ui-execution 36、device-agent 38、common 4、Python 48
 
 ## 5. 已知边界
@@ -90,11 +90,11 @@ PART 3 RESULT: 16 checks passed, 0 failed
 ```bash
 cd /Users/wen/DeepseekWorkspace/EasyTest
 make infra
-TESTHUB_INFRA=docker ./scripts/dev-up.sh
+EASYTEST_INFRA=docker ./scripts/dev-up.sh
 make part3
 
 # 共享队列
 make apiexec-scale
-TESTHUB_APIEXEC_SECOND_URL=http://127.0.0.1:8085 make part3
+EASYTEST_APIEXEC_SECOND_URL=http://127.0.0.1:8085 make part3
 make apiexec-scale-down
 ```

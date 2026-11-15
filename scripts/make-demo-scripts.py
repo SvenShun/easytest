@@ -2,7 +2,7 @@
 """Generate the two demo script bundles used by the E2E acceptance script.
 
 Both bundles mimic a TestNG-style project: they write a JUnit XML report and a
-screenshot into $TESTHUB_OUTPUT_DIR, which the device-agent collects as
+screenshot into $EASYTEST_OUTPUT_DIR, which the device-agent collects as
 artifacts. No Maven/JDK is required on the device, so the demo works offline.
 """
 import base64
@@ -47,9 +47,9 @@ def png(width: int, height: int, accent=(47, 107, 255)) -> bytes:
 
 RUN_TEMPLATE = r"""#!/bin/sh
 {set_e}
-OUT="${{TESTHUB_OUTPUT_DIR:-./output}}"
+OUT="${{EASYTEST_OUTPUT_DIR:-./output}}"
 mkdir -p "$OUT"
-echo "[demo] device=$TESTHUB_DEVICE_SERIAL task=$TESTHUB_TASK_ID"
+echo "[demo] device=$EASYTEST_DEVICE_SERIAL task=$EASYTEST_TASK_ID"
 echo "[demo] case: {case_title}"
 cat > "$OUT/junit.xml" <<'XML'
 {junit}
@@ -60,20 +60,20 @@ echo "[demo] screenshot saved: $OUT/screenshot.png"
 """
 
 PASS_JUNIT = """<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.testhub.demo.LoginTest" tests="2" failures="0" errors="0" time="3.4">
-  <testcase classname="com.testhub.demo.LoginTest" name="openLoginPage" time="1.1"/>
-  <testcase classname="com.testhub.demo.LoginTest" name="loginWithValidCredentials" time="2.3"/>
+<testsuite name="com.easytest.demo.LoginTest" tests="2" failures="0" errors="0" time="3.4">
+  <testcase classname="com.easytest.demo.LoginTest" name="openLoginPage" time="1.1"/>
+  <testcase classname="com.easytest.demo.LoginTest" name="loginWithValidCredentials" time="2.3"/>
 </testsuite>"""
 
 SLOW_JUNIT = """<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.testhub.demo.SlowLoginTest" tests="1" failures="0" errors="0" time="6.0">
-  <testcase classname="com.testhub.demo.SlowLoginTest" name="loginSlowly" time="6.0"/>
+<testsuite name="com.easytest.demo.SlowLoginTest" tests="1" failures="0" errors="0" time="6.0">
+  <testcase classname="com.easytest.demo.SlowLoginTest" name="loginSlowly" time="6.0"/>
 </testsuite>"""
 
 FAIL_JUNIT = """<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.testhub.demo.LoginErrorTest" tests="2" failures="1" errors="0" time="4.1">
-  <testcase classname="com.testhub.demo.LoginErrorTest" name="openLoginPage" time="1.0"/>
-  <testcase classname="com.testhub.demo.LoginErrorTest" name="loginShowsErrorToast" time="3.1">
+<testsuite name="com.easytest.demo.LoginErrorTest" tests="2" failures="1" errors="0" time="4.1">
+  <testcase classname="com.easytest.demo.LoginErrorTest" name="openLoginPage" time="1.0"/>
+  <testcase classname="com.easytest.demo.LoginErrorTest" name="loginShowsErrorToast" time="3.1">
     <failure message="expected toast 用户名或密码错误 but was 登录成功">AssertionError: expected toast</failure>
   </testcase>
 </testsuite>"""

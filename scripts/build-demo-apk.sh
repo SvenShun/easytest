@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build the tiny TestHub Demo APK (login screen) with the Android SDK tools.
+# Build the tiny EasyTest Demo APK (login screen) with the Android SDK tools.
 # Requires ANDROID_JAR and BUILD_TOOLS (default: tools/android/*), or pass env vars.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEMO="$ROOT/examples/android-demo"
 ANDROID_JAR="${ANDROID_JAR:-$ROOT/tools/android/android.jar}"
 BUILD_TOOLS="${BUILD_TOOLS:-$ROOT/tools/android/build-tools}"
-OUT="${1:-$DEMO/testhub-demo.apk}"
+OUT="${1:-$DEMO/easytest-demo.apk}"
 for tool in aapt2 d8 zipalign apksigner; do
   [ -x "$BUILD_TOOLS/$tool" ] || { echo "missing $BUILD_TOOLS/$tool (set BUILD_TOOLS)" >&2; exit 1; }
 done
@@ -18,8 +18,8 @@ mkdir -p "$WORK/compiled" "$WORK/gen" "$WORK/classes" "$WORK/dex"
 "$BUILD_TOOLS/aapt2" link -o "$WORK/unsigned.apk" -I "$ANDROID_JAR" \
   --manifest "$DEMO/AndroidManifest.xml" -R "$WORK/compiled"/*.flat --java "$WORK/gen" >/dev/null
 javac -source 8 -target 8 -nowarn -cp "$ANDROID_JAR" -d "$WORK/classes" \
-  "$DEMO/src/com/testhub/demo/LoginActivity.java" "$WORK/gen/com/testhub/demo/R.java" 2>/dev/null
-"$BUILD_TOOLS/d8" --lib "$ANDROID_JAR" --output "$WORK/dex" "$WORK/classes/com/testhub/demo/"*.class >/dev/null
+  "$DEMO/src/com/easytest/demo/LoginActivity.java" "$WORK/gen/com/easytest/demo/R.java" 2>/dev/null
+"$BUILD_TOOLS/d8" --lib "$ANDROID_JAR" --output "$WORK/dex" "$WORK/classes/com/easytest/demo/"*.class >/dev/null
 (cd "$WORK/dex" && zip -q "$WORK/unsigned.apk" classes.dex)
 "$BUILD_TOOLS/zipalign" -f 4 "$WORK/unsigned.apk" "$WORK/aligned.apk"
 KEYSTORE="${DEMO_KEYSTORE:-$WORK/debug.keystore}"

@@ -1,4 +1,4 @@
-# TestHub V1 接口契约（实现基准）
+# EasyTest V1 接口契约（实现基准）
 
 > 本文件是 V1 前后端、微服务、Agent、Runtime 之间的**唯一事实来源**。字段名、枚举、路径、状态机以本文为准。
 > 基线：`docs/V1-SCOPE.md`。所有服务默认 JSON（UTF-8），时间为 ISO-8601 UTC，ID 为 UUID 字符串。
@@ -8,8 +8,8 @@
 | 项 | 约定 |
 |---|---|
 | 鉴权（用户） | `Authorization: Bearer <JWT>`，HS256，载荷 `sub/username/name/role/iat/exp` |
-| 鉴权（服务间） | `X-Service-Token: <TESTHUB_SERVICE_TOKEN>`，仅 `/internal/**` |
-| 鉴权（Agent） | `X-Agent-Token: <TESTHUB_AGENT_TOKEN>`，Agent 注册/心跳/回调与下发 |
+| 鉴权（服务间） | `X-Service-Token: <EASYTEST_SERVICE_TOKEN>`，仅 `/internal/**` |
+| 鉴权（Agent） | `X-Agent-Token: <EASYTEST_AGENT_TOKEN>`，Agent 注册/心跳/回调与下发 |
 | 默认拒绝 | `/api/**` 未标注公开即需登录；`/internal/**` 必须是服务令牌 |
 | 错误体 | `{timestamp,status,code,message,path,details[]}`，HTTP 状态与 `code` 一致 |
 | 分页 | `?page=1&size=20`，响应 `{items,total,page,size}` |
@@ -26,7 +26,7 @@
 
 ---
 
-## 1. testhub-server（core，8080）
+## 1. easytest-server（core，8080）
 
 ### 1.1 认证
 
@@ -139,17 +139,17 @@
 `PUT /api/v1/plans/{id}/cases/{caseId}/metersphere` `{metersphereCaseId, metersphereTestPlanCaseId}` → `PlanMappingView`
 `GET /api/v1/plans/{id}/metersphere` → `{planId, metersphereTestPlanId, cases:[{caseId, metersphereCaseId, metersphereTestPlanCaseId}]}`
 
-配置 `TESTHUB_METERSPHERE_WRITEBACK=true` 后，`POST /internal/v1/plan-runs/items/result` 处理完成时，
+配置 `EASYTEST_METERSPHERE_WRITEBACK=true` 后，`POST /internal/v1/plan-runs/items/result` 处理完成时，
 按映射调用 MeterSphere `POST /test-plan/functional/case/run`：
 
-| TestHub item 状态 | MeterSphere `lastExecResult` |
+| EasyTest item 状态 | MeterSphere `lastExecResult` |
 |---|---|
 | SUCCESS | SUCCESS |
 | FAILED | ERROR |
 | TIMEOUT / CANCELLED / SKIPPED | BLOCKED |
 | 其他 | PENDING |
 
-写回为 best-effort：MeterSphere 不可达只记录 WARN，不影响 TestHub 结果。请求需带 `X-AUTH-TOKEN`、`CSRF-TOKEN`、`PROJECT`。
+写回为 best-effort：MeterSphere 不可达只记录 WARN，不影响 EasyTest 结果。请求需带 `X-AUTH-TOKEN`、`CSRF-TOKEN`、`PROJECT`。
 `GET /api/v1/plan-runs/{runId}` → `{run, items:[{caseId,caseTitle,taskId,executorType,status,failureReason,failureReportUrl,summary,deviceId,updatedAt}]}`
 `GET /api/v1/plan-runs/{runId}/report`
 ```json
@@ -350,14 +350,14 @@ JSON 上传到产物存储，`reportUrl` 指向 JSON：
 {"action":"click","target":{"text":"登录"}}
 {"action":"input","target":{"text":"用户名"},"text":"tester"}
 {"action":"swipe","from":{"x":500,"y":1500},"to":{"x":500,"y":400},"durationMs":300}
-{"action":"back"} {"action":"home"} {"action":"launch","app":"com.testhub.demo"} {"action":"wait","ms":500}
+{"action":"back"} {"action":"home"} {"action":"launch","app":"com.easytest.demo"} {"action":"wait","ms":500}
 → {"ok":true,"message":"clicked 登录","screen":"home"}
 ```
 动作失败（元素不存在等）→ `{"ok":false,"message":"element not found: ..."}`，HTTP 200（由 Runtime 分类）。
 `POST /device/{serial}/reset` → 重置模拟设备。
 
 执行器要求：
-- `SCRIPT`：下载 `bundleUrl` zip → 解压到任务目录 → 在目录内执行 `entryCommand`（`sh -c`），注入环境变量 `TESTHUB_TASK_ID`、`TESTHUB_DEVICE_SERIAL`、`TESTHUB_OUTPUT_DIR`；逐行上报日志；解析 `**/TEST-*.xml` 或 `junit.xml` 生成步骤与产物；退出码 0 且无 failure/error → `SUCCESS`，否则 `FAILED`/`SCRIPT_FAILED`。
+- `SCRIPT`：下载 `bundleUrl` zip → 解压到任务目录 → 在目录内执行 `entryCommand`（`sh -c`），注入环境变量 `EASYTEST_TASK_ID`、`EASYTEST_DEVICE_SERIAL`、`EASYTEST_OUTPUT_DIR`；逐行上报日志；解析 `**/TEST-*.xml` 或 `junit.xml` 生成步骤与产物；退出码 0 且无 failure/error → `SUCCESS`，否则 `FAILED`/`SCRIPT_FAILED`。
 - `AI_RUNTIME`：解析 Skills（见 §5）→ `POST {runtime}/runtime/tasks` → 等待同步返回 → 以 `resultUrl` 上报终止状态。
 - 未配置 runtime 或不可达 → `FAILED` + `EXECUTOR_UNAVAILABLE`。
 - 取消：设置标志；进程执行器 `destroyForcibly`；Runtime 调 `POST /runtime/tasks/{id}/cancel`，等待其返回后上报 `CANCELLED`。
@@ -414,7 +414,7 @@ item 状态与任务状态同名；未通过评审的用例不创建任务，ite
 
 ---
 
-## 附录 A. Kafka 任务事件（`TESTHUB_EVENT_BUS=kafka`）
+## 附录 A. Kafka 任务事件（`EASYTEST_EVENT_BUS=kafka`）
 
 | Topic | 生产时机 | Key |
 |---|---|---|

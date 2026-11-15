@@ -28,7 +28,7 @@ import java.util.Map;
  * UI execution orchestration inside MeterSphere.
  *
  * <p>Reads the functional case through MeterSphere's own service, dispatches the
- * TestHub device-agent protocol, receives step/result callbacks and writes the
+ * EasyTest device-agent protocol, receives step/result callbacks and writes the
  * final result through {@link TestPlanFunctionalCaseService#run}. Task state is
  * stored in MeterSphere's database with Flyway-managed tables.</p>
  *
@@ -380,7 +380,7 @@ public class UiExecutionService {
             run.setTestPlanId(task.testPlanId());
             run.setCaseId(task.caseId());
             run.setLastExecResult(mapStatus(status));
-            StringBuilder content = new StringBuilder("TestHub 设备执行结果");
+            StringBuilder content = new StringBuilder("EasyTest 设备执行结果");
             content.append("\n状态: ").append(status);
             if (reason != null) {
                 content.append("\n失败分类: ").append(reason);

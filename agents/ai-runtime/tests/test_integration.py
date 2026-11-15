@@ -35,7 +35,7 @@ def tree(title, texts, elements):
     return {
         "width": 1080,
         "height": 1920,
-        "screen": {"app": "com.testhub.demo", "title": title, "texts": texts},
+        "screen": {"app": "com.easytest.demo", "title": title, "texts": texts},
         "elements": elements,
     }
 

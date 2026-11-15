@@ -26,7 +26,7 @@ spring:
       repositories:
         enabled: false
   kafka:
-    bootstrap-servers: ${TESTHUB_KAFKA_BOOTSTRAP:127.0.0.1:9092}
+    bootstrap-servers: ${EASYTEST_KAFKA_BOOTSTRAP:127.0.0.1:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -34,38 +34,38 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
-testhub:
+easytest:
   uiexec:
-    core-base-url: ${TESTHUB_CORE_URL:http://127.0.0.1:8080}
-    public-base-url: ${TESTHUB_UIEXEC_PUBLIC_URL:http://127.0.0.1:8081}
-    callback-base-url: ${TESTHUB_UIEXEC_CALLBACK_URL:}
-    artifact-dir: ${TESTHUB_ARTIFACT_DIR:./data/artifacts}
-    artifact-store: ${TESTHUB_ARTIFACT_STORE:local}
-    queue-store: ${TESTHUB_QUEUE_STORE:memory}
+    core-base-url: ${EASYTEST_CORE_URL:http://127.0.0.1:8080}
+    public-base-url: ${EASYTEST_UIEXEC_PUBLIC_URL:http://127.0.0.1:8081}
+    callback-base-url: ${EASYTEST_UIEXEC_CALLBACK_URL:}
+    artifact-dir: ${EASYTEST_ARTIFACT_DIR:./data/artifacts}
+    artifact-store: ${EASYTEST_ARTIFACT_STORE:local}
+    queue-store: ${EASYTEST_QUEUE_STORE:memory}
     agent-offline-seconds: 90
-    watchdog-enabled: ${TESTHUB_UIEXEC_WATCHDOG_ENABLED:true}
+    watchdog-enabled: ${EASYTEST_UIEXEC_WATCHDOG_ENABLED:true}
     # local: structured task events in the log; kafka: publish to
     # ui-execution.task.dispatch / ui-execution.task.result
-    event-bus: ${TESTHUB_EVENT_BUS:local}
-    # testhub: internal case-management API; metersphere: MeterSphere v3 functional case API.
-    case-source: ${TESTHUB_CASE_SOURCE:testhub}
+    event-bus: ${EASYTEST_EVENT_BUS:local}
+    # easytest: internal case-management API; metersphere: MeterSphere v3 functional case API.
+    case-source: ${EASYTEST_CASE_SOURCE:easytest}
     metersphere:
-      base-url: ${TESTHUB_METERSHPHERE_BASE_URL:http://127.0.0.1:8081}
-      token: ${TESTHUB_METERSHPHERE_TOKEN:}
-      csrf-token: ${TESTHUB_METERSHPHERE_CSRF_TOKEN:}
-      project-id: ${TESTHUB_METERSHPHERE_PROJECT_ID:}
-      require-review: ${TESTHUB_METERSHPHERE_REQUIRE_REVIEW:false}
-      approved-review-statuses: ${TESTHUB_METERSHPHERE_APPROVED_STATUSES:COMPLETED}
+      base-url: ${EASYTEST_METERSHPHERE_BASE_URL:http://127.0.0.1:8081}
+      token: ${EASYTEST_METERSHPHERE_TOKEN:}
+      csrf-token: ${EASYTEST_METERSHPHERE_CSRF_TOKEN:}
+      project-id: ${EASYTEST_METERSHPHERE_PROJECT_ID:}
+      require-review: ${EASYTEST_METERSHPHERE_REQUIRE_REVIEW:false}
+      approved-review-statuses: ${EASYTEST_METERSHPHERE_APPROVED_STATUSES:COMPLETED}
     minio:
-      endpoint: ${TESTHUB_MINIO_ENDPOINT:http://127.0.0.1:9000}
-      access-key: ${TESTHUB_MINIO_ACCESS_KEY:minioadmin}
-      secret-key: ${TESTHUB_MINIO_SECRET_KEY:minioadmin}
-      bucket: ${TESTHUB_MINIO_BUCKET:testhub}
+      endpoint: ${EASYTEST_MINIO_ENDPOINT:http://127.0.0.1:9000}
+      access-key: ${EASYTEST_MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${EASYTEST_MINIO_SECRET_KEY:minioadmin}
+      bucket: ${EASYTEST_MINIO_BUCKET:easytest}
   security:
-    jwt-secret: ${TESTHUB_JWT_SECRET:testhub-dev-jwt-secret-change-me-0123456789abcdef}
-    service-token: ${TESTHUB_SERVICE_TOKEN:testhub-dev-service-token}
-    agent-token: ${TESTHUB_AGENT_TOKEN:testhub-dev-agent-token}
-    encryption-key: ${TESTHUB_ENCRYPTION_KEY:testhub-dev-encryption-key-change-me}
+    jwt-secret: ${EASYTEST_JWT_SECRET:easytest-dev-jwt-secret-change-me-0123456789abcdef}
+    service-token: ${EASYTEST_SERVICE_TOKEN:easytest-dev-service-token}
+    agent-token: ${EASYTEST_AGENT_TOKEN:easytest-dev-agent-token}
+    encryption-key: ${EASYTEST_ENCRYPTION_KEY:easytest-dev-encryption-key-change-me}
 
 management:
   health:

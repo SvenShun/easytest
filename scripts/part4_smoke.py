@@ -94,7 +94,7 @@ sys.exit(0)
 
 
 print("== Part 3 device acceptance (fake adb) ==")
-work = pathlib.Path(tempfile.mkdtemp(prefix="testhub-adb-"))
+work = pathlib.Path(tempfile.mkdtemp(prefix="easytest-adb-"))
 adb, devices_file, adb_log = make_fake_adb(work)
 jar = ROOT / "device-agent" / "target" / "device-agent-1.0.0.jar"
 if not jar.exists():
@@ -103,13 +103,13 @@ if not jar.exists():
 env = os.environ.copy()
 env.update({
     "SERVER_PORT": "8091",
-    "TESTHUB_AGENT_MODE": "adb",
-    "TESTHUB_AGENT_ADB": str(adb),
-    "TESTHUB_AGENT_REGISTRATION_ENABLED": "false",
-    "TESTHUB_AGENT_TOKEN": TOKEN,
-    "TESTHUB_AGENT_DATA_DIR": str(work / "agent-data"),
-    "TESTHUB_AGENT_RUNTIME_URL": "http://127.0.0.1:1",
-    "TESTHUB_AGENT_DEVICE_REFRESH_MS": "2000",
+    "EASYTEST_AGENT_MODE": "adb",
+    "EASYTEST_AGENT_ADB": str(adb),
+    "EASYTEST_AGENT_REGISTRATION_ENABLED": "false",
+    "EASYTEST_AGENT_TOKEN": TOKEN,
+    "EASYTEST_AGENT_DATA_DIR": str(work / "agent-data"),
+    "EASYTEST_AGENT_RUNTIME_URL": "http://127.0.0.1:1",
+    "EASYTEST_AGENT_DEVICE_REFRESH_MS": "2000",
 })
 log_file = open(work / "agent.log", "w")
 proc = subprocess.Popen(["java", "-jar", str(jar)], cwd=ROOT, env=env,

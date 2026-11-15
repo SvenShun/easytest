@@ -4,13 +4,13 @@ ROOT  := $(shell pwd)
 .PHONY: help setup build test e2e part2 part3 part4 part6 device-check scrcpy-setup scrcpy-up scrcpy-down apiexec-scale apiexec-scale-down main-up main-down up up-mw down infra-down db db-backup ms-build ms-up ms-down ms-token ms-install-module web fmt clean
 
 help:
-	@echo "TestHub V1"
+	@echo "EasyTest V1"
 	@echo "  make setup   install maven/python/web dependencies"
 	@echo "  make build   build all Java services + web bundle"
 	@echo "  make test    run Java tests + Python tests"
 	@echo "  make main-up deploy Part 1 main service (MySQL + core + web console)"
 	@echo "  make main-down stop the Part 1 deployment"
-	@echo "  make db      open a MySQL shell (testhub_core)"
+	@echo "  make db      open a MySQL shell (easytest_core)"
 	@echo "  make db-backup dump core/uiexec databases to backups/"
 	@echo "  make up      start core, ui-execution, api-execution, device-agent, ai-runtime"
 	@echo "  make up-mw   start with Docker MySQL/Redis/MinIO (run make infra first)"
@@ -63,7 +63,7 @@ infra:
 	./scripts/infra-up.sh
 
 up-mw:
-	TESTHUB_INFRA=docker ./scripts/dev-up.sh
+	EASYTEST_INFRA=docker ./scripts/dev-up.sh
 
 infra-down:
 	./scripts/infra-down.sh

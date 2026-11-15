@@ -5,13 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.testhub</groupId>
-        <artifactId>testhub-parent</artifactId>
+        <groupId>com.easytest</groupId>
+        <artifactId>easytest-parent</artifactId>
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>testhub-common</artifactId>
-    <name>testhub-common</name>
+    <artifactId>easytest-common</artifactId>
+    <name>easytest-common</name>
 
     <dependencies>
         <dependency>

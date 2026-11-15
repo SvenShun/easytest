@@ -1,4 +1,4 @@
--- UI execution orchestration (TestHub integration inside MeterSphere)
+-- UI execution orchestration (EasyTest integration inside MeterSphere)
 CREATE TABLE IF NOT EXISTS ui_execution_task (
     id VARCHAR(50) NOT NULL,
     project_id VARCHAR(50) NOT NULL,

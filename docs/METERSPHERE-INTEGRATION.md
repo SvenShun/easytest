@@ -13,7 +13,7 @@
 | 真实运行 | 完成 | MeterSphere 运行在 `:8082`（默认 8081 与 ui-execution 冲突，已改端口） |
 | 用例源适配 | **已真实验证** | ui-execution 从 MeterSphere 读取功能用例，映射为 BDD 并驱动 AI Runtime 执行 |
 | 失败回写 | **已真实验证** | 失败时以“用例评论”写回 MeterSphere，追加式，不覆盖人工备注 |
-| 计划/结果回写 | **已真实验证** | TestHub 计划运行结果通过映射写回 MeterSphere 测试计划（SUCCESS→SUCCESS、FAILED→ERROR） |
+| 计划/结果回写 | **已真实验证** | EasyTest 计划运行结果通过映射写回 MeterSphere 测试计划（SUCCESS→SUCCESS、FAILED→ERROR） |
 | 源码级内嵌 | 未实现 | 目前是 API 级适配；把 ui-execution 做成 MeterSphere Maven 模块仍需合并构建与依赖治理 |
 
 **结论**：MeterSphere 已真实构建、启动并完成“用例源 + 失败回写”的端到端联调；距离文档中“紧耦合融合/源码内嵌”仍有计划映射和模块内嵌两步。
@@ -49,10 +49,10 @@ make ms-down
 
 | 配置 | 值 |
 |---|---|
-| DB | `jdbc:mysql://127.0.0.1:3306/metersphere`，root/testhub，**库 collation 必须 `utf8mb4_general_ci`** |
+| DB | `jdbc:mysql://127.0.0.1:3306/metersphere`，root/easytest，**库 collation 必须 `utf8mb4_general_ci`** |
 | Redis | Redisson 配置 `deploy/metersphere/redisson.yml`（single server, db 0） |
 | Kafka | `127.0.0.1:9092` |
-| MinIO | `http://127.0.0.1:9000`，testhub/testhub123 |
+| MinIO | `http://127.0.0.1:9000`，easytest/easytest123 |
 | 日志 | 覆盖 `logback-spring.xml`（上游默认写 `/opt/metersphere/logs`，本地不可写） |
 
 > 首次启动 Flyway 会自动建表；数据库 collation 不一致会报
@@ -93,8 +93,8 @@ PROJECT:      100001100001
 
 代码位置：
 
-- `ui-execution/src/main/java/com/testhub/uiexec/client/MeterSphereCaseContextSource.java`
-- `ui-execution/src/main/java/com/testhub/uiexec/client/MeterSphereFailureAnalysisSink.java`
+- `ui-execution/src/main/java/com/easytest/uiexec/client/MeterSphereCaseContextSource.java`
+- `ui-execution/src/main/java/com/easytest/uiexec/client/MeterSphereFailureAnalysisSink.java`
 - 测试：`MeterSphereAdapterTest`（stub 服务，覆盖包装解包、CSRF 头、映射、门禁、404、评论体）
 
 ## 4. 真实联调记录
@@ -107,11 +107,11 @@ PROJECT:      100001100001
 | AI Runtime 执行 | `task_c40a656d96a34726a330` **SUCCESS**，5 步：click(登录) → input(用户名) → input(密码) → click(登录) → done |
 | 关闭 Runtime 制造失败 | `task_311b90a11dac4b3eb25e` **FAILED / EXECUTOR_UNAVAILABLE** |
 | 失败回写 MeterSphere | 评论 id `1707710899906691072`，内容含失败分类、摘要、失败报告 URL、任务 ID |
-| 恢复默认模式回归 | `make e2e` 47/47 通过（TestHub 用例源不受影响） |
+| 恢复默认模式回归 | `make e2e` 47/47 通过（EasyTest 用例源不受影响） |
 
 ## 4.1 计划结果回写（已实现并验证）
 
-映射 API（TestHub 侧）：
+映射 API（EasyTest 侧）：
 
 ```http
 PUT /api/v1/plans/{planId}/metersphere
@@ -124,7 +124,7 @@ PUT /api/v1/plans/{planId}/cases/{caseId}/metersphere
 服务端在 `POST /internal/v1/plan-runs/items/result` 处理后，按映射调用
 `POST /test-plan/functional/case/run`：
 
-| TestHub item | MeterSphere |
+| EasyTest item | MeterSphere |
 |---|---|
 | SUCCESS | SUCCESS |
 | FAILED | ERROR |
@@ -133,19 +133,19 @@ PUT /api/v1/plans/{planId}/cases/{caseId}/metersphere
 配置：
 
 ```bash
-TESTHUB_METERSPHERE_WRITEBACK=true
-TESTHUB_METERSHPHERE_BASE_URL=http://127.0.0.1:8082
-TESTHUB_METERSHPHERE_PROJECT_ID=100001100001
-TESTHUB_METERSHPHERE_TOKEN=...      # make ms-token（或仅配置下面的账号密码）
-TESTHUB_METERSHPHERE_CSRF_TOKEN=...
+EASYTEST_METERSPHERE_WRITEBACK=true
+EASYTEST_METERSHPHERE_BASE_URL=http://127.0.0.1:8082
+EASYTEST_METERSHPHERE_PROJECT_ID=100001100001
+EASYTEST_METERSHPHERE_TOKEN=...      # make ms-token（或仅配置下面的账号密码）
+EASYTEST_METERSHPHERE_CSRF_TOKEN=...
 # 推荐：自动登录并在失效时重建会话
-TESTHUB_METERSHPHERE_USERNAME=admin
-TESTHUB_METERSHPHERE_PASSWORD=metersphere
+EASYTEST_METERSHPHERE_USERNAME=admin
+EASYTEST_METERSHPHERE_PASSWORD=metersphere
 ```
 
 **实测结果**：
 
-| 场景 | TestHub | MeterSphere |
+| 场景 | EasyTest | MeterSphere |
 |---|---|---|
 | 成功 | 计划运行 `run_bd27529cc54048ae89ca` → SUCCESS | plan-case `1707773434630599999` → `SUCCESS`，执行历史落库 |
 | 失败（脚本失败） | 任务 `task_8929962a82c7404ca949` → FAILED / SCRIPT_FAILED | plan-case `17077734346124044` → `ERROR`，执行历史落库 |
@@ -158,8 +158,8 @@ TESTHUB_METERSHPHERE_PASSWORD=metersphere
 
 ```bash
 make ms-up
-eval "$(make -s ms-token)"          # 导出 TESTHUB_* 会话变量
-TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
+eval "$(make -s ms-token)"          # 导出 EASYTEST_* 会话变量
+EASYTEST_INFRA=docker EASYTEST_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 ```
 
 或在已运行的服务上只重启 ui-execution：
@@ -185,4 +185,4 @@ TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 - **许可证**：GPLv3 + 附加条款，闭源分发需法务确认。
 - **版本漂移**：字段/路径/CSRF 行为变化需回归 `MeterSphereAdapterTest` 与真实联调。
 - **端口冲突**：两者默认 8081，本方案将 MeterSphere 改到 8082。
-- **双事实源**：同时使用 TestHub 与 MeterSphere 用例库时，需明确权威源与 ID 映射，避免漂移。
+- **双事实源**：同时使用 EasyTest 与 MeterSphere 用例库时，需明确权威源与 ID 映射，避免漂移。

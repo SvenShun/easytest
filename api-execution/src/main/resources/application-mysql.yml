@@ -2,9 +2,9 @@
 # overridden by environment variables so Docker Compose / K8s can inject them.
 spring:
   datasource:
-    url: ${TESTHUB_APIEXEC_DB_URL:${TESTHUB_DB_URL:jdbc:mysql://127.0.0.1:3306/testhub_apiexec?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true}}
-    username: ${TESTHUB_DB_USERNAME:${SPRING_DATASOURCE_USERNAME:root}}
-    password: ${TESTHUB_DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:testhub}}
+    url: ${EASYTEST_APIEXEC_DB_URL:${EASYTEST_DB_URL:jdbc:mysql://127.0.0.1:3306/easytest_apiexec?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true}}
+    username: ${EASYTEST_DB_USERNAME:${SPRING_DATASOURCE_USERNAME:root}}
+    password: ${EASYTEST_DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:easytest}}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect

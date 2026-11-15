@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TestHub V1 end-to-end acceptance script.
+"""EasyTest V1 end-to-end acceptance script.
 
 Covers the whole V1 loop:
   requirement -> AI BDD draft -> review -> plan -> executor routing
@@ -101,7 +101,7 @@ def wait_until(description, fn, timeout=180, interval=2):
 
 
 def multipart_upload(path, fields, token):
-    boundary = "----testhub" + uuid.uuid4().hex
+    boundary = "----easytest" + uuid.uuid4().hex
     body = bytearray()
     for key, value in fields.items():
         body += f"--{boundary}\r\nContent-Disposition: form-data; name=\"{key}\"\r\n\r\n{value}\r\n".encode()
@@ -159,13 +159,13 @@ def prepare_skills_repo():
         shutil.rmtree(repo)
     repo.mkdir(parents=True)
     (repo / "SKILLS.md").write_text(
-        "# TestHub Demo Skills\n\n"
+        "# EasyTest Demo Skills\n\n"
         "- 使用 ui-tree 中的 text 定位元素，不要依赖坐标。\n"
         "- 每次操作后重新截屏确认界面变化。\n"
         "- 登录场景：用户名输入 tester，密码输入 secret。\n", encoding="utf-8")
     (repo / "README.md").write_text("# demo skills\n", encoding="utf-8")
-    env = {"GIT_AUTHOR_NAME": "testhub", "GIT_AUTHOR_EMAIL": "testhub@local",
-           "GIT_COMMITTER_NAME": "testhub", "GIT_COMMITTER_EMAIL": "testhub@local"}
+    env = {"GIT_AUTHOR_NAME": "easytest", "GIT_AUTHOR_EMAIL": "easytest@local",
+           "GIT_COMMITTER_NAME": "easytest", "GIT_COMMITTER_EMAIL": "easytest@local"}
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
     subprocess.run(["git", "add", "."], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "demo skills"], cwd=repo, check=True,
@@ -175,7 +175,7 @@ def prepare_skills_repo():
 
 
 def main():
-    print("== TestHub V1 acceptance ==")
+    print("== EasyTest V1 acceptance ==")
     print("\n[0] health")
     for name, url, path in (("core", CORE, "/actuator/health"),
                             ("ui-execution", UEXEC, "/actuator/health"),

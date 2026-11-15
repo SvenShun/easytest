@@ -51,10 +51,10 @@ p = subprocess.run([ADB, "-s", serial, "exec-out", "screencap", "-p"], capture_o
 result["checks"]["screenshot"] = len(p.stdout) > 0
 result["screenshotBytes"] = len(p.stdout)
 
-code, tree, err = sh("uiautomator dump /sdcard/testhub-check.xml >/dev/null 2>&1; cat /sdcard/testhub-check.xml")
+code, tree, err = sh("uiautomator dump /sdcard/easytest-check.xml >/dev/null 2>&1; cat /sdcard/easytest-check.xml")
 result["checks"]["uiTree"] = "<hierarchy" in tree
 result["uiTreeBytes"] = len(tree)
-sh("rm -f /sdcard/testhub-check.xml")
+sh("rm -f /sdcard/easytest-check.xml")
 
 code, _, inerr = sh("input keyevent 0")
 blocked = "INJECT_EVENTS" in inerr or "SecurityException" in inerr

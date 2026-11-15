@@ -1,4 +1,4 @@
-# Sonic → TestHub capability inventory
+# Sonic → EasyTest capability inventory
 
 Source studied (read-only):
 - Server: `/Users/wen/Workspace/TestPlatform/sonic/sonic-server-main`
@@ -302,7 +302,7 @@ Cron validation `tools/QuartzJobTools#validateOrDisableCronExpression`; jobs reg
 
 ---
 
-## 6. Portability into a Spring Boot 3 + React TestHub
+## 6. Portability into a Spring Boot 3 + React EasyTest
 
 ### 6.1 Directly reusable (copy the design, not the code)
 
@@ -313,8 +313,8 @@ Cron validation `tools/QuartzJobTools#validateOrDisableCronExpression`; jobs reg
 | Element locator library + `steps_elements` N:N + "used by" checks | `elements`, `steps_elements`, `*/deleteCheck` endpoints | solves locator drift, which BDD suites usually lack |
 | Reusable step library (`public_steps` + nesting expansion) | `PublicStepsService`, `getStep()/handleSteps()` | recursion pattern is ~40 lines |
 | Cover types (case-major vs device-major) + explicit device set per suite | `CoverType`, `test_suites_devices` | maps cleanly onto an existing test-plan concept |
-| Global params with `|`-split, shuffled, per-device assignment | `TestSuitesServiceImpl#refreshGlobalParams` | cheap data-driven device matrix; complements TestHub's dataset/env model |
-| Step failure strategies + if/else/while | `ConditionEnum`, `error` column, agent `*Handler` classes | TestHub's BDD steps could gain conditional blocks |
+| Global params with `|`-split, shuffled, per-device assignment | `TestSuitesServiceImpl#refreshGlobalParams` | cheap data-driven device matrix; complements EasyTest's dataset/env model |
+| Step failure strategies + if/else/while | `ConditionEnum`, `error` column, agent `*Handler` classes | EasyTest's BDD steps could gain conditional blocks |
 | API envelope + paging + i18n error codes | `RespModel`, `CommentPage`, `RespEnum` | trivial, familiar |
 | URL-resource + role RBAC seed/refresh | `resources`, `ResourcesService#init/refresh`, `PermissionFilter` | Spring Security can take over; the *idea* of scanning mappings into a permission table is reusable |
 | Notification robot abstraction | `tools/robot/{RobotFactory,RobotMessenger,message,vendor}` | pluggable `RobotType` enum + template per project |
@@ -325,46 +325,46 @@ Cron validation `tools/QuartzJobTools#validateOrDisableCronExpression`; jobs reg
 
 | Item | Source | What changes |
 |---|---|---|
-| Suite run payload + progress protocol | `TestSuitesServiceImpl#runSuite/packageTestCase/getStep`, `TransportServer#onMessage` | replace TestNG + `msg` strings with TestHub's own job/step event contract |
-| Agent command channel | `TransportWorker` + `/exchange/send` + `BytesTool` session map | TestHub already has an ADB agent; needs a *typed command envelope* and an **outbound** agent connection (agent dials server) instead of Eureka hopscotch |
+| Suite run payload + progress protocol | `TestSuitesServiceImpl#runSuite/packageTestCase/getStep`, `TransportServer#onMessage` | replace TestNG + `msg` strings with EasyTest's own job/step event contract |
+| Agent command channel | `TransportWorker` + `/exchange/send` + `BytesTool` session map | EasyTest already has an ADB agent; needs a *typed command envelope* and an **outbound** agent connection (agent dials server) instead of Eureka hopscotch |
 | Device occupy/release + idle timeout | `DevicesServiceImpl#occupy/release`, `updateDevicesUser` | keep the state machine (ONLINE→DEBUGGING→ONLINE, TESTING for runs, single-owner) |
 | Cron scheduling | `quartz/QuartzJob`, `JobsService` | Quartz is fine on Boot 3 but Sonic's clustered-JDBC config + `QRTZ_*` DDL is heavy; a `jobs` table + Quartz (or ShedLock) is enough |
 | Step editor UX (drag, indent/outdent, element picker, condition blocks) | `StepDraggable.vue`, `StepUpdate.vue` | must be rebuilt in React; the interaction model is the valuable part |
-| Report page (per-device/per-case tabs, pie, perf chart, step log, video) | `views/ResultDetail.vue`, `StepShow.vue`, `StepLog.vue` | rebuild on TestHub's result APIs; reuse the information architecture |
-| scrcpy viewer | `views/RemoteEmulator/Scrcpy/index.js` (jmuxer) | TestHub already streams scrcpy — only the `switch` mode negotiation and canvas-screenshot trick are worth copying |
+| Report page (per-device/per-case tabs, pie, perf chart, step log, video) | `views/ResultDetail.vue`, `StepShow.vue`, `StepLog.vue` | rebuild on EasyTest's result APIs; reuse the information architecture |
+| scrcpy viewer | `views/RemoteEmulator/Scrcpy/index.js` (jmuxer) | EasyTest already streams scrcpy — only the `switch` mode negotiation and canvas-screenshot trick are worth copying |
 
 ### 6.3 Tightly coupled — do not port
 
 | Item | Where | Why |
 |---|---|---|
 | Eureka + `DiscoveryClient` + `lb://` + `server.port:0` | `TransportWorker`, gateway yml, `application-eureka.yml` | the controller-to-controller HTTP fan-out exists *only* because WS sessions are in-memory and instances are ephemeral |
-| Gateway routes/StripPrefix + white list + `AuthFilter` | `sonic-server-gateway/**` | pure Spring Cloud Gateway; TestHub should use its own security filter chain |
+| Gateway routes/StripPrefix + white list + `AuthFilter` | `sonic-server-gateway/**` | pure Spring Cloud Gateway; EasyTest should use its own security filter chain |
 | Actable auto-DDL | `application-jdbc.yml` (`actable.model.pack`, `table.auto: update`) | schema lives in annotations; no migration history, no FKs, MySQL-only (`IFNULL`, `concat`, date funcs in `mapper/*.java`) |
 | Agent transport protocol | `msg: auth/agentInfo/heartBeat/occupy/release/debugUser/stopDebug/settings/shutdown/reboot/hub/suite/runStep/forceStopSuite/step/perform/record/status/battery/subResultCount` | undocumented string protocol + TestNG runtime + per-`udId` thread pools |
 | `/websockets/android/{key}/{udId}/{token}` direct-to-agent topology | `AndroidRemote.vue:505` | requires agents to expose a public host:port and share the JWT secret; a real platform should proxy |
-| Folder service + `imageFiles/recordFiles/logFiles/packageFiles` layout | `sonic-server-folder` | objects should go to TestHub's artifact storage |
-| MD5 passwords, `SonicToken` JWT + `superAdmin` string check | `UsersServiceImpl`, `JWTTokenTool`, `PermissionFilter` | weak; replace with TestHub auth |
+| Folder service + `imageFiles/recordFiles/logFiles/packageFiles` layout | `sonic-server-folder` | objects should go to EasyTest's artifact storage |
+| MD5 passwords, `SonicToken` JWT + `superAdmin` string check | `UsersServiceImpl`, `JWTTokenTool`, `PermissionFilter` | weak; replace with EasyTest auth |
 | `int[]` robot ids as CSV varchar (`NullableIntArrayTypeHandler`) | `tools/NullableIntArrayTypeHandler.java` | replace with join tables / JSONB |
 | Vue/Element Plus components | `src/**` | different framework |
 | iOS stack (go-ios, WDA, sib, tidevice) | `sonic-ios-bridge-main`, `IOSRemote.vue` | whole separate runtime |
 
 ---
 
-## 7. Prioritized gap list for TestHub
+## 7. Prioritized gap list for EasyTest
 
-TestHub today: device pool + ADB device agent + scrcpy web stream + BDD UI cases + review + test plans + AI runtime + API automation + envs/data-driven.
+EasyTest today: device pool + ADB device agent + scrcpy web stream + BDD UI cases + review + test plans + AI runtime + API automation + envs/data-driven.
 
 ### P0 — blocks parity on mobile regression
 
 1. **Suite-level orchestration across a device set with case×device matrix** (Sonic: `test_suites_devices` + `cover` 1/2,
-   `TestSuitesServiceImpl#runSuite`). TestHub has plans but needs explicit *multi-device* fan-out, per-device run state and
+   `TestSuitesServiceImpl#runSuite`). EasyTest has plans but needs explicit *multi-device* fan-out, per-device run state and
    "skip offline device" semantics.
 2. **Step-level execution events + artifacts** (Sonic: `result_detail` with `type=step|perform|record|status`, screenshot/video/perf URLs).
    Without this a failing BDD case gives no per-step evidence. This is the biggest reporting gap.
 3. **Server-side job/run model separate from the case** (`results` row per run with `strike`, counters, start/end, status recompute via
    `suiteResult`). Needed for force-stop, progress, and history.
 4. **Device occupancy state machine + idle/remote timeouts** (Sonic: `occupy/release/stopDebug`, `devices.user`, `conf_list` timeouts).
-   TestHub has a device pool; it needs the lease/expiry/single-owner rules or two users will fight over a phone.
+   EasyTest has a device pool; it needs the lease/expiry/single-owner rules or two users will fight over a phone.
 5. **Cron scheduler bound to a suite/plan** (Sonic: `jobs` + `QuartzJob` + `JobStatus` enable/disable/once, plus system jobs for cleanup
    and day/week reports).
 6. **Element/locator repository with reuse + impact check** (Sonic: `elements`, `steps_elements`, `deleteCheck`, `copyEle`). BDD steps
@@ -382,12 +382,12 @@ TestHub today: device pool + ADB device agent + scrcpy web stream + BDD UI cases
     cpu/mem/fps/battery/temperature sampling per step.
 12. **Recording (video) per case** (Sonic: chunked `POST /upload/recordFiles` + `type=record` detail + `<video>` tab).
 13. **Notification robots + templates + mute rules** (Sonic: `alert_robots.scene/mute_rule/template`, `RobotFactory` 8 vendors),
-    triggered by result status; TestHub likely has only chat webhooks.
+    triggered by result status; EasyTest likely has only chat webhooks.
 14. **Deep-link remote ADB/WDA** (Sonic: `occupy` returns `adb connect host:port`, `uia2` URL, `sib`/`wda` endpoints) — lets engineers
     attach Appium/IDE to the same device the web UI is driving.
 15. **RBAC driven by an API-resource catalog** (Sonic: `resources` + `POST /resources/refresh` scanning controller mappings).
 16. **Package/version registry + `install`-by-package step** (Sonic: `packages`, `versions`) with Jenkins/build URL.
-17. **Script snippet library** (Sonic: `scripts` java/python + `runScript` step) — overlaps TestHub's API automation; only add if
+17. **Script snippet library** (Sonic: `scripts` java/python + `runScript` step) — overlaps EasyTest's API automation; only add if
     mobile steps need embedded code.
 
 ### P2 — lower value / large cost
@@ -398,16 +398,16 @@ TestHub today: device pool + ADB device agent + scrcpy web stream + BDD UI cases
 20. **WebView / Poco / game-engine element trees** (`WebViewWSServer`, `PocoPane.vue`, `webViewEle`/`pocoEle` step families) — niche.
 21. **Crash analysis page** — Sonic's own menu links to a non-existent `/Crash` route (dead code); don't chase it.
 
-### Explicit non-goals (Sonic has nothing here; keep TestHub's lead)
+### Explicit non-goals (Sonic has nothing here; keep EasyTest's lead)
 
 API automation, Gherkin/BDD authoring + review workflow, environments/datasets, AI runtime, test-plan approval. Sonic's model is
-"scripted mobile steps in a flat suite"; TestHub should keep its case/plan/review semantics and borrow only the **execution + evidence +
+"scripted mobile steps in a flat suite"; EasyTest should keep its case/plan/review semantics and borrow only the **execution + evidence +
 orchestration** layer (§6.1/§6.2), not the authoring model.
 
 ### Suggested integration shape
 
 ```
-TestHub Spring Boot 3
+EasyTest Spring Boot 3
   └─ run-service: plan → resolve devices (pool) → build case×device matrix → create run + run_steps
   └─ command bus: agent dials out (WSS /agent) and receives {cmd:"run_case", ...}
   └─ event ingest: {evt:"step"|"artifact"|"run_status"} → run_steps + artifacts

@@ -15,7 +15,7 @@ upstream/metersphere/backend/services/ui-execution/     # 由安装脚本复制
 │   ├── UiExecutionProperties.java                      # metersphere.uiexec.*
 │   ├── UiExecutionController.java                      # /test-plan/ui-execution/tasks
 │   ├── UiExecutionService.java                         # 用例读取、下发、回调、结果回写
-│   ├── DeviceAgentClient.java                          # 调 TestHub device-agent
+│   ├── DeviceAgentClient.java                          # 调 EasyTest device-agent
 │   └── UiExecutionDtos.java
 └── src/main/resources/migration/3.7.0/ddl/V3.7.0_1__ui_execution.sql
 ```
@@ -91,7 +91,7 @@ Flyway 依次执行 `3.7.0.1 - ui execution`、`3.7.0.2 - ui execution queue`，
 | 取消 | 第二个排队任务取消 → `CANCELLED`，生成报告链接，后续任务继续执行 |
 | 失败报告 | 停止 Runtime 后任务 `1707933241773694976` FAILED，`GET .../report` 返回 JSON（reason=EXECUTOR_UNAVAILABLE），计划用例 = ERROR |
 | 看门狗 | 任务 `1707933430752256000`（timeoutSec=2）在 Agent 停止后 17s 被标记 `TIMEOUT`，生成报告 |
-| 会话自动登录 | core 仅配置 `TESTHUB_METERSHPHERE_USERNAME/PASSWORD`，运行 `run_95cd3b2578d14ec8b4f2` 自动创建会话并回写，计划用例 = SUCCESS |
+| 会话自动登录 | core 仅配置 `EASYTEST_METERSHPHERE_USERNAME/PASSWORD`，运行 `run_95cd3b2578d14ec8b4f2` 自动创建会话并回写，计划用例 = SUCCESS |
 
 > `ui-execution` 的 `GET /tasks/{id}` 会返回实时排队位次（`queuePosition`），`reportUrl` 指向失败报告。
 

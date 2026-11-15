@@ -13,14 +13,14 @@ docker compose -f deploy/docker-compose.infra.yml up -d
 
 echo -n "waiting for mysql"
 for _ in $(seq 1 60); do
-  if docker exec testhub-mysql mysqladmin ping -h127.0.0.1 -ptesthub >/dev/null 2>&1; then
+  if docker exec easytest-mysql mysqladmin ping -h127.0.0.1 -peasytest >/dev/null 2>&1; then
     echo " ok"; break
   fi
   echo -n "."; sleep 2
 done
 echo -n "waiting for redis"
 for _ in $(seq 1 30); do
-  if docker exec testhub-redis redis-cli ping >/dev/null 2>&1; then echo " ok"; break; fi
+  if docker exec easytest-redis redis-cli ping >/dev/null 2>&1; then echo " ok"; break; fi
   echo -n "."; sleep 1
 done
 echo -n "waiting for minio"
@@ -31,15 +31,15 @@ done
 
 echo -n "waiting for kafka"
 for _ in $(seq 1 40); do
-  if docker exec testhub-kafka /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server 127.0.0.1:9092 >/dev/null 2>&1; then
+  if docker exec easytest-kafka /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server 127.0.0.1:9092 >/dev/null 2>&1; then
     echo " ok"; break
   fi
   echo -n "."; sleep 2
 done
 
-docker ps --filter name=testhub- --format '  {{.Names}}\t{{.Status}}\t{{.Ports}}'
+docker ps --filter name=easytest- --format '  {{.Names}}\t{{.Status}}\t{{.Ports}}'
 echo
 echo "Start the apps against this stack with:"
-echo "  TESTHUB_INFRA=docker ./scripts/dev-up.sh"
+echo "  EASYTEST_INFRA=docker ./scripts/dev-up.sh"
 echo "Stop with:"
 echo "  docker compose -f deploy/docker-compose.infra.yml down"

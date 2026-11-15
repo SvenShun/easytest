@@ -1,4 +1,4 @@
-# TestHub AI Runtime (Python 3.9+)
+# EasyTest AI Runtime (Python 3.9+)
 fastapi>=0.110,<1.0
 uvicorn[standard]>=0.27,<1.0
 httpx>=0.26,<1.0

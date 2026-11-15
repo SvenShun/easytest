@@ -36,7 +36,7 @@ OUTPUT_FORMAT_INSTRUCTIONS = """## 输出格式（必须严格遵守）
 - swipe:  {"type":"swipe","from":{"x":500,"y":1500},"to":{"x":500,"y":400},"durationMs":300}
 - back:   {"type":"back"}
 - home:   {"type":"home"}
-- launch: {"type":"launch","app":"com.testhub.demo"}
+- launch: {"type":"launch","app":"com.easytest.demo"}
 - wait:   {"type":"wait","ms":500}
 - done:   {"type":"done"}
 

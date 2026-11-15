@@ -15,7 +15,7 @@ MeterSphere 的 API 测试不是“单接口 + 断言”：
 - **调度**：场景/计划定时任务、批量执行。
 - **导入导出**：JMeter/JMeter XML、场景导入。
 
-## TestHub 已落地
+## EasyTest 已落地
 
 | 能力 | 状态 |
 |---|---|
@@ -49,4 +49,4 @@ MeterSphere 的 API 测试不是“单接口 + 断言”：
 
 ## 设计取向
 
-不嵌入 JMeter：TestHub 已有自己的队列、worker、HTTP 客户端、断言与计划模型。YAML 场景驱动器更易版本化、生成、评审，后续可把知识库/爬虫生成的步骤直接落成 YAML 或 `case_step`。
+不嵌入 JMeter：EasyTest 已有自己的队列、worker、HTTP 客户端、断言与计划模型。YAML 场景驱动器更易版本化、生成、评审，后续可把知识库/爬虫生成的步骤直接落成 YAML 或 `case_step`。

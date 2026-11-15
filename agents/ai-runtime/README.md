@@ -1,4 +1,4 @@
-# TestHub AI Runtime (ai-runtime)
+# EasyTest AI Runtime (ai-runtime)
 
 设备侧 AI 执行期决策器：`观察（截图 + UI 树）→ 模型决策 → 白名单校验 → 设备动作 → 轨迹/日志回调`。
 Python 3.9 + FastAPI，默认端口 **8095**。契约唯一事实来源：`docs/API-CONTRACT.md` §4（回调格式见 §2.3）。

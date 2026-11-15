@@ -8,7 +8,7 @@
 | 能力 | 实现 |
 |---|---|
 | 接口用例 | `api_case` 表 + `/api/v1/api-cases` CRUD；方法、baseUrl/path、Headers、Query、Body、断言、超时、启停 |
-| 独立执行服务 | `api-execution`，端口 8084，独立库 `testhub_apiexec`，可水平扩容 |
+| 独立执行服务 | `api-execution`，端口 8084，独立库 `easytest_apiexec`，可水平扩容 |
 | 执行引擎 | Java HttpClient，异步 worker 池（默认 4），请求/响应/耗时/断言结果全量落库 |
 | 断言 | STATUS_CODE、JSON_PATH、BODY_CONTAINS、RESPONSE_TIME_MS、HEADER_CONTAINS；EQ/NE/LT/GT/CONTAINS/NOT_CONTAINS |
 | 生命周期 | PENDING/RUNNING/SUCCESS/FAILED/TIMEOUT/CANCELLED；排队取消、运行中取消、启动恢复 |
@@ -32,14 +32,14 @@ cd web && npm run dev
 ```bash
 ./scripts/mvn.sh -q -pl api-execution -am -DskipTests package
 SPRING_PROFILES_ACTIVE=mysql \
-SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:3306/testhub_apiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' \
-SPRING_DATASOURCE_USERNAME=root SPRING_DATASOURCE_PASSWORD=testhub \
-TESTHUB_CORE_URL=http://127.0.0.1:8080 \
-TESTHUB_APIEXEC_PUBLIC_URL=http://127.0.0.1:8084 \
+SPRING_DATASOURCE_URL='jdbc:mysql://127.0.0.1:3306/easytest_apiexec?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' \
+SPRING_DATASOURCE_USERNAME=root SPRING_DATASOURCE_PASSWORD=easytest \
+EASYTEST_CORE_URL=http://127.0.0.1:8080 \
+EASYTEST_APIEXEC_PUBLIC_URL=http://127.0.0.1:8084 \
 java -jar api-execution/target/api-execution-1.0.0.jar
 ```
 
-主服务通过 `TESTHUB_API_EXECUTION_URLS`（逗号分隔）配置多个实例，轮询下发；对账会合并所有实例结果。
+主服务通过 `EASYTEST_API_EXECUTION_URLS`（逗号分隔）配置多个实例，轮询下发；对账会合并所有实例结果。
 
 ## 3. 验收结果
 
@@ -64,7 +64,7 @@ PART 2 RESULT: 18 checks passed, 0 failed
 - 混合运行：`run_26375833571f4413bcd4`（UI=SUCCESS/AI_RUNTIME，API=SUCCESS/API）
 - 失败报告：`failureReportUrl` 指向 api-execution `/report`；断言明细包含 expected/actual/passed
 
-自动化测试：**200 个全绿**（Java 152 + Python 48），其中 api-execution 32 个、testhub-server 42 个。
+自动化测试：**200 个全绿**（Java 152 + Python 48），其中 api-execution 32 个、easytest-server 42 个。
 `RestApiExecutionClientTest` 覆盖多 worker 对账 URL（修复了此前 `uriBuilder.path(绝对URL)` 导致的 `http:/...` 问题）。
 
 ## 4. 数据模型

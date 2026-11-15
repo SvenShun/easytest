@@ -18,10 +18,10 @@ if resp.get("code") != 100200:
 data = resp["data"]
 sid, csrf = data["sessionId"], data["csrfToken"]
 print("# MeterSphere session (valid for the session timeout, default 12h)")
-print("export TESTHUB_CASE_SOURCE=metersphere")
-print("export TESTHUB_METERSHPHERE_BASE_URL=http://127.0.0.1:8082")
-print("export TESTHUB_METERSHPHERE_TOKEN=%s" % shlex.quote(sid))
-print("export TESTHUB_METERSHPHERE_CSRF_TOKEN=%s" % shlex.quote(csrf))
-print("export TESTHUB_METERSHPHERE_PROJECT_ID=100001100001")
+print("export EASYTEST_CASE_SOURCE=metersphere")
+print("export EASYTEST_METERSHPHERE_BASE_URL=http://127.0.0.1:8082")
+print("export EASYTEST_METERSHPHERE_TOKEN=%s" % shlex.quote(sid))
+print("export EASYTEST_METERSHPHERE_CSRF_TOKEN=%s" % shlex.quote(csrf))
+print("export EASYTEST_METERSHPHERE_PROJECT_ID=100001100001")
 print("# sessionId=%s" % sid)
 PY

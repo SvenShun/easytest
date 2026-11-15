@@ -1,17 +1,17 @@
 # Third-Party Notices
 
-TestHub is distributed under the GNU Affero General Public License v3.0 (see `LICENSE`).
+EasyTest is distributed under the GNU Affero General Public License v3.0 (see `LICENSE`).
 This file records the upstream projects we build against or integrate with.
 
 ## MeterSphere
 
 - Project: MeterSphere (`metersphere/metersphere`, branch `v3.x`)
 - License: **GNU GPL v3 with additional terms** (see the upstream `LICENSE`)
-- How TestHub uses it: the MeterSphere backend is built from the source provided by the
-  project owner and runs as a separate service. TestHub integrates through MeterSphere's
+- How EasyTest uses it: the MeterSphere backend is built from the source provided by the
+  project owner and runs as a separate service. EasyTest integrates through MeterSphere's
   HTTP APIs (functional case detail, case comment, test-plan functional case run).
-  No MeterSphere source code is copied into the TestHub source tree.
-- If TestHub later embeds MeterSphere code as a Maven module, the combined work must be
+  No MeterSphere source code is copied into the EasyTest source tree.
+- If EasyTest later embeds MeterSphere code as a Maven module, the combined work must be
   distributed under GPLv3-compatible terms and the additional terms (logos/copyright,
   contributor terms) must be preserved.
 

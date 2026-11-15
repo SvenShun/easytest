@@ -11,16 +11,16 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.testhub</groupId>
-    <artifactId>testhub-parent</artifactId>
+    <groupId>com.easytest</groupId>
+    <artifactId>easytest-parent</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
-    <name>TestHub</name>
-    <description>TestHub - one-stop test platform (MeterSphere + Sonic tightly coupled)</description>
+    <name>EasyTest</name>
+    <description>EasyTest - one-stop test platform (MeterSphere + Sonic tightly coupled)</description>
 
     <modules>
         <module>common</module>
-        <module>testhub-server</module>
+        <module>easytest-server</module>
         <module>ui-execution</module>
         <module>device-agent</module>
         <module>api-execution</module>
@@ -30,16 +30,16 @@
         <java.version>17</java.version>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <testhub.version>1.0.0</testhub.version>
+        <easytest.version>1.0.0</easytest.version>
         <minio.version>8.5.10</minio.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.testhub</groupId>
-                <artifactId>testhub-common</artifactId>
-                <version>${testhub.version}</version>
+                <groupId>com.easytest</groupId>
+                <artifactId>easytest-common</artifactId>
+                <version>${easytest.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.minio</groupId>

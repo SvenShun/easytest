@@ -8,9 +8,9 @@ MeterSphere 的场景能力基于 JMeter：
 - 步骤类型：接口/接口用例/自定义请求/子场景、循环控制器、条件控制器、一次控制器、等待、脚本、JMeter 组件
 - 前后置处理器：SQL、BeanShell/Groovy/JSR223 脚本
 - 变量/CSV、断言、报告/通知
-- 执行引擎是 JMeter，TestHub 不适合直接嵌入这套引擎。
+- 执行引擎是 JMeter，EasyTest 不适合直接嵌入这套引擎。
 
-TestHub 采用 **YAML 作为用例载体 + 自研轻量驱动器**，复用现有 `api-execution` 的队列、HTTP 客户端、断言引擎和计划回调；支持同样的核心能力（HTTP/SQL/脚本/变量/断言），但更易读、易 diff、易生成。
+EasyTest 采用 **YAML 作为用例载体 + 自研轻量驱动器**，复用现有 `api-execution` 的队列、HTTP 客户端、断言引擎和计划回调；支持同样的核心能力（HTTP/SQL/脚本/变量/断言），但更易读、易 diff、易生成。
 
 ## YAML 格式
 
@@ -29,7 +29,7 @@ environment:
     main:
       url: jdbc:mysql://127.0.0.1:3306/demo?useSSL=false
       username: root
-      password: testhub
+      password: easytest
 steps:
   - name: 登录
     type: http

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop all locally started TestHub services.
+# Stop all locally started EasyTest services.
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -7,7 +7,7 @@ if [ -d data/pids ]; then
   for pidfile in data/pids/*.pid; do
     [ -e "$pidfile" ] || continue
     name="$(basename "$pidfile" .pid)"
-    # Only manage TestHub's own services; MeterSphere has its own script.
+    # Only manage EasyTest's own services; MeterSphere has its own script.
     case "$name" in
       core|uiexec|apiexec|apiexec-2|agent|ai-runtime|web|scrcpy-web) ;;
       *) continue ;;
@@ -23,7 +23,7 @@ if [ -d data/pids ]; then
   done
 fi
 # spring-boot:run forks a JVM child; make sure none of ours survive.
-pkill -f 'testhub-server.*spring-boot:run' 2>/dev/null || true
+pkill -f 'easytest-server.*spring-boot:run' 2>/dev/null || true
 pkill -f 'ui-execution.*spring-boot:run' 2>/dev/null || true
 pkill -f 'api-execution.*spring-boot:run' 2>/dev/null || true
 pkill -f 'api-execution-1.0.0.jar' 2>/dev/null || true

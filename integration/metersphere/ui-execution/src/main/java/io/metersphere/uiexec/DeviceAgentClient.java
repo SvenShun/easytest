@@ -8,7 +8,7 @@ import org.springframework.web.client.RestClient;
 import java.util.Map;
 
 /**
- * HTTP client for the TestHub device-agent protocol.
+ * HTTP client for the EasyTest device-agent protocol.
  *
  * <p>The payload is serialized explicitly to JSON: MeterSphere ships both JSON and
  * XML message converters, and sending a raw {@code Map} can otherwise be encoded

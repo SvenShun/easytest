@@ -108,7 +108,7 @@ export function LoginPage() {
           <div className="login-brand">
             <BrandMark size={46} />
             <div>
-              <div className="login-brand-name">TestHub</div>
+              <div className="login-brand-name">EasyTest</div>
               <div className="login-brand-sub">一站式测试平台</div>
             </div>
           </div>
@@ -242,7 +242,7 @@ export function LoginPage() {
         </div>
 
         <footer className="login-footer">
-          <span>TestHub V1 · 内部测试平台</span>
+          <span>EasyTest V1 · 内部测试平台</span>
           <span className="login-footer-dot" />
           <span>v1.0.0</span>
           {user ? <span className="login-footer-user">上次登录：{userDisplayName(user)}</span> : null}

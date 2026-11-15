@@ -7,5 +7,5 @@ cd "$ROOT"
 OUT="${1:-backup-$(date +%Y%m%d-%H%M%S).sql}"
 mkdir -p backups
 case "$OUT" in /*) TARGET="$OUT" ;; *) TARGET="$ROOT/backups/$OUT" ;; esac
-docker exec testhub-mysql mysqldump -uroot -ptesthub --databases testhub_core testhub_uiexec testhub_apiexec > "$TARGET"
+docker exec easytest-mysql mysqldump -uroot -peasytest --databases easytest_core easytest_uiexec easytest_apiexec > "$TARGET"
 echo "backup written to $TARGET ($(du -h "$TARGET" | cut -f1))"

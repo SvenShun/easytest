@@ -1,4 +1,4 @@
-# TestHub V1 验收报告
+# EasyTest V1 验收报告
 
 | 项 | 内容 |
 |---|---|
@@ -13,7 +13,7 @@
 | 模块 | 测试数 | 结果 | 命令 |
 |---|---|---|---|
 | common | 4 | 通过 | `./scripts/mvn.sh -pl common test` |
-| testhub-server | 42 | 通过 | `./scripts/mvn.sh -pl testhub-server test` |
+| easytest-server | 42 | 通过 | `./scripts/mvn.sh -pl easytest-server test` |
 | api-execution | 32 | 通过 | `./scripts/mvn.sh -pl api-execution test` |
 | ui-execution | 36 | 通过 | `./scripts/mvn.sh -pl ui-execution test` |
 | device-agent | 38 | 通过 | `./scripts/mvn.sh -pl device-agent test` |
@@ -57,20 +57,20 @@ RESULT: 47 checks passed, 0 failed
 - 汇总：`total=4, success=3, failed=1`；`SCRIPT: 3/2/1`、`AI_RUNTIME: 1/1/0`；失败分类 `SCRIPT_FAILED:1`
 - 失败轨迹报告：`http://127.0.0.1:8081/artifacts/task_c37ac602297749aa91f9/failure-report.json`
   - `reasonCategory=SCRIPT_FAILED`，`timeline` 含失败用例，`environment.deviceSerial=emulator-5554`
-- 用例回写：失败分析字段写入 `script failed: 1 of 2 test case(s) failed: com.testhub.demo.LoginErrorTest.loginShowsErrorToast`
+- 用例回写：失败分析字段写入 `script failed: 1 of 2 test case(s) failed: com.easytest.demo.LoginErrorTest.loginShowsErrorToast`
 - 取消验证运行：`run_5aef853b5d994f789c52`（1 个排队任务取消，其余 2 个成功）
 - Skills 固化 commit：`33f2217714c9c95e641d7a0fe116c63873485fe0`
 
 ## 2.1 真实中间件复验（MySQL 8.0 / Redis 7 / MinIO）
 
-在 Docker 中启动真实中间件后，把 `testhub-server` 与 `ui-execution` 切到 MySQL profile、Redis FIFO、MinIO 产物，
+在 Docker 中启动真实中间件后，把 `easytest-server` 与 `ui-execution` 切到 MySQL profile、Redis FIFO、MinIO 产物，
 `device-agent`/`ai-runtime` 不变，**端到端 47 项检查再次全部通过**（运行 `run_86a352af5ff44f9d8067`，事件总线为 Kafka）。
 
 | 中间件 | 版本 | 实际使用证据 |
 |---|---|---|
-| MySQL | 8.0.46 | `testhub_core` 12 张表、`testhub_uiexec` 9 张表；复验后累计 15 用例 / 5 计划运行 / 16 任务 / 28 步骤 / 4 失败报告 |
-| Redis | 7.4.11 | 运行期捕获 `testhub:uiexec:queue:device_*` 列表中有排队任务，执行完自动清空；持久索引键 `testhub:uiexec:queues` 保留设备维度 |
-| MinIO | RELEASE.2026-10-23T20-06-51Z | 桶 `testhub-core`（脚本包）、`testhub-ui`（截图/失败报告/产物）；`/artifacts/**` 由 ArtifactStore 流式读取，e2e 校验了 PNG 与失败报告 JSON |
+| MySQL | 8.0.46 | `easytest_core` 12 张表、`easytest_uiexec` 9 张表；复验后累计 15 用例 / 5 计划运行 / 16 任务 / 28 步骤 / 4 失败报告 |
+| Redis | 7.4.11 | 运行期捕获 `easytest:uiexec:queue:device_*` 列表中有排队任务，执行完自动清空；持久索引键 `easytest:uiexec:queues` 保留设备维度 |
+| MinIO | RELEASE.2026-10-23T20-06-51Z | 桶 `easytest-core`（脚本包）、`easytest-ui`（截图/失败报告/产物）；`/artifacts/**` 由 ArtifactStore 流式读取，e2e 校验了 PNG 与失败报告 JSON |
 | Kafka | 3.8.0（KRaft 单节点） | 主题 `ui-execution.task.dispatch` / `ui-execution.task.result` 自动创建；抓取到 `TASK_DISPATCHED` 与 `TASK_FINISHED`（含 SUCCESS、FAILED、CANCELLED）事件，字段与任务/报告一致 |
 
 **复验中发现并修复的真实兼容问题**：`ue_task` 的 `bdd_given/bdd_when/bdd_then/failure_summary` 原为
@@ -103,7 +103,7 @@ Kafka 事件示例（截断）：
 | AI 执行 | `task_c40a656d96a34726a330` SUCCESS，5 步轨迹（登录 → 输入 → 输入 → 登录 → done） |
 | 失败回写 | `task_311b90a11dac4b3eb25e` FAILED，MeterSphere 评论 `1707710899906691072` 写入分类/摘要/报告 URL |
 | 计划结果回写 | 成功：`run_bd27529cc54048ae89ca` → MS plan-case `1707773434630599999` = **SUCCESS**；失败：`task_8929962a82c7404ca949` → MS plan-case `17077734346124044` = **ERROR** |
-| 回归 | 恢复 `case-source=testhub` 后 E2E 47/47 |
+| 回归 | 恢复 `case-source=easytest` 后 E2E 47/47 |
 
 构建/运行中解决的真实问题：JDK 21 要求、`frontend/dist` 缺失导致 antrun 失败、
 MySQL 库 collation 必须 `utf8mb4_general_ci`、上游 logback 硬编码 `/opt/metersphere` 日志路径、
@@ -118,7 +118,7 @@ MeterSphere API 的 `{code,message,data}` 包装与 `CSRF-TOKEN`/`PROJECT` 请�
 | 形态 | MeterSphere `backend/services/ui-execution` 新模块，随 MS 一起构建、同进程运行 |
 | 复用 | Shiro 会话/权限、`FunctionalCaseService`、`TestPlanFunctionalCaseService.run`、MS 数据库 |
 | 持久化 | Flyway `3.7.0.1 - ui execution`，`ui_execution_task` / `ui_execution_step` |
-| 下发 | 复用 TestHub device-agent 协议（AI_RUNTIME） |
+| 下发 | 复用 EasyTest device-agent 协议（AI_RUNTIME） |
 | 队列 | 同设备 FIFO：DISPATCHED + PENDING(1) + PENDING(2)，串行执行；排队任务可取消 |
 | 看门狗 | `timeoutSec=2` 任务在 Agent 停止后 17s 标记 TIMEOUT 并生成报告 |
 | 失败报告 | 非 SUCCESS 生成 JSON（`GET .../report`），计划用例写回 ERROR |
@@ -214,7 +214,7 @@ make down
 
 # 真实中间件模式（MySQL/Redis/MinIO/Kafka）
 make infra
-TESTHUB_INFRA=docker ./scripts/dev-up.sh
+EASYTEST_INFRA=docker ./scripts/dev-up.sh
 make e2e
 make down && make infra-down
 ```

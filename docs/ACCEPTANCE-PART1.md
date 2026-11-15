@@ -7,7 +7,7 @@
 
 | 你描述的分层 | 当前实现 | 状态 |
 |---|---|---|
-| 1. 主服务（用户/用例/计划等模型数据） | `testhub-server` + `web` + MySQL（MinIO 存脚本包） | **本次验收通过** |
+| 1. 主服务（用户/用例/计划等模型数据） | `easytest-server` + `web` + MySQL（MinIO 存脚本包） | **本次验收通过** |
 | 2. 接口自动化执行 | **尚未实现** | 未开始；当前只预留了执行器类型与报告模型，MeterSphere 接口测试尚未接入执行 |
 | 3. UI 自动化（子服务器/设备驱动） | `ui-execution` + `device-agent` + `ai-runtime`（独立部署） | 已有可运行实现（模拟设备；Sonic driver-core 真机模式待真机验证） |
 
@@ -55,7 +55,7 @@ PART 1 RESULT: 21 checks passed, 0 failed
 补充验证：前端构建产物包含"需求管理 / 新建用户 / 重置密码"，静态资源均返回 200；
 主服务模式下设备池、执行任务与计划触发入口被隐藏。
 
-自动化回归：**200 个测试全绿**（`make check`），其中 testhub-server 42 个。
+自动化回归：**200 个测试全绿**（`make check`），其中 easytest-server 42 个。
 
 ## 5. 明确不在本次验收范围
 
@@ -85,11 +85,11 @@ PART 1 RESULT: 21 checks passed, 0 failed
 
 1. 主服务模式下页面与 API 同源：直接打开 `http://<主机IP>:8080`，前端默认 API 跟随页面主机名；
 2. 已保存的旧 `127.0.0.1` 配置在非本机页面访问时会自动改写为页面主机；
-3. 若仍异常：清空浏览器 localStorage 中的 `testhub.config.coreUrl`，或在登录页/设置页把 Core 地址改为 `http://<主机IP>:8080`。
+3. 若仍异常：清空浏览器 localStorage 中的 `easytest.config.coreUrl`，或在登录页/设置页把 Core 地址改为 `http://<主机IP>:8080`。
 
 ## 8. 验收证据
 
 - 自动检查脚本：`scripts/part1_smoke.py`（输出 `data/part1-report.json`）
 - 主服务部署脚本：`scripts/main-up.sh` / `scripts/main-down.sh`
 - 前端主服务模式：`VITE_MAIN_ONLY=true`
-- 用户管理后端测试：`testhub-server/.../UserAdminServiceTest.java`
+- 用户管理后端测试：`easytest-server/.../UserAdminServiceTest.java`

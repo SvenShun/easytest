@@ -1,11 +1,11 @@
-# TestHub V1 范围与架构落地说明
+# EasyTest V1 范围与架构落地说明
 
-> 依据：《TestHub 产品需求文档》《TestHub 架构设计文档》（定稿）
+> 依据：《EasyTest 产品需求文档》《EasyTest 架构设计文档》（定稿）
 > 本文记录 V1 的交付边界、与原始架构的偏差，以及每个偏差的后续演进路径。
 
 ## 1. V1 目标
 
-交付一个**可离线运行、端到端闭环**的 TestHub V1：
+交付一个**可离线运行、端到端闭环**的 EasyTest V1：
 
 ```
 需求 → AI 生成 BDD 草稿 → 人工评审通过
@@ -38,10 +38,10 @@ V1 面向单机 Docker Compose / 本地开发环境，硬性要求：**没有大
 
 | 文档设计 | V1 实现 | 原因与演进 |
 |---|---|---|
-| 6 个独立微服务 + Eureka + Gateway | `testhub-server` 单服务内含 `case-management / test-plan / system-setting / ai-analysis` 四个**模块包**；`ui-execution` 独立服务 | MeterSphere 源码不在本仓库，V1 需可独立运行；包边界与接口契约按可拆分设计，后续按模块拆出即可 |
+| 6 个独立微服务 + Eureka + Gateway | `easytest-server` 单服务内含 `case-management / test-plan / system-setting / ai-analysis` 四个**模块包**；`ui-execution` 独立服务 | MeterSphere 源码不在本仓库，V1 需可独立运行；包边界与接口契约按可拆分设计，后续按模块拆出即可 |
 | Kafka 承载下发/日志/结果 | 新增 `TaskEventPublisher` 端口：默认写结构化日志，`event-bus=kafka` 时发布 `ui-execution.task.dispatch/result`；任务下发仍走 HTTP | 事件流已按架构文档 Topic 落地；把下发本身迁到 Kafka 是后续工作 |
-| MinIO 存储产物 | `ArtifactStore` 端口：默认本地文件系统，`TESTHUB_ARTIFACT_STORE=minio` 切 MinIO | 已在真实 MinIO 上验收 |
-| Redis 设备 FIFO | `DeviceQueueStore` 端口：默认内存，`TESTHUB_QUEUE_STORE=redis` 切 Redis | 已在真实 Redis 7.4 上验收 |
+| MinIO 存储产物 | `ArtifactStore` 端口：默认本地文件系统，`EASYTEST_ARTIFACT_STORE=minio` 切 MinIO | 已在真实 MinIO 上验收 |
+| Redis 设备 FIFO | `DeviceQueueStore` 端口：默认内存，`EASYTEST_QUEUE_STORE=redis` 切 Redis | 已在真实 Redis 7.4 上验收 |
 | 设备投屏（scrcpy） | 不做投屏流，设备池展示状态/队列；模拟设备提供截图 | 复用 Sonic 设备通道，需真机环境；V1 预留 WebSocket 边界 |
 | 传统脚本执行器 | 解压工程包 + 执行入口命令，解析 JUnit XML 与截图 | 真实 TestNG/uiautomator2 依赖外部 Maven/ADB，V1 提供同构执行链路 |
 | AI Runtime 内核（成熟框架二次开发） | 自实现最小闭环内核（Python） | V1 验证决策-动作-轨迹链路，后续可替换内核 |
@@ -88,7 +88,7 @@ V1 面向单机 Docker Compose / 本地开发环境，硬性要求：**没有大
 
 | 组件 | 端口 | 默认存储 | 说明 |
 |---|---|---|---|
-| testhub-server | 8080 | H2 文件 `./data/db/core` | dev profile；`SPRING_PROFILES_ACTIVE=mysql` 切 MySQL |
+| easytest-server | 8080 | H2 文件 `./data/db/core` | dev profile；`SPRING_PROFILES_ACTIVE=mysql` 切 MySQL |
 | ui-execution | 8081 | H2 文件 `./data/db/uiexec` + 内存队列 + 本地产物 | 同上 |
 | device-agent | 8090 | 无 | 默认 `simulated` 驱动 |
 | ai-runtime | 8095 | 本地 Skills 缓存 | Python |

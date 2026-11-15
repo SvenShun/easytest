@@ -10,8 +10,8 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 CORE = "http://127.0.0.1:8080"
-EXEC = os.environ.get("TESTHUB_APIEXEC_URL", "http://127.0.0.1:8084")
-EXEC2 = os.environ.get("TESTHUB_APIEXEC_SECOND_URL", "")
+EXEC = os.environ.get("EASYTEST_APIEXEC_URL", "http://127.0.0.1:8084")
+EXEC2 = os.environ.get("EASYTEST_APIEXEC_SECOND_URL", "")
 STUB_PORT = 18098
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PASSED, FAILED = [], []
@@ -37,7 +37,7 @@ def call(base, method, path, body=None, token=None, expect=(200, 201, 204), serv
     if token:
         headers["Authorization"] = "Bearer " + token
     if service_token:
-        headers["X-Service-Token"] = "testhub-dev-service-token"
+        headers["X-Service-Token"] = "easytest-dev-service-token"
     req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
@@ -227,7 +227,7 @@ print("\n[4] shared queue (optional)")
 shared_run_id = None
 worker_ids = []
 if not EXEC2:
-    print("  SKIP  TESTHUB_APIEXEC_SECOND_URL not set")
+    print("  SKIP  EASYTEST_APIEXEC_SECOND_URL not set")
 else:
     slow_case = call(CORE, "POST", "/api/v1/api-cases", {
         "name": "Part3 共享队列", "method": "GET", "path": "/slow",

@@ -61,4 +61,4 @@ GET             /api/v1/kb/screenshots/{name}              # 公开缩略图
 
 ## 与 Sonic 的差异
 
-Sonic 是 `test_cases + steps + elements` 平铺模型；TestHub 保留步骤用例，同时新增产品级知识库，适合“先建模 APP，再生成/复用步骤”的路线。
+Sonic 是 `test_cases + steps + elements` 平铺模型；EasyTest 保留步骤用例，同时新增产品级知识库，适合“先建模 APP，再生成/复用步骤”的路线。

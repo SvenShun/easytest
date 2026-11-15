@@ -120,7 +120,7 @@ function Sidebar({ currentPath }: { currentPath: string }) {
       <button type="button" className="brand" onClick={() => navigate('/dashboard')}>
         <BrandMark size={38} />
         <span className="brand-text">
-          <span className="brand-name">TestHub</span>
+          <span className="brand-name">EasyTest</span>
           <span className="brand-sub">一站式测试平台</span>
         </span>
       </button>
@@ -153,7 +153,7 @@ function Sidebar({ currentPath }: { currentPath: string }) {
       <div className="sidebar-foot">
         <div className="sidebar-env">
           <span className="env-dot" />
-          TestHub V1
+          EasyTest V1
         </div>
         <div className="sidebar-copy">本地开发环境</div>
       </div>

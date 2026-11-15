@@ -1,4 +1,4 @@
-"""FastAPI entrypoint for the TestHub AI Runtime (port 8095).
+"""FastAPI entrypoint for the EasyTest AI Runtime (port 8095).
 
 Endpoints (contract section 4)::
 
@@ -50,7 +50,7 @@ def _default_skills_cache_dir() -> str:
 SKILLS_CACHE_DIR = _default_skills_cache_dir()
 
 app = FastAPI(
-    title="TestHub AI Runtime",
+    title="EasyTest AI Runtime",
     version=__version__,
     description="设备侧 AI 执行期决策器（观察 -> 决策 -> 动作）",
 )

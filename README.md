@@ -1,4 +1,4 @@
-# TestHub V1
+# EasyTest V1
 
 一站式测试平台 V1：以 **MeterSphere（测试管理/接口测试）+ Sonic（云真机）** 的紧耦合融合为目标，
 实现「BDD 用例 → 人工评审 → 混合测试计划 → 设备 FIFO 队列 → 传统脚本 / AI Runtime 双执行通道 →
@@ -18,7 +18,7 @@
 
 | 组件 | 目录 | 端口 | 说明 |
 |---|---|---|---|
-| testhub-server | `testhub-server/` | 8080 | 主服务器：用例/评审、测试计划、系统设置、AI 分析 Agent（模块化单体，边界可按服务拆分） |
+| easytest-server | `easytest-server/` | 8080 | 主服务器：用例/评审、测试计划、系统设置、AI 分析 Agent（模块化单体，边界可按服务拆分） |
 | ui-execution | `ui-execution/` | 8081 | UI 执行编排：执行器路由、设备 FIFO 队列、状态机、轨迹、失败报告、Skills 指针 |
 | api-execution | `api-execution/` | 8084 | 接口执行服务（独立部署/水平扩容）：HTTP 请求、断言、超时/取消、报告、回调、Redis 共享队列 |
 | device-agent | `device-agent/` | 8090 | 设备子服务器 Agent：注册心跳、模拟设备/ADB（热插拔/截图/UI 树/APK 安装）、脚本执行器、AI Runtime 桥接、Skills 缓存；设备池支持截图/操作/安装/启动 |
@@ -28,12 +28,12 @@
 | common | `common/` | — | JWT/角色/服务令牌/异常/加密等共享能力 |
 
 中间件：MySQL 8（业务库）、Redis 7（设备 FIFO）、MinIO（产物）、Kafka 3.8（任务事件流）；
-默认本地模式用 H2/内存/本地文件/日志替代，`TESTHUB_INFRA=docker` 切换真实中间件。
+默认本地模式用 H2/内存/本地文件/日志替代，`EASYTEST_INFRA=docker` 切换真实中间件。
 
 ```
 Browser ── web :5173
    │  JWT
-   ├──────────────► testhub-server :8080 ──内部 HTTP──► ui-execution :8081
+   ├──────────────► easytest-server :8080 ──内部 HTTP──► ui-execution :8081
    │                 (用例/计划/系统/AI)                 (UI 路由/队列/轨迹/报告)
    │                                      └────────────► api-execution :8084
    │                                                      (接口请求/断言/报告)
@@ -77,13 +77,13 @@ make main-down
 
 ```bash
 make infra
-TESTHUB_INFRA=docker ./scripts/dev-up.sh
+EASYTEST_INFRA=docker ./scripts/dev-up.sh
 make e2e
 
 # MeterSphere（真实源码，需 JDK 21）
 make ms-install-module && make ms-build && make ms-up   # http://127.0.0.1:8082, admin/metersphere
 eval "$(make -s ms-token)"         # 导出 MeterSphere 会话变量
-TESTHUB_INFRA=docker TESTHUB_CASE_SOURCE=metersphere ./scripts/dev-up.sh
+EASYTEST_INFRA=docker EASYTEST_CASE_SOURCE=metersphere ./scripts/dev-up.sh
 ```
 
 演示账号：`admin/admin123`（管理员）、`tester/test123`（测试工程师）、
@@ -158,7 +158,7 @@ tail -f logs/core.log
 
 ```
 common/           共享安全与 Web 能力
-testhub-server/   主服务器（用例/计划/系统/AI 分析）
+easytest-server/   主服务器（用例/计划/系统/AI 分析）
 ui-execution/     执行编排服务（UI）
 api-execution/    接口执行服务（独立部署）
 device-agent/     设备子服务器 Agent
@@ -186,6 +186,6 @@ MySQL / Redis / MinIO / Kafka 已完成真实验收（Kafka 仅承载任务事�
 
 ## License
 
-TestHub is released under the **GNU Affero General Public License v3.0** (see [LICENSE](LICENSE)).
+EasyTest is released under the **GNU Affero General Public License v3.0** (see [LICENSE](LICENSE)).
 Third-party components and their obligations are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 and [docs/LEGAL.md](docs/LEGAL.md).

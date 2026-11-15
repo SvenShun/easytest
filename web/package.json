@@ -1,9 +1,9 @@
 {
-  "name": "testhub-web",
+  "name": "easytest-web",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "TestHub V1 Web 控制台",
+  "description": "EasyTest V1 Web 控制台",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

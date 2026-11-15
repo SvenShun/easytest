@@ -41,7 +41,7 @@ class FakeDevice:
                 {
                     "width": 1080,
                     "height": 1920,
-                    "screen": {"app": "com.testhub.demo", "title": "HOME", "texts": []},
+                    "screen": {"app": "com.easytest.demo", "title": "HOME", "texts": []},
                     "elements": [],
                 }
             ]
@@ -273,7 +273,7 @@ def test_illegal_action_is_blocked_by_whitelist():
     provider = ScriptedProvider(
         [
             Decision(
-                action={"type": "uninstall", "package": "com.testhub.demo"},
+                action={"type": "uninstall", "package": "com.easytest.demo"},
                 analysis="卸载应用",
             )
         ]

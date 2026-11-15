@@ -1,6 +1,6 @@
 # MeterSphere / Sonic 体验环境
 
-两套系统使用本地源码部署，和 TestHub 分开端口，不修改产品功能代码。
+两套系统使用本地源码部署，和 EasyTest 分开端口，不修改产品功能代码。
 
 | 系统 | 页面 | 账号 |
 |---|---|---|
@@ -18,7 +18,7 @@
 
 - 后端：`upstream/sonic/sonic-server-main` 的 eureka/controller/folder/gateway 四个 jar
 - 前端：`upstream/sonic/sonic-client-web-main/dist`，`:3001` 静态页 + `/server` 代理到 gateway `:3000`
-- MySQL：`sonic` 库（TestHub 的 MySQL 容器）
+- MySQL：`sonic` 库（EasyTest 的 MySQL 容器）
 - 首次体验账号：`sonic` / `sonic`（已注册，且 `PERMISSION_SUPER_ADMIN=sonic`）
 - 当前没有连接真机/启动 Sonic Agent；用于对比 UI、场景/步骤模型和控制器交互
 
@@ -46,4 +46,4 @@ MeterSphere 后端使用 `scripts/metersphere-up.sh`（`METERSPHERE_SRC=upstream
 - MeterSphere 前端在当前依赖组合下 `vue-tsc` 有类型错误，部署只用 `vite build` 产出运行包，未修改业务代码。
 - Sonic 源码在 Node 22 下 `vite.config.js` 的 `__dirname` 与 ESM 不兼容，部署时使用等价的 `vite.config.cjs` 构建，未修改业务代码。
 - Sonic 首次启动时创建了 `sonic/sonic` 账号；Sonic 没有启动 Agent，也没有连接真机。
-- TestHub 仍在 `http://127.0.0.1:8080`，未改动。
+- EasyTest 仍在 `http://127.0.0.1:8080`，未改动。

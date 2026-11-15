@@ -1,16 +1,16 @@
-# Real middleware for TestHub, for developers who run the Java services on the host.
+# Real middleware for EasyTest, for developers who run the Java services on the host.
 #   docker compose -f deploy/docker-compose.infra.yml up -d
-#   TESTHUB_INFRA=docker ./scripts/dev-up.sh
+#   EASYTEST_INFRA=docker ./scripts/dev-up.sh
 services:
   mysql:
     image: public.ecr.aws/docker/library/mysql:8.0
-    container_name: testhub-mysql
+    container_name: easytest-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-testhub}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-easytest}
       TZ: UTC
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
-      - testhub-mysql-data:/var/lib/mysql
+      - easytest-mysql-data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d:ro
     ports:
       - "3306:3306"
@@ -22,10 +22,10 @@ services:
 
   redis:
     image: public.ecr.aws/docker/library/redis:7-alpine
-    container_name: testhub-redis
+    container_name: easytest-redis
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
-      - testhub-redis-data:/data
+      - easytest-redis-data:/data
     ports:
       - "6379:6379"
     healthcheck:
@@ -38,14 +38,14 @@ services:
     # Chainguard's MinIO build is used because Docker Hub and dl.min.io are
     # unreachable from this network; it is the upstream MinIO server binary.
     image: cgr.dev/chainguard/minio:latest
-    container_name: testhub-minio
+    container_name: easytest-minio
     user: root
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-testhub}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-testhub123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-easytest}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-easytest123}
     volumes:
-      - testhub-minio-data:/data
+      - easytest-minio-data:/data
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -53,17 +53,17 @@ services:
   kafka:
     # Single-node KRaft broker (Strimzi distribution of Apache Kafka 3.8).
     image: quay.io/strimzi/kafka:0.43.0-kafka-3.8.0
-    container_name: testhub-kafka
+    container_name: easytest-kafka
     user: root
     entrypoint: ["/bin/bash", "-c"]
     command:
       - >-
         /opt/kafka/bin/kafka-storage.sh format -t MkU3OEVBNTcwNTJENDM2Qk
-        -c /opt/kafka/config/testhub/server.properties --ignore-formatted &&
-        exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/testhub/server.properties
+        -c /opt/kafka/config/easytest/server.properties --ignore-formatted &&
+        exec /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/easytest/server.properties
     volumes:
-      - ./kafka:/opt/kafka/config/testhub:ro
-      - testhub-kafka-data:/tmp/kraft-logs
+      - ./kafka:/opt/kafka/config/easytest:ro
+      - easytest-kafka-data:/tmp/kraft-logs
     ports:
       - "9092:9092"
     healthcheck:
@@ -73,7 +73,7 @@ services:
       retries: 20
 
 volumes:
-  testhub-mysql-data:
-  testhub-redis-data:
-  testhub-minio-data:
-  testhub-kafka-data:
+  easytest-mysql-data:
+  easytest-redis-data:
+  easytest-minio-data:
+  easytest-kafka-data:

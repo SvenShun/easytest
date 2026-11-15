@@ -1,0 +1,655 @@
+package com.easytest.agent.driver;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+
+/**
+ * Best-effort ADB-backed device driver. V1 does not ship real devices, but the
+ * driver keeps the same device contract so a machine with adb can be used
+ * without changing the rest of the agent.
+ */
+public class AdbDeviceDriver implements DeviceDriver {
+
+    private static final Logger log = LoggerFactory.getLogger(AdbDeviceDriver.class);
+    private static final Pattern BOUNDS = Pattern.compile("\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]");
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
+
+    private final DeviceDescriptor descriptor;
+    private final String adb;
+    private final String appPackage;
+    private volatile Process recordingProcess;
+    private volatile String recordingPath;
+
+    public AdbDeviceDriver(DeviceDescriptor descriptor, String adb) {
+        this(descriptor, adb, "");
+    }
+
+    public AdbDeviceDriver(DeviceDescriptor descriptor, String adb, String appPackage) {
+        this.descriptor = descriptor;
+        this.adb = adb == null || adb.isBlank() ? "adb" : adb;
+        this.appPackage = appPackage == null ? "" : appPackage.trim();
+    }
+
+    @Override
+    public DeviceDescriptor descriptor() {
+        return descriptor;
+    }
+
+    @Override
+    public byte[] screenshot() {
+        AdbResult result = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            result = run(DEFAULT_TIMEOUT, "exec-out", "screencap", "-p");
+            if (result.exitCode() == 0 && result.stdout().length > 0) {
+                return result.stdout();
+            }
+            try {
+                Thread.sleep(300L * attempt);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        throw new IllegalStateException("adb screencap failed after retries (device may be locked/secure): "
+                + (result == null ? "" : result.errorText()));
+    }
+
+    @Override
+    public UiTree uiTree() {
+        AdbResult dump = run(DEFAULT_TIMEOUT, "shell", "uiautomator", "dump", "/sdcard/window_dump.xml");
+        AdbResult cat = run(DEFAULT_TIMEOUT, "exec-out", "cat", "/sdcard/window_dump.xml");
+        if (cat.exitCode() != 0 || cat.stdout().length == 0) {
+            log.warn("uiautomator dump failed for {} ({}, {})", descriptor.serial(),
+                    dump.errorText(), cat.errorText());
+            return new UiTree(1080, 1920, new Screen("android", "unknown", List.of(), List.of()));
+        }
+        try {
+            return parseUiTree(cat.stdout());
+        } catch (Exception e) {
+            log.warn("cannot parse uiautomator dump for {}: {}", descriptor.serial(), e.getMessage());
+            return new UiTree(1080, 1920, new Screen("android", "unknown", List.of(), List.of()));
+        }
+    }
+
+    @Override
+    public ActionResult action(DeviceAction request) {
+        if (request == null || request.getAction() == null || request.getAction().isBlank()) {
+            return ActionResult.fail("unsupported action: <empty>", "adb");
+        }
+        String action = request.getAction().trim().toLowerCase(Locale.ROOT);
+        try {
+            switch (action) {
+                case "click" -> {
+                    UiElement element = findElement(request.getTarget());
+                    if (element == null) {
+                        return ActionResult.fail("element not found: " + describe(request.getTarget()), "adb");
+                    }
+                    Bounds bounds = element.bounds();
+                    AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "tap",
+                            String.valueOf(bounds.centerX()), String.valueOf(bounds.centerY()));
+                    return toResult(result, "clicked " + element.text());
+                }
+                case "input", "type", "settext" -> {
+                    UiElement element = findElement(request.getTarget());
+                    if (element == null) {
+                        return ActionResult.fail("element not found: " + describe(request.getTarget()), "adb");
+                    }
+                    Bounds bounds = element.bounds();
+                    run(DEFAULT_TIMEOUT, "shell", "input", "tap",
+                            String.valueOf(bounds.centerX()), String.valueOf(bounds.centerY()));
+                    String value = request.getText() == null ? "" : request.getText();
+                    AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "text", escapeText(value));
+                    try {
+                        Thread.sleep(250);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    // MIUI returns an empty screencap while the soft keyboard is visible.
+                    run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "4");
+                    return toResult(result, "input " + element.text());
+                }
+                case "text" -> {
+                    String value = request.getText() == null ? "" : request.getText();
+                    AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "text", escapeText(value));
+                    run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "4");
+                    return toResult(result, "typed into focused field");
+                }
+                case "tap" -> {
+                    DeviceAction.Point point = request.getFrom() == null
+                            ? new DeviceAction.Point(540, 1200) : request.getFrom();
+                    AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "tap",
+                            String.valueOf(point.getX()), String.valueOf(point.getY()));
+                    return toResult(result, "tapped " + point.getX() + "," + point.getY());
+                }
+                case "swipe" -> {
+                    DeviceAction.Point from = request.getFrom() == null
+                            ? new DeviceAction.Point(540, 1500) : request.getFrom();
+                    DeviceAction.Point to = request.getTo() == null
+                            ? new DeviceAction.Point(540, 500) : request.getTo();
+                    int duration = request.getDurationMs() == null ? 300 : request.getDurationMs();
+                    AdbResult result = run(DEFAULT_TIMEOUT, "shell", "input", "swipe",
+                            String.valueOf(from.getX()), String.valueOf(from.getY()),
+                            String.valueOf(to.getX()), String.valueOf(to.getY()),
+                            String.valueOf(duration));
+                    return toResult(result, "swiped");
+                }
+                case "back" -> {
+                    return toResult(run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "4"), "pressed back");
+                }
+                case "home" -> {
+                    return toResult(run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "3"), "pressed home");
+                }
+                case "launch" -> {
+                    String app = request.getApp() == null || request.getApp().isBlank()
+                            ? "com.easytest.demo" : request.getApp();
+                    return toResult(run(DEFAULT_TIMEOUT, "shell", "monkey", "-p", app,
+                            "-c", "android.intent.category.LAUNCHER", "1"), "launched " + app);
+                }
+                case "wait" -> {
+                    int ms = request.getMs() == null ? 200 : Math.max(0, Math.min(request.getMs(), 10_000));
+                    Thread.sleep(ms);
+                    return ActionResult.ok("waited " + ms + "ms", "adb");
+                }
+                default -> {
+                    return ActionResult.fail("unsupported action: " + request.getAction(), "adb");
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ActionResult.fail("action interrupted", "adb");
+        } catch (Exception e) {
+            return ActionResult.fail("adb action failed: " + e.getMessage(), "adb");
+        }
+    }
+
+    @Override
+    public DeviceShellResult shell(String command, int timeoutSec) {
+        int timeout = Math.max(1, Math.min(timeoutSec <= 0 ? 30 : timeoutSec, 600));
+        AdbResult result = run(Duration.ofSeconds(timeout), "shell", command);
+        return new DeviceShellResult(result.exitCode(),
+                truncate(new String(result.stdout(), StandardCharsets.UTF_8), 20_000),
+                truncate(result.errorText(), 20_000));
+    }
+
+    @Override
+    public List<String> apps() {
+        AdbResult result = run(DEFAULT_TIMEOUT, "shell", "pm", "list", "packages", "-3");
+        if (result.exitCode() != 0) {
+            return List.of();
+        }
+        return new String(result.stdout(), StandardCharsets.UTF_8).lines()
+                .map(String::trim)
+                .filter(line -> line.startsWith("package:"))
+                .map(line -> line.substring("package:".length()))
+                .filter(name -> !name.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    @Override
+    public ActionResult launchApp(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(DEFAULT_TIMEOUT, "shell", "monkey", "-p", packageName,
+                "-c", "android.intent.category.LAUNCHER", "1"), "launched " + packageName);
+    }
+
+    @Override
+    public ActionResult stopApp(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(DEFAULT_TIMEOUT, "shell", "am", "force-stop", packageName),
+                "stopped " + packageName);
+    }
+
+    @Override
+    public ActionResult clearApp(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(Duration.ofSeconds(60), "shell", "pm", "clear", packageName),
+                "cleared " + packageName);
+    }
+
+    @Override
+    public ActionResult rotate(String direction) {
+        String dir = direction == null ? "auto" : direction.trim().toLowerCase(Locale.ROOT);
+        AdbResult result;
+        switch (dir) {
+            case "left" -> {
+                run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "accelerometer_rotation", "0");
+                result = run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "user_rotation", "1");
+            }
+            case "right" -> {
+                run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "accelerometer_rotation", "0");
+                result = run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system", "user_rotation", "3");
+            }
+            default -> result = run(DEFAULT_TIMEOUT, "shell", "settings", "put", "system",
+                    "accelerometer_rotation", "1");
+        }
+        return toResult(result, "rotated " + dir);
+    }
+
+    public synchronized String startRecording() {
+        if (recordingProcess != null && recordingProcess.isAlive()) {
+            throw new IllegalStateException("设备正在录屏");
+        }
+        String path = "/sdcard/easytest-" + System.currentTimeMillis() + ".mp4";
+        try {
+            run(DEFAULT_TIMEOUT, "shell", "rm", "-f", path);
+            Process process = new ProcessBuilder(adb, "-s", descriptor.serial(), "shell", "screenrecord",
+                    "--bit-rate", "4000000", "--time-limit", "180", path)
+                    .redirectErrorStream(true).start();
+            recordingProcess = process;
+            recordingPath = path;
+            return path;
+        } catch (IOException e) {
+            throw new IllegalStateException("启动录屏失败: " + e.getMessage(), e);
+        }
+    }
+
+    public synchronized byte[] stopRecording() {
+        String path = recordingPath;
+        Process process = recordingProcess;
+        recordingPath = null;
+        recordingProcess = null;
+        if (path == null) {
+            throw new IllegalStateException("当前没有进行中的录屏");
+        }
+        try {
+            if (process != null && process.isAlive()) {
+                process.destroy();
+            }
+            run(Duration.ofSeconds(10), "shell", "pkill", "-INT", "screenrecord");
+            Thread.sleep(1200);
+            AdbResult result = run(Duration.ofSeconds(60), "exec-out", "cat", path);
+            run(DEFAULT_TIMEOUT, "shell", "rm", "-f", path);
+            if (result.exitCode() != 0 || result.stdout().length == 0) {
+                throw new IllegalStateException("读取录屏失败: " + result.errorText());
+            }
+            return result.stdout();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("停止录屏被中断", e);
+        }
+    }
+
+    @Override
+    public ActionResult pushFile(byte[] data, String remotePath) {
+        if (data == null || data.length == 0) {
+            return ActionResult.fail("文件为空", "adb");
+        }
+        String target = remotePath == null || remotePath.isBlank()
+                ? "/sdcard/Download/upload.bin" : remotePath.trim();
+        java.nio.file.Path temp = null;
+        try {
+            temp = java.nio.file.Files.createTempFile("easytest-push-", ".bin");
+            java.nio.file.Files.write(temp, data);
+            AdbResult result = run(Duration.ofSeconds(120), "push", temp.toAbsolutePath().toString(), target);
+            return toResult(result, "pushed " + data.length + " bytes to " + target);
+        } catch (Exception e) {
+            return ActionResult.fail("adb push failed: " + e.getMessage(), "adb");
+        } finally {
+            if (temp != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(temp);
+                } catch (Exception ignored) {
+                    // best effort
+                }
+            }
+        }
+    }
+
+    @Override
+    public ActionResult uninstall(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return ActionResult.fail("package 不能为空", "adb");
+        }
+        return toResult(run(Duration.ofSeconds(60), "shell", "pm", "uninstall", packageName),
+                "uninstalled " + packageName);
+    }
+
+    @Override
+    public java.util.Map<String, Object> performance() {
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        AdbResult mem = run(DEFAULT_TIMEOUT, "shell", "cat", "/proc/meminfo");
+        if (mem.exitCode() == 0) {
+            java.util.Map<String, Long> values = new java.util.LinkedHashMap<>();
+            for (String line : new String(mem.stdout(), StandardCharsets.UTF_8).lines().toList()) {
+                String[] parts = line.split("\\s+");
+                if (parts.length >= 2) {
+                    try {
+                        values.put(parts[0].replace(":", ""), Long.parseLong(parts[1]));
+                    } catch (NumberFormatException ignored) {
+                        // skip header/odd lines
+                    }
+                }
+            }
+            long total = values.getOrDefault("MemTotal", 0L);
+            long available = values.getOrDefault("MemAvailable", 0L);
+            result.put("memTotalKb", total);
+            result.put("memAvailableKb", available);
+            result.put("memUsedKb", Math.max(0, total - available));
+            result.put("memUsedPercent", total <= 0 ? 0.0
+                    : Math.round((total - available) * 1000.0 / total) / 10.0);
+        }
+        AdbResult cpu = run(DEFAULT_TIMEOUT, "shell", "dumpsys", "cpuinfo");
+        if (cpu.exitCode() == 0) {
+            String cpuText = new String(cpu.stdout(), StandardCharsets.UTF_8);
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("(?im)^\\s*TOTAL\\s*:\\s*([0-9.]+)%").matcher(cpuText);
+            if (matcher.find()) {
+                try {
+                    result.put("cpuPercent", Double.parseDouble(matcher.group(1)));
+                } catch (NumberFormatException ignored) {
+                    // keep raw text only
+                }
+            }
+            result.put("cpuinfo", truncate(cpuText, 4000));
+        }
+        AdbResult battery = run(DEFAULT_TIMEOUT, "shell", "dumpsys", "battery");
+        if (battery.exitCode() == 0) {
+            String text = new String(battery.stdout(), StandardCharsets.UTF_8);
+            for (String line : text.lines().toList()) {
+                if (line.contains("level:")) {
+                    result.put("batteryLevel", line.substring(line.indexOf(':') + 1).trim());
+                } else if (line.contains("temperature:")) {
+                    String raw = line.substring(line.indexOf(':') + 1).trim();
+                    try {
+                        result.put("batteryTemperature", Double.parseDouble(raw) / 10.0);
+                    } catch (NumberFormatException ignored) {
+                        result.put("batteryTemperature", raw);
+                    }
+                }
+            }
+        }
+        result.put("serial", descriptor.serial());
+        return result;
+    }
+
+    private static String truncate(String value, int max) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= max ? value : value.substring(0, max) + "\n...(truncated)";
+    }
+
+    @Override
+    public ActionResult installApk(byte[] apk, boolean replace) {
+        if (apk == null || apk.length == 0) {
+            return ActionResult.fail("empty apk", "adb");
+        }
+        java.nio.file.Path temp = null;
+        try {
+            temp = java.nio.file.Files.createTempFile("easytest-", ".apk");
+            java.nio.file.Files.write(temp, apk);
+            List<String> args = new ArrayList<>(List.of("install"));
+            if (replace) {
+                args.add("-r");
+            }
+            args.add(temp.toAbsolutePath().toString());
+            AdbResult result = run(Duration.ofSeconds(120), args.toArray(String[]::new));
+            return toResult(result, "installed apk (" + apk.length + " bytes)");
+        } catch (Exception e) {
+            return ActionResult.fail("adb install failed: " + e.getMessage(), "adb");
+        } finally {
+            if (temp != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(temp);
+                } catch (Exception ignored) {
+                    // best effort
+                }
+            }
+        }
+    }
+
+    @Override
+    public ActionResult reset() {
+        run(DEFAULT_TIMEOUT, "shell", "input", "keyevent", "3");
+        if (appPackage.isBlank()) {
+            return ActionResult.ok("reset", "home");
+        }
+        run(DEFAULT_TIMEOUT, "shell", "am", "force-stop", appPackage);
+        AdbResult launched = run(DEFAULT_TIMEOUT, "shell", "monkey", "-p", appPackage,
+                "-c", "android.intent.category.LAUNCHER", "1");
+        try {
+            Thread.sleep(1500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return toResult(launched, "reset and launched " + appPackage);
+    }
+
+    // ------------------------------------------------------------------
+    // discovery / command execution
+    // ------------------------------------------------------------------
+
+    /** Discover devices via {@code adb devices -l}; returns an empty list if adb is missing. */
+    public static List<DeviceDescriptor> discover(String adbExecutable) {
+        String adb = adbExecutable == null || adbExecutable.isBlank() ? "adb" : adbExecutable;
+        List<DeviceDescriptor> devices = new ArrayList<>();
+        try {
+            ProcessBuilder pb = new ProcessBuilder(adb, "devices", "-l");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                log.warn("adb devices timed out");
+                return devices;
+            }
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            for (String line : output.split("\\R")) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("List of devices")
+                        || trimmed.startsWith("* daemon")) {
+                    continue;
+                }
+                String[] parts = trimmed.split("\\s+");
+                if (parts.length < 2 || !"device".equals(parts[1])) {
+                    continue;
+                }
+                String serial = parts[0];
+                String model = null;
+                for (String part : parts) {
+                    if (part.startsWith("model:")) {
+                        model = part.substring("model:".length());
+                    }
+                }
+                String name = model == null ? serial : model.replace('_', ' ');
+                devices.add(new DeviceDescriptor(serial, name, model == null ? serial : model,
+                        "android", List.of("android", "adb"), true));
+            }
+        } catch (Exception e) {
+            log.warn("adb discovery unavailable: {}", e.getMessage());
+        }
+        return devices;
+    }
+
+    private UiTree parseUiTree(byte[] xml) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        factory.setExpandEntityReferences(false);
+        Document document = factory.newDocumentBuilder().parse(new java.io.ByteArrayInputStream(xml));
+        Element root = document.getDocumentElement();
+        NodeList nodes = document.getElementsByTagName("node");
+        String pkg = root.getAttribute("package");
+        if ((pkg == null || pkg.isBlank()) && nodes.getLength() > 0) {
+            pkg = ((Element) nodes.item(0)).getAttribute("package");
+        }
+        Bounds rootBounds = parseBounds(root.getAttribute("bounds"));
+        if (rootBounds == null && nodes.getLength() > 0) {
+            rootBounds = parseBounds(((Element) nodes.item(0)).getAttribute("bounds"));
+        }
+        int width = rootBounds == null ? 1080 : rootBounds.width();
+        int height = rootBounds == null ? 1920 : rootBounds.height();
+
+        List<UiElement> elements = new ArrayList<>();
+        List<String> texts = new ArrayList<>();
+        int generated = 0;
+        for (int i = 0; i < nodes.getLength(); i++) {
+            Element node = (Element) nodes.item(i);
+            String text = node.getAttribute("text");
+            String resourceId = node.getAttribute("resource-id");
+            String className = node.getAttribute("class");
+            boolean clickable = "true".equalsIgnoreCase(node.getAttribute("clickable"));
+            boolean editable = className != null && className.contains("EditText");
+            Bounds bounds = parseBounds(node.getAttribute("bounds"));
+            if (bounds == null) {
+                continue;
+            }
+            if (!clickable && !editable) {
+                if (text != null && !text.isBlank() && texts.size() < 20) {
+                    texts.add(text);
+                }
+                continue;
+            }
+            String id = resourceId == null || resourceId.isBlank()
+                    ? "node-" + (generated++) : resourceId.substring(resourceId.lastIndexOf('/') + 1);
+            String type = editable ? "editable" : (className != null && className.contains("Button") ? "button" : "text");
+            elements.add(new UiElement(id, text, type, clickable, editable, bounds));
+        }
+        String title = texts.isEmpty() ? pkg : texts.get(0);
+        return new UiTree(width, height, new Screen(pkg, title, texts, elements));
+    }
+
+    private static Bounds parseBounds(String value) {
+        if (value == null) {
+            return null;
+        }
+        Matcher matcher = BOUNDS.matcher(value);
+        if (!matcher.find()) {
+            return null;
+        }
+        int left = Integer.parseInt(matcher.group(1));
+        int top = Integer.parseInt(matcher.group(2));
+        int right = Integer.parseInt(matcher.group(3));
+        int bottom = Integer.parseInt(matcher.group(4));
+        return new Bounds(left, top, Math.max(1, right - left), Math.max(1, bottom - top));
+    }
+
+    private UiElement findElement(DeviceAction.Target target) {
+        UiTree tree = uiTree();
+        List<UiElement> elements = tree.screen().elements();
+        if (target == null) {
+            return null;
+        }
+        if (target.getId() != null && !target.getId().isBlank()) {
+            for (UiElement element : elements) {
+                if (target.getId().equals(element.id())) {
+                    return element;
+                }
+            }
+        }
+        if (target.getText() != null && !target.getText().isBlank()) {
+            for (UiElement element : elements) {
+                if (target.getText().equals(element.text())) {
+                    return element;
+                }
+            }
+            for (UiElement element : elements) {
+                if (element.text() != null && element.text().contains(target.getText())) {
+                    return element;
+                }
+            }
+        }
+        if (target.getIndex() != null) {
+            int index = target.getIndex();
+            if (index >= 0 && index < elements.size()) {
+                return elements.get(index);
+            }
+        }
+        return null;
+    }
+
+    private ActionResult toResult(AdbResult result, String message) {
+        String error = result.errorText() == null ? "" : result.errorText();
+        boolean injected = error.contains("INJECT_EVENTS")
+                || error.contains("Injecting to another application")
+                || error.contains("SecurityException");
+        if (result.exitCode() == 0 && !injected) {
+            return ActionResult.ok(message, "adb");
+        }
+        if (injected) {
+            return ActionResult.fail(message + " failed: MIUI/ROM blocked ADB input; "
+                    + "enable Developer options -> USB debugging (Security settings) / USB调试（安全设置）",
+                    "adb");
+        }
+        return ActionResult.fail(message + " failed: " + error, "adb");
+    }
+
+    private AdbResult run(Duration timeout, String... args) {
+        List<String> command = new ArrayList<>();
+        command.add(adb);
+        command.add("-s");
+        command.add(descriptor.serial());
+        command.addAll(List.of(args));
+        try {
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.redirectErrorStream(false);
+            Process process = pb.start();
+            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+            Thread outReader = pipe(process.getInputStream(), stdout);
+            Thread errReader = pipe(process.getErrorStream(), stderr);
+            boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+            }
+            outReader.join(2000);
+            errReader.join(2000);
+            int exitCode = finished ? process.exitValue() : 124;
+            return new AdbResult(exitCode, stdout.toByteArray(),
+                    new String(stderr.toByteArray(), StandardCharsets.UTF_8).trim());
+        } catch (Exception e) {
+            return new AdbResult(1, new byte[0], e.getMessage());
+        }
+    }
+
+    private static Thread pipe(InputStream input, ByteArrayOutputStream output) {
+        Thread thread = new Thread(() -> {
+            try (input; output) {
+                input.transferTo(output);
+            } catch (IOException ignored) {
+                // best effort
+            }
+        });
+        thread.setDaemon(true);
+        thread.start();
+        return thread;
+    }
+
+    private static String escapeText(String value) {
+        // adb input text uses %s for spaces.
+        return value.replace(" ", "%s");
+    }
+
+    private static String describe(DeviceAction.Target target) {
+        return target == null ? "<empty>" : target.describe();
+    }
+
+    private record AdbResult(int exitCode, byte[] stdout, String errorText) {
+    }
+}

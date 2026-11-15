@@ -15,7 +15,7 @@
 
 ```bash
 SONIC_HOME=/path/to/sonic ./scripts/uia2-setup.sh
-# 或设置 -Dtesthub.agent.uia2-server-apk=/abs/path.apk
+# 或设置 -Deasytest.agent.uia2-server-apk=/abs/path.apk
 ```
 
 效果：

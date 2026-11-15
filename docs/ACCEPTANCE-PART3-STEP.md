@@ -5,7 +5,7 @@
 ## 链路
 
 1. 用例 `case_86d58c28f9ca435fb8ad`：`executionMode=STEPS`，4 条步骤：
-   LAUNCH `com.testhub.demo` → WAIT 1500ms → ASSERT_TEXT `登录` → SCREENSHOT。
+   LAUNCH `com.easytest.demo` → WAIT 1500ms → ASSERT_TEXT `登录` → SCREENSHOT。
 2. 提交评审（tester）→ 管理员通过（admin）。
 3. 计划 `plan_609ce53d65a84ff0a0d8` 挂载该用例。
 4. 触发计划，指定真机；核心按用例模式路由为 `STEP`。
@@ -16,7 +16,7 @@
 - 运行：`run_0610f624e7d0458abfbd` → **SUCCESS**
 - 任务：`task_a6d715eed08646c39b80`
 - 步骤：**4/4 OK**
-  - `LAUNCH com.testhub.demo` → `launched`
+  - `LAUNCH com.easytest.demo` → `launched`
   - `WAIT 1500ms` → `waited`
   - `ASSERT_TEXT 命中文本: 登录` → `matched`
   - `SCREENSHOT` → `captured`
@@ -37,7 +37,7 @@ curl -s -X POST http://127.0.0.1:8080/api/v1/auth/login \
 
 - `StepCaseTest` 4/4
 - `StepTaskRunnerTest` 6/6
-- `./scripts/mvn.sh -q -pl testhub-server,ui-execution -am test` 通过
+- `./scripts/mvn.sh -q -pl easytest-server,ui-execution -am test` 通过
 - Web `npm run build` 通过
 
 ## 注意

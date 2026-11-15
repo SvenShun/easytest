@@ -28,14 +28,14 @@ def tree(title, texts=None, elements=None):
     return {
         "width": 1080,
         "height": 1920,
-        "screen": {"app": "com.testhub.demo", "title": title, "texts": texts or []},
+        "screen": {"app": "com.easytest.demo", "title": title, "texts": texts or []},
         "elements": elements or [],
     }
 
 
 HOME = tree(
     "HOME",
-    ["首页", "欢迎使用 TestHub"],
+    ["首页", "欢迎使用 EasyTest"],
     [
         element("登录", "btn_login", "Button", clickable=True),
         element("注册", "btn_register", "Button", clickable=True),
@@ -196,8 +196,8 @@ def sim_element(text, element_id, element_type, clickable, editable):
 
 
 SIM_HOME = tree(
-    "TestHub Demo",
-    ["欢迎使用 TestHub 演示应用"],
+    "EasyTest Demo",
+    ["欢迎使用 EasyTest 演示应用"],
     [
         sim_element("登录", "btn-login", "button", True, False),
         sim_element("搜索", "btn-search", "button", True, False),
@@ -265,7 +265,7 @@ def test_elements_nested_under_screen_are_supported():
         "width": 720,
         "height": 1280,
         "screen": {
-            "app": "com.testhub.demo",
+            "app": "com.easytest.demo",
             "title": "首页",
             "texts": ["登录成功"],
             "elements": [element("登录成功", "tv", "text", False, False)],

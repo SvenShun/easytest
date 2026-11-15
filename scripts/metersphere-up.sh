@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the locally built MeterSphere backend (source at upstream/metersphere)
-# against the TestHub Docker middleware (MySQL/Redis/Kafka).
+# against the EasyTest Docker middleware (MySQL/Redis/Kafka).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -19,10 +19,10 @@ if [ -z "$JAR" ]; then
   echo "  cd $MS_SRC && JAVA_HOME=$JDK mvn -Dmaven.repo.local=$ROOT/.m2/repository -f backend/pom.xml -DskipTests package" >&2
   exit 1
 fi
-if ! docker exec testhub-mysql mysqladmin ping -h127.0.0.1 -ptesthub >/dev/null 2>&1; then
+if ! docker exec easytest-mysql mysqladmin ping -h127.0.0.1 -peasytest >/dev/null 2>&1; then
   echo "MySQL is not running. Start it with ./scripts/infra-up.sh" >&2; exit 1
 fi
-docker exec testhub-mysql mysql -uroot -ptesthub -e \
+docker exec easytest-mysql mysql -uroot -peasytest -e \
   "CREATE DATABASE IF NOT EXISTS metersphere CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" 2>/dev/null
 
 mkdir -p logs data/pids data/metersphere-logs
@@ -38,7 +38,7 @@ nohup "$JDK/bin/java" -Xms512m -Xmx2g -jar "$JAR" \
   --management.server.port="$MS_MGMT_PORT" \
   --spring.datasource.url="jdbc:mysql://127.0.0.1:3306/metersphere?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectionCollation=utf8mb4_general_ci" \
   --spring.datasource.username=root \
-  --spring.datasource.password=testhub \
+  --spring.datasource.password=easytest \
   --spring.kafka.bootstrap-servers=127.0.0.1:9092 \
   --spring.data.redis.host=127.0.0.1 \
   --spring.data.redis.port=6379 \
@@ -46,8 +46,8 @@ nohup "$JDK/bin/java" -Xms512m -Xmx2g -jar "$JAR" \
   --logging.file.path="$ROOT/data/metersphere-logs" \
   --jmeter.home="$MS_SRC/backend/app/src/main/resources/jmeter" \
   --minio.endpoint=http://127.0.0.1:9000 \
-  --minio.access-key=testhub \
-  --minio.secret-key=testhub123 \
+  --minio.access-key=easytest \
+  --minio.secret-key=easytest123 \
   > logs/metersphere.log 2>&1 &
 echo $! > data/pids/metersphere.pid
 
