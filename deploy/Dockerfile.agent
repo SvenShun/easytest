@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /src
 COPY deploy/maven-settings.xml /root/.m2/settings.xml
 COPY pom.xml .
@@ -13,7 +13,7 @@ RUN mvn -B -q -pl device-agent -am -DskipTests dependency:go-offline
 COPY device-agent device-agent
 RUN mvn -B -q -pl device-agent -am -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM public.ecr.aws/docker/library/eclipse-temurin:17-jre
 RUN apt-get update && apt-get install -y --no-install-recommends git fontconfig fonts-dejavu-core zip unzip \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

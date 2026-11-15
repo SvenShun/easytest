@@ -18,7 +18,7 @@ public class MqttBrokerConfig {
     @PostConstruct
     public void start() throws Exception {
         Properties props = new Properties();
-        props.setProperty("host", "127.0.0.1");
+        props.setProperty("host", "0.0.0.0");
         props.setProperty("port", "1883");
         props.setProperty("allow_anonymous", "true");
         props.setProperty("persistence_enabled", "false");

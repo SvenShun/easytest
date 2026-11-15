@@ -107,7 +107,7 @@ services:
       EASYTEST_AGENT_TOKEN: ${EASYTEST_AGENT_TOKEN:-change-me-agent-token}
       EASYTEST_ENCRYPTION_KEY: ${EASYTEST_ENCRYPTION_KEY:-change-me-encryption-key}
       EASYTEST_CORE_URL: http://core:8080
-      EASYTEST_APIEXEC_PUBLIC_URL: ${EASYTEST_APIEXEC_PUBLIC_URL:-http://127.0.0.1:8084}
+      EASYTEST_APIEXEC_PUBLIC_URL: ${EASYTEST_APIEXEC_PUBLIC_URL:-http://api-execution:8084}
       EASYTEST_APIEXEC_CALLBACK_URL: http://core:8080
       EASYTEST_APIEXEC_WORKERS: 4
       EASYTEST_APIEXEC_ENGINEERING_DIR: /data/engineering
@@ -115,7 +115,7 @@ services:
       IOT_MYSQL_URL: jdbc:mysql://mysql:3306/iot_local?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
       IOT_MYSQL_USER: iot
       IOT_MYSQL_PASSWORD: iot
-      IOT_KAFKA_BOOTSTRAP: kafka:9092
+      IOT_KAFKA_BOOTSTRAP: kafka:29092
       IOT_MQTT_HOST: iot-service
       IOT_MQTT_PORT: 1883
     volumes:
@@ -145,7 +145,7 @@ services:
       EASYTEST_QUEUE_STORE: redis
       SPRING_DATA_REDIS_HOST: redis
       EASYTEST_EVENT_BUS: kafka
-      EASYTEST_KAFKA_BOOTSTRAP: kafka:9092
+      EASYTEST_KAFKA_BOOTSTRAP: kafka:29092
       EASYTEST_ARTIFACT_STORE: minio
       EASYTEST_ARTIFACT_DIR: /data/artifacts
       EASYTEST_MINIO_ENDPOINT: http://minio:9000
@@ -202,7 +202,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/iot_local?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
       SPRING_DATASOURCE_USERNAME: iot
       SPRING_DATASOURCE_PASSWORD: ${IOT_DB_PASSWORD:-iot}
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SPRING_APPLICATION_JSON: '{"spring":{"kafka":{"bootstrap-servers":"kafka:29092"}}}' 
     depends_on:
       mysql:
         condition: service_healthy

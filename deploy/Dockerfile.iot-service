@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /src
 COPY deploy/maven-settings.xml /root/.m2/settings.xml
 COPY examples/iot-local-system/pom.xml pom.xml
@@ -10,8 +10,8 @@ COPY examples/iot-local-system/iot-api iot-api
 COPY examples/iot-local-system/iot-service iot-service
 RUN mvn -B -q -pl iot-service -am -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM public.ecr.aws/docker/library/eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /src/iot-service/target/iot-service-1.0.0.jar app.jar
 EXPOSE 18081 1883 20880
-ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-jar","/app/app.jar"]
+ENTRYPOINT ["java","--add-opens=java.base/java.lang=ALL-UNNAMED","--add-opens=java.base/java.math=ALL-UNNAMED","--add-opens=java.base/java.util=ALL-UNNAMED","--add-opens=java.base/java.lang.reflect=ALL-UNNAMED","-XX:MaxRAMPercentage=75","-jar","/app/app.jar"]

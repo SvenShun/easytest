@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM public.ecr.aws/docker/library/maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /src
 COPY deploy/maven-settings.xml /root/.m2/settings.xml
 COPY pom.xml .
@@ -14,7 +14,7 @@ COPY common common
 COPY easytest-server easytest-server
 RUN mvn -B -q -pl easytest-server -am -DskipTests package
 
-FROM eclipse-temurin:17-jre
+FROM public.ecr.aws/docker/library/eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /src/easytest-server/target/easytest-server-1.0.0.jar app.jar
 EXPOSE 8080
