@@ -63,9 +63,15 @@ public class IotFlows {
             layer = ContractLayer.FLOW, protocols = {"SQL"}, description = "单接口逻辑测清楚，用 DB 造数",
             inputs = {"homeId", "ownerId"}, outputs = {"row"}, tags = {"iot", "single", "seed"})
     public ContractResult mysqlSeed(ContractContext context) {
+        String homeId = context.requireString("homeId");
+        com.easytest.engineering.JdbcAtom.update(IotConfig.mysqlUrl(), IotConfig.mysqlUser(),
+                IotConfig.mysqlPassword(),
+                "INSERT INTO home(id, owner_id, name) VALUES (?, ?, ?) "
+                        + "ON DUPLICATE KEY UPDATE owner_id=VALUES(owner_id)",
+                homeId, context.input("ownerId") == null ? "u-local" : String.valueOf(context.input("ownerId")),
+                "local-home");
         var row = com.easytest.engineering.JdbcAtom.queryOne(IotConfig.mysqlUrl(), IotConfig.mysqlUser(),
-                IotConfig.mysqlPassword(), "SELECT id, owner_id FROM home WHERE id = ?",
-                context.requireString("homeId"));
+                IotConfig.mysqlPassword(), "SELECT id, owner_id FROM home WHERE id = ?", homeId);
         context.output("row", row);
         return row == null ? ContractResult.fail("造数未生效") : ContractResult.ok("DB 造数可见");
     }

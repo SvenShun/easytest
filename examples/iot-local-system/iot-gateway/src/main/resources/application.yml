@@ -1,0 +1,10 @@
+server:
+  port: 18080
+spring:
+  application:
+    name: iot-gateway
+dubbo:
+  application:
+    name: iot-gateway
+  registry:
+    address: N/A

@@ -1,7 +1,7 @@
 gateway: http://127.0.0.1:18080
 mysql:
   home:
-    url: jdbc:mysql://127.0.0.1:3306/iot_home
+    url: jdbc:mysql://127.0.0.1:3306/iot_local
     user: iot
     password: iot
   user:

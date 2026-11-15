@@ -113,7 +113,24 @@ atom/    HttpGatewayAtom / MysqlSeedAtom / KafkaEventAtom / MqttCommandAtom / Rp
 2. **端到端**：接口造数，从 gateway 登录开始，HTTP 绑定 -> MQTT 控制 -> Kafka 事件验证
 3. 平台场景复用 action/atom，无需在平台重复实现 HTTP/SQL/MQTT/Kafka/RPC 封装
 
-## 本地 IoT Mock
+## 本地真实 IoT 被测系统
+
+`examples/iot-local-system` 提供真实本地链路：
+
+```text
+gateway HTTP -> Dubbo RPC -> service -> MySQL/Kafka
+                          -> embedded MQTT broker :1883
+                          -> Paho subscriber (device 微服务替身)
+```
+
+启动：
+
+```bash
+./scripts/mvn.sh -q -f examples/iot-local-system/pom.xml -DskipTests package
+./examples/iot-local-system/start-local.sh
+```
+
+## 本地 IoT Mock（已由真实系统替代，可选）
 
 在没有真实业务系统时，可用本地 mock 跑通 flow：
 

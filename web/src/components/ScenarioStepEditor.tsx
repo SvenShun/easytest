@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Field, Input, Select, Textarea } from './ui';
 
 export type ScenarioStep = Record<string, any>;
@@ -47,7 +48,63 @@ export function JsonField({ label, value, onChange }: { label: string; value: un
   );
 }
 
-function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioStep; update: (patch: ScenarioStep) => void; engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[] }> }) {
+function SchemaInputs({ schema, values, onChange }: {
+  schema: string; values: unknown; onChange: (next: Record<string, unknown>) => void;
+}) {
+  const parsed = useMemo(() => {
+    try {
+      const value = JSON.parse(schema);
+      return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+    } catch {
+      return null;
+    }
+  }, [schema]);
+  const properties = parsed && parsed.properties && typeof parsed.properties === 'object'
+    ? parsed.properties as Record<string, Record<string, unknown>> : null;
+  const required = new Set(Array.isArray(parsed?.required) ? (parsed!.required as string[]) : []);
+  if (!properties || Object.keys(properties).length === 0) {
+    return <JsonField label="输入变量 inputs" value={values} onChange={(next) => onChange((next || {}) as Record<string, unknown>)} />;
+  }
+  const current = values && typeof values === 'object' ? values as Record<string, unknown> : {};
+  const update = (name: string, value: unknown) => {
+    const next = { ...current };
+    if (value === '' || value === undefined) delete next[name]; else next[name] = value;
+    onChange(next);
+  };
+  return (
+    <div className="schema-form">
+      <div className="schema-form-title">参数表单 <span className="text-muted">（由工程方法 inputSchema 生成）</span></div>
+      {Object.entries(properties).map(([name, property]) => {
+        const type = String(property.type || 'string');
+        const description = property.description ? String(property.description) : '';
+        const hint = `${required.has(name) ? '必填' : '可选'}${description ? ' · ' + description : ''}`;
+        const enumValues = Array.isArray(property.enum) ? property.enum.map(String) : [];
+        let control: ReactNode;
+        if (type === 'boolean') {
+          control = <Select value={current[name] === undefined ? '' : String(current[name])} onChange={(e) => update(name, e.target.value === '' ? '' : e.target.value === 'true')}>
+            <option value="">未设置</option><option value="true">true</option><option value="false">false</option>
+          </Select>;
+        } else if (enumValues.length > 0) {
+          control = <Select value={current[name] === undefined ? '' : String(current[name])} onChange={(e) => update(name, e.target.value)}>
+            <option value="">未设置</option>{enumValues.map((value) => <option key={value} value={value}>{value}</option>)}
+          </Select>;
+        } else if (type === 'number' || type === 'integer') {
+          control = <Input type="number" value={current[name] === undefined ? '' : String(current[name])}
+            onChange={(e) => update(name, e.target.value === '' ? '' : Number(e.target.value))} />;
+        } else if (type === 'object' || type === 'array') {
+          control = <JsonField label="" value={current[name]} onChange={(value) => update(name, value)} />;
+          return <div key={name} className="schema-field schema-field-json"><label className="field-label">{name}</label>{control}<div className="field-hint">{hint}</div></div>;
+        } else {
+          control = <Input value={current[name] === undefined ? '' : String(current[name])}
+            onChange={(e) => update(name, e.target.value)} placeholder="${变量名} 或固定值" />;
+        }
+        return <Field key={name} label={name} hint={hint}>{control}</Field>;
+      })}
+    </div>
+  );
+}
+
+function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioStep; update: (patch: ScenarioStep) => void; engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null; outputSchema?: string | null }> }) {
   const type = String(step.type || '').toLowerCase();
   switch (type) {
     case 'http':
@@ -128,8 +185,20 @@ function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioS
           <Field label="行为说明" hint="平台展示用；复杂用例由工程代码实现">
             <Input value={step.description || ''} onChange={(e) => update({ description: e.target.value })} />
           </Field>
-          <JsonField label="输入变量 inputs" value={step.inputs} onChange={(inputs) => update({ inputs })} />
-          <JsonField label="期望输出 outputs" value={step.outputs} onChange={(outputs) => update({ outputs })} />
+          {(() => {
+            const method = engineeringMethods.find((item) => item.methodPath === step.methodPath);
+            return method?.inputSchema
+              ? <SchemaInputs schema={method.inputSchema} values={step.inputs} onChange={(inputs) => update({ inputs })} />
+              : <JsonField label="输入变量 inputs" value={step.inputs} onChange={(inputs) => update({ inputs })} />;
+          })()}
+          {(() => {
+            const method = engineeringMethods.find((item) => item.methodPath === step.methodPath);
+            return method?.outputSchema
+              ? <Field label="期望输出 outputs" hint={String(method.outputSchema)}>
+                  <JsonField label="" value={step.outputs} onChange={(outputs) => update({ outputs })} />
+                </Field>
+              : <JsonField label="期望输出 outputs" value={step.outputs} onChange={(outputs) => update({ outputs })} />;
+          })()}
           <Field label="超时（毫秒）"><Input type="number" value={step.timeoutMs || ''} onChange={(e) => update({ timeoutMs: e.target.value ? Number(e.target.value) : undefined })} /></Field>
         </div>
       );
@@ -168,7 +237,7 @@ function StepFields({ step, update, engineeringMethods = [] }: { step: ScenarioS
 function StepCard({ step, index, total, depth, onChange, onRemove, onMove, engineeringMethods }: {
   step: ScenarioStep; index: number; total: number; depth: number;
   onChange: (next: ScenarioStep) => void; onRemove: () => void; onMove: (offset: number) => void;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null; outputSchema?: string | null }>;
 }) {
   const type = String(step.type || 'http').toLowerCase();
   const update = (patch: ScenarioStep) => {
@@ -220,7 +289,7 @@ function StepCard({ step, index, total, depth, onChange, onRemove, onMove, engin
 
 function StepList({ steps, depth, onChange, allowHooks = true, engineeringMethods = [] }: {
   steps: ScenarioStep[]; depth: number; onChange: (next: ScenarioStep[]) => void; allowHooks?: boolean;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null; outputSchema?: string | null }>;
 }) {
   const [newType, setNewType] = useState('http');
   const update = (index: number, next: ScenarioStep) => onChange(steps.map((item, i) => i === index ? next : item));
@@ -252,7 +321,7 @@ function StepList({ steps, depth, onChange, allowHooks = true, engineeringMethod
 
 export function ScenarioStepEditor({ steps, onChange, engineeringMethods = [] }: {
   steps: ScenarioStep[]; onChange: (steps: ScenarioStep[]) => void;
-  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null }>;
+  engineeringMethods?: Array<{ methodPath: string; name: string; description?: string | null; layer?: string; protocols?: string[]; inputSchema?: string | null; outputSchema?: string | null }>;
 }) {
   return <StepList steps={steps} depth={0} onChange={onChange} engineeringMethods={engineeringMethods} />;
 }

@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS app_user (
+  username VARCHAR(64) PRIMARY KEY,
+  password VARCHAR(128) NOT NULL,
+  user_id VARCHAR(64) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS home (
+  id VARCHAR(64) PRIMARY KEY,
+  owner_id VARCHAR(64) NOT NULL,
+  name VARCHAR(128) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS device (
+  device_id VARCHAR(64) PRIMARY KEY,
+  home_id VARCHAR(64) NOT NULL,
+  status VARCHAR(32) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS device_command (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  device_id VARCHAR(64) NOT NULL,
+  payload VARCHAR(2000),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT IGNORE INTO app_user(username, password, user_id) VALUES ('tester', 'secret', 'u-local');

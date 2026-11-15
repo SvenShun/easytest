@@ -1,0 +1,28 @@
+server:
+  port: 18081
+spring:
+  application:
+    name: iot-service
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/iot_local?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: iot
+    password: iot
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+  kafka:
+    bootstrap-servers: 127.0.0.1:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+dubbo:
+  application:
+    name: iot-service
+  protocol:
+    name: dubbo
+    port: 20880
+  registry:
+    address: N/A
+  scan:
+    base-packages: com.easytest.iotlocal.service
