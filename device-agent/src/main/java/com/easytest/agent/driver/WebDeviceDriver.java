@@ -155,11 +155,21 @@ public class WebDeviceDriver implements DeviceDriver {
         String needle = target.getText() != null && !target.getText().isBlank()
                 ? target.getText() : target.getId();
         if (needle == null) return null;
+        HtmlElement best = null;
+        int bestScore = Integer.MAX_VALUE;
         for (DomNode node : page.getDocumentElement().querySelectorAll("*")) {
             if (!(node instanceof HtmlElement element)) continue;
-            if (textOf(element).contains(needle)) return element;
+            String text = textOf(element);
+            if (text == null || text.isBlank() || !text.contains(needle)) continue;
+            String tag = element.getTagName().toLowerCase(Locale.ROOT);
+            int score = text.length() + (text.equals(needle) ? 0 : 100);
+            if (tag.equals("button") || tag.equals("a") || tag.equals("input")) score -= 50;
+            if (score < bestScore) {
+                bestScore = score;
+                best = element;
+            }
         }
-        return null;
+        return best;
     }
 
     private String textOf(DomElement element) {

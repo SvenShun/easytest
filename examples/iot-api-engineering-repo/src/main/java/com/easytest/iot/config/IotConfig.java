@@ -31,9 +31,12 @@ public final class IotConfig {
         String key = app == null || app.isBlank() ? "home" : app;
         Map<String, Object> db = map(MYSQL.get(key));
         return new DbConfig(
-                env("IOT_MYSQL_" + key.toUpperCase() + "_URL", string(db.get("url"), "jdbc:mysql://127.0.0.1:3306/iot_" + key)),
-                env("IOT_MYSQL_" + key.toUpperCase() + "_USER", string(db.get("user"), "iot")),
-                env("IOT_MYSQL_" + key.toUpperCase() + "_PASSWORD", string(db.get("password"), "iot")));
+                env("IOT_MYSQL_" + key.toUpperCase() + "_URL",
+                        env("IOT_MYSQL_URL", string(db.get("url"), "jdbc:mysql://127.0.0.1:3306/iot_" + key))),
+                env("IOT_MYSQL_" + key.toUpperCase() + "_USER",
+                        env("IOT_MYSQL_USER", string(db.get("user"), "iot"))),
+                env("IOT_MYSQL_" + key.toUpperCase() + "_PASSWORD",
+                        env("IOT_MYSQL_PASSWORD", string(db.get("password"), "iot"))));
     }
 
     public static String mysqlUrl() {

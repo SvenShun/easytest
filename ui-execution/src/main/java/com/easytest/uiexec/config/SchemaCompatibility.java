@@ -37,6 +37,9 @@ public class SchemaCompatibility implements ApplicationRunner {
         }
         alter("ALTER TABLE ue_task MODIFY COLUMN executor_type VARCHAR(32) NOT NULL");
         alter("ALTER TABLE ue_task MODIFY COLUMN steps_json LONGTEXT NULL");
+        alter("ALTER TABLE ue_task MODIFY COLUMN failure_reason VARCHAR(40) NULL");
+        alter("ALTER TABLE ue_task MODIFY COLUMN executor_type VARCHAR(32) NOT NULL");
+        alter("ALTER TABLE ue_failure_report MODIFY COLUMN reason_category VARCHAR(40) NULL");
         alter("UPDATE ue_device SET project_id = 'default' WHERE project_id IS NULL");
         alter("UPDATE ue_task SET project_id = 'default' WHERE project_id IS NULL");
     }

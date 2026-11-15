@@ -13,7 +13,7 @@ if [ ! -f data/engineering/iot-api-engineering.jar ]; then
   mkdir -p data/engineering
   ./scripts/mvn.sh -q -pl contract-api,engineering-sdk -DskipTests install
   ./scripts/mvn.sh -q -f examples/iot-api-engineering-repo/pom.xml -DskipTests package
-  cp examples/iot-api-engineering-repo/target/iot-api-engineering-1.0.0.jar data/engineering/iot-api-engineering.jar
+  cp examples/iot-api-engineering-repo/target/iot-api-engineering.jar data/engineering/iot-api-engineering.jar
 fi
 if [ ! -f deploy/.env ]; then
   cp deploy/.env.example deploy/.env
@@ -25,5 +25,13 @@ echo "  core:         http://127.0.0.1:8080"
 echo "  IoT gateway:  http://127.0.0.1:18080"
 echo "  MQTT:         127.0.0.1:1883"
 echo
+echo "Waiting for core/API agent..."
+for _ in $(seq 1 90); do
+  if curl -fsS --max-time 2 http://127.0.0.1:8080/actuator/health >/dev/null 2>&1; then break; fi
+  sleep 2
+done
+./scripts/seed-demo.sh || echo "[warn] demo seed skipped; run ./scripts/seed-demo.sh after services are up"
+
+echo "Demo seed: ./scripts/seed-demo.sh"
 echo "Wait for health: ./scripts/stack-status.sh"
 echo "Stop: ./scripts/stack-down.sh"
