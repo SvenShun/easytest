@@ -13,9 +13,10 @@
 ANDROID_JAR=/path/to/android.jar BUILD_TOOLS=/path/to/build-tools ./scripts/build-demo-apk.sh
 ```
 
-安装：
+APK 不提交到仓库（避免把旧包名二进制带入新命名）。先构建，再安装：
 
 ```bash
+./scripts/build-demo-apk.sh
 adb install -r examples/android-demo/easytest-demo.apk
 ```
 
