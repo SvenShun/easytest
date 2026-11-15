@@ -151,7 +151,7 @@ tail -f logs/core.log
 - [docs/ACCEPTANCE-PART5-PLATFORM.md](docs/ACCEPTANCE-PART5-PLATFORM.md) — 平台能力阶段验收汇总
 - [docs/ACCEPTANCE-PART7-API-SCENARIO.md](docs/ACCEPTANCE-PART7-API-SCENARIO.md) — YAML 接口场景验收
 - [docs/UIA2-INTENT-ROBOTS.md](docs/UIA2-INTENT-ROBOTS.md) — UIA2/中文输入/多点触控/性能/录屏/对比/通知
-- [docs/UI-KNOWLEDGE-BASE.md](docs/UI-KNOWLEDGE-BASE.md) — APP/页面/控件/操作知识库
+- [docs/UI-KNOWLEDGE-BASE.md](docs/UI-KNOWLEDGE-BASE.md) — APP/页面/控件/操作知识库（含合并后的元素库标签）
 - [docs/ACCEPTANCE-PART6.md](docs/ACCEPTANCE-PART6.md) — UIA2/性能/录屏/对比/通知/知识库验收
 
 ## 目录结构

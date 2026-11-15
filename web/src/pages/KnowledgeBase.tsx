@@ -8,6 +8,7 @@ import {
   Select, SkeletonRows, Textarea,
 } from '../components/ui';
 import { Modal } from '../components/Modal';
+import { UiElementsPage } from './UiElements';
 import { toastError, toastSuccess } from '../components/Toast';
 
 const CONTROL_TYPES = ['BUTTON', 'TEXT', 'INPUT', 'LIST', 'IMAGE', 'CHECKBOX', 'SWITCH', 'TAB', 'OTHER'];
@@ -59,6 +60,7 @@ export function KnowledgeBasePage() {
   const [batchError, setBatchError] = useState('');
   const [modalError, setModalError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [tab, setTab] = useState<'knowledge' | 'elements'>('knowledge');
 
   const loadApps = useCallback(async (selectId?: string) => {
     setLoading(true);
@@ -237,8 +239,14 @@ export function KnowledgeBasePage() {
       <PageHeading
         title="UI 知识库"
         description="按 APP → 页面 → 控件建模，维护 text/id/desc/intent/截图，并关联基本操作。"
-        actions={canWrite ? <Button variant="primary" icon="plus" onClick={() => { setAppEditing(null); setAppForm(EMPTY_APP); setModalError(''); setAppOpen(true); }}>新建应用</Button> : undefined}
+        actions={tab === 'knowledge' && canWrite ? <Button variant="primary" icon="plus" onClick={() => { setAppEditing(null); setAppForm(EMPTY_APP); setModalError(''); setAppOpen(true); }}>新建应用</Button> : undefined}
       />
+      <div className="editor-mode-tabs">
+        <button type="button" className={tab === 'knowledge' ? 'is-active' : ''} onClick={() => setTab('knowledge')}>知识库</button>
+        <button type="button" className={tab === 'elements' ? 'is-active' : ''} onClick={() => setTab('elements')}>元素库</button>
+      </div>
+      {tab === 'elements' ? <UiElementsPage embedded /> : null}
+      <div className="page-stack" style={tab === 'elements' ? { display: 'none' } : undefined}>
       {error ? <ErrorPanel message={error} onRetry={() => void loadApps()} /> : null}
       <div className="kb-layout">
         <aside className="kb-sidebar">
@@ -415,6 +423,7 @@ export function KnowledgeBasePage() {
           ) : null}
         </div>
       </Modal>
+      </div>
     </div>
   );
 }

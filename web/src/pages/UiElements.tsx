@@ -11,7 +11,7 @@ import { toastError, toastSuccess } from '../components/Toast';
 const TYPES = ['TEXT', 'ID', 'XPATH', 'COORD'];
 const EMPTY = { name: '', elementType: 'TEXT', elementValue: '', description: '' };
 
-export function UiElementsPage() {
+export function UiElementsPage({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth();
   const canWrite = canManageCases(user);
   const [keyword, setKeyword] = useState('');
@@ -84,8 +84,12 @@ export function UiElementsPage() {
 
   return (
     <div className="page-stack">
-      <PageHeading title="元素库" description="可复用的定位器（文本/ID/XPath/坐标），供步骤化 UI 用例引用。"
-        actions={canWrite ? <Button variant="primary" icon="plus" onClick={openCreate}>新建元素</Button> : undefined} />
+      {!embedded ? <PageHeading title="元素库" description="可复用的定位器（文本/ID/XPath/坐标），供步骤化 UI 用例引用。"
+        actions={canWrite ? <Button variant="primary" icon="plus" onClick={openCreate}>新建元素</Button> : undefined} /> : (
+        <div className="row-actions">
+          <Button variant="primary" icon="plus" onClick={openCreate}>新建元素</Button>
+        </div>
+      )}
       <Card>
         <CardHead title="元素列表" actions={<div className="toolbar-actions">
           <Input icon="search" placeholder="搜索名称/值" value={keyword} onChange={(e) => setKeyword(e.target.value)} />

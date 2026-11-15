@@ -14,7 +14,6 @@ import { CasesPage } from './pages/Cases';
 import { ApiCasesPage } from './pages/ApiCases';
 import { ApiScenariosPage } from './pages/ApiScenarios';
 import { EnvironmentsPage } from './pages/Environments';
-import { UiElementsPage } from './pages/UiElements';
 import { KnowledgeBasePage } from './pages/KnowledgeBase';
 import { RequirementsPage } from './pages/Requirements';
 import { AiPage } from './pages/Ai';
@@ -74,7 +73,7 @@ function renderPage(route: RouteState): ReactNode {
     case 'environments':
       return second ? <NotFoundPage routePath={route.path} /> : <EnvironmentsPage />;
     case 'ui-elements':
-      return second ? <NotFoundPage routePath={route.path} /> : <UiElementsPage />;
+      return second ? <NotFoundPage routePath={route.path} /> : <KnowledgeBasePage />;
     case 'kb':
       return second ? <NotFoundPage routePath={route.path} /> : <KnowledgeBasePage />;
     case 'ai':
