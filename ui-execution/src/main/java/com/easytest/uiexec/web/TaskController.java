@@ -7,6 +7,7 @@ import com.easytest.common.security.RequireRole;
 import com.easytest.common.security.Role;
 import com.easytest.common.web.ApiException;
 import com.easytest.common.web.PageResponse;
+import com.easytest.uiexec.config.ProjectScope;
 import com.easytest.uiexec.domain.TaskEntity;
 import com.easytest.uiexec.domain.TaskStatus;
 import com.easytest.uiexec.service.AgentTokenGuard;
@@ -52,14 +53,17 @@ public class TaskController {
     private final LogService logService;
     private final TaskStreamService taskStreamService;
     private final AgentTokenGuard agentTokenGuard;
+    private final ProjectScope projectScope;
 
     public TaskController(TaskService taskService, StepService stepService, LogService logService,
-                          TaskStreamService taskStreamService, AgentTokenGuard agentTokenGuard) {
+                          TaskStreamService taskStreamService, AgentTokenGuard agentTokenGuard,
+                          ProjectScope projectScope) {
         this.taskService = taskService;
         this.stepService = stepService;
         this.logService = logService;
         this.taskStreamService = taskStreamService;
         this.agentTokenGuard = agentTokenGuard;
+        this.projectScope = projectScope;
     }
 
     @PostMapping
@@ -67,7 +71,9 @@ public class TaskController {
     @RequireRole({Role.ADMIN, Role.TESTER})
     public CreateTaskResponse create(@RequestBody CreateTaskRequest request) {
         AuthPrincipal principal = CurrentUser.require();
-        TaskEntity task = taskService.create(request, principal.username());
+        String projectId = request.projectId() == null || request.projectId().isBlank()
+                ? projectScope.currentProjectId() : request.projectId().trim();
+        TaskEntity task = taskService.create(request, principal.username(), projectId);
         return new CreateTaskResponse(task.getId(), task.getStatus(), task.getExecutorType(),
                 task.getDeviceId(), task.getDeviceSerial(), taskService.queuePosition(task),
                 task.getCreatedAt());
@@ -82,22 +88,26 @@ public class TaskController {
             @RequestParam(required = false) String caseId,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return taskService.search(planRunId, planId, parseStatus(status), deviceId, caseId, page, size);
+        return taskService.search(planRunId, planId, parseStatus(status), deviceId, caseId,
+                projectScope.currentProjectId(), page, size);
     }
 
     @GetMapping("/{taskId}")
     public TaskDetailView detail(@PathVariable String taskId) {
+        taskService.requireTask(taskId, projectScope.currentProjectId());
         return taskService.detail(taskId);
     }
 
     @GetMapping("/{taskId}/steps")
     public List<StepView> steps(@PathVariable String taskId) {
+        taskService.requireTask(taskId, projectScope.currentProjectId());
         return taskService.listSteps(taskId);
     }
 
     @GetMapping("/{taskId}/logs")
     public List<LogView> logs(@PathVariable String taskId,
                               @RequestParam(defaultValue = "0") int afterSeq) {
+        taskService.requireTask(taskId, projectScope.currentProjectId());
         return taskService.listLogs(taskId, afterSeq);
     }
 
@@ -119,6 +129,7 @@ public class TaskController {
         } else if (principal.role() != Role.ADMIN && principal.role() != Role.TESTER) {
             throw ApiException.forbidden("当前角色无权取消任务");
         }
+        taskService.requireTask(taskId, projectScope.currentProjectId());
         TaskEntity task = taskService.cancel(taskId);
         return new CancelTaskResponse(task.getId(), task.getStatus());
     }

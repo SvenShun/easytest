@@ -20,14 +20,22 @@ public final class TaskDtos {
     public record CreateTaskRequest(String planId, String planRunId, String caseId, ExecutorType executorType,
                                     TargetDeviceSelector targetDeviceSelector, Integer timeoutSec,
                                     Integer stepTimeoutSec, String createdBy, List<StepSpec> steps,
-                                    String caseTitle) {
+                                    String caseTitle, String projectId) {
 
         /** Backwards-compatible constructor for AI/SCRIPT callers written before STEP support. */
         public CreateTaskRequest(String planId, String planRunId, String caseId, ExecutorType executorType,
                                  TargetDeviceSelector targetDeviceSelector, Integer timeoutSec,
                                  Integer stepTimeoutSec, String createdBy) {
             this(planId, planRunId, caseId, executorType, targetDeviceSelector, timeoutSec, stepTimeoutSec,
-                    createdBy, null, null);
+                    createdBy, null, null, null);
+        }
+
+        public CreateTaskRequest(String planId, String planRunId, String caseId, ExecutorType executorType,
+                                 TargetDeviceSelector targetDeviceSelector, Integer timeoutSec,
+                                 Integer stepTimeoutSec, String createdBy, List<StepSpec> steps,
+                                 String caseTitle) {
+            this(planId, planRunId, caseId, executorType, targetDeviceSelector, timeoutSec, stepTimeoutSec,
+                    createdBy, steps, caseTitle, null);
         }
     }
 

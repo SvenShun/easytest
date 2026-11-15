@@ -34,6 +34,9 @@ public class TaskEntity {
     @Column(name = "case_id", nullable = false, length = 64)
     private String caseId;
 
+    @Column(name = "project_id", length = 64)
+    private String projectId = "default";
+
     @Column(name = "case_title", length = 500)
     private String caseTitle;
 
@@ -143,6 +146,9 @@ public class TaskEntity {
     public void setPlanRunId(String planRunId) {
         this.planRunId = planRunId;
     }
+
+    public String getProjectId() { return projectId; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
 
     public String getCaseId() {
         return caseId;

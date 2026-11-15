@@ -163,6 +163,24 @@ public class DeviceService {
         return devices.findAll();
     }
 
+    public List<DeviceEntity> listDevices(String projectId) {
+        return devices.findAll().stream()
+                .filter(device -> projectId == null || projectId.equals(device.getProjectId()))
+                .toList();
+    }
+
+    public DeviceEntity requireDevice(String deviceId, String projectId) {
+        DeviceEntity device = requireDevice(deviceId);
+        if (projectId != null && device.getProjectId() != null && !projectId.equals(device.getProjectId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "DEVICE_NOT_FOUND", "设备不存在");
+        }
+        return device;
+    }
+
+    public DeviceEntity save(DeviceEntity device) {
+        return devices.save(device);
+    }
+
     public Optional<DeviceEntity> findDevice(String deviceId) {
         return deviceId == null ? Optional.empty() : devices.findById(deviceId);
     }
@@ -178,7 +196,13 @@ public class DeviceService {
      * shortest queue wins (idle devices have queue length 0).
      */
     public DeviceEntity selectDevice(TargetDeviceSelector selector) {
-        List<DeviceEntity> all = devices.findAll();
+        return selectDevice(selector, null);
+    }
+
+    public DeviceEntity selectDevice(TargetDeviceSelector selector, String projectId) {
+        List<DeviceEntity> all = devices.findAll().stream()
+                .filter(device -> projectId == null || projectId.equals(device.getProjectId()))
+                .toList();
         if (all.isEmpty()) {
             return null;
         }

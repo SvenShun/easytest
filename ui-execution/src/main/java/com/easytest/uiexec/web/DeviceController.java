@@ -3,6 +3,7 @@ package com.easytest.uiexec.web;
 import com.easytest.common.security.RequireRole;
 import com.easytest.common.security.Role;
 import com.easytest.uiexec.client.AgentClient;
+import com.easytest.uiexec.config.ProjectScope;
 import com.easytest.uiexec.domain.AgentEntity;
 import com.easytest.uiexec.domain.DeviceEntity;
 import com.easytest.uiexec.domain.DeviceStatus;
@@ -44,12 +45,14 @@ public class DeviceController {
     private final com.easytest.uiexec.service.PerformanceService performanceService;
     private final com.easytest.uiexec.artifact.ArtifactStore artifactStore;
     private final com.easytest.uiexec.service.ImageDiffService imageDiffService;
+    private final ProjectScope projectScope;
 
     public DeviceController(DeviceService deviceService, TaskRepository taskRepository, DeviceQueueStore queue,
                             AgentClient agentClient,
                             com.easytest.uiexec.service.PerformanceService performanceService,
                             com.easytest.uiexec.artifact.ArtifactStore artifactStore,
-                            com.easytest.uiexec.service.ImageDiffService imageDiffService) {
+                            com.easytest.uiexec.service.ImageDiffService imageDiffService,
+                            ProjectScope projectScope) {
         this.deviceService = deviceService;
         this.taskRepository = taskRepository;
         this.queue = queue;
@@ -57,6 +60,7 @@ public class DeviceController {
         this.performanceService = performanceService;
         this.artifactStore = artifactStore;
         this.imageDiffService = imageDiffService;
+        this.projectScope = projectScope;
     }
 
     @GetMapping
@@ -65,7 +69,7 @@ public class DeviceController {
         DeviceStatus filter = parseStatus(status);
         String needle = keyword == null ? null : keyword.trim().toLowerCase(Locale.ROOT);
         List<DeviceView> items = new ArrayList<>();
-        for (DeviceEntity device : deviceService.listDevices()) {
+        for (DeviceEntity device : deviceService.listDevices(projectScope.currentProjectId())) {
             DeviceView view = deviceService.toView(device);
             if (filter != null && view.status() != filter) {
                 continue;
@@ -78,9 +82,25 @@ public class DeviceController {
         return new DeviceListResponse(items, items.size(), 1, items.size());
     }
 
+    private DeviceEntity requireDevice(String deviceId) {
+        return deviceService.requireDevice(deviceId, projectScope.currentProjectId());
+    }
+
+    @PostMapping("/{deviceId}/project")
+    @RequireRole({Role.ADMIN})
+    public DeviceView assignProject(@PathVariable String deviceId, @RequestBody Map<String, Object> body) {
+        String projectId = body == null ? null : String.valueOf(body.get("projectId"));
+        if (projectId == null || projectId.isBlank()) {
+            throw com.easytest.common.web.ApiException.badRequest("projectId 不能为空");
+        }
+        DeviceEntity device = deviceService.requireDevice(deviceId);
+        device.setProjectId(projectId.trim());
+        return deviceService.toView(deviceService.save(device));
+    }
+
     @GetMapping("/{deviceId}/queue")
     public QueueView queue(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         List<String> taskIds = queue.list(deviceId);
         List<QueueTaskView> items = new ArrayList<>();
         int position = 0;
@@ -110,7 +130,7 @@ public class DeviceController {
 
     @GetMapping("/{deviceId}/screenshot")
     public ResponseEntity<byte[]> screenshot(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return ResponseEntity.ok()
                 .contentType(MediaType.IMAGE_PNG)
@@ -119,7 +139,7 @@ public class DeviceController {
 
     @GetMapping("/{deviceId}/ui-tree")
     public Object uiTree(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.uiTree(agent.getBaseUrl(), device.getSerial());
     }
@@ -127,7 +147,7 @@ public class DeviceController {
     @PostMapping("/{deviceId}/shell")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object shell(@PathVariable String deviceId, @RequestBody Map<String, Object> body) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         String command = body == null ? null : String.valueOf(body.get("command"));
         if (command == null || command.isBlank()) {
@@ -139,7 +159,7 @@ public class DeviceController {
 
     @GetMapping("/{deviceId}/apps")
     public Object apps(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.apps(agent.getBaseUrl(), device.getSerial());
     }
@@ -147,7 +167,7 @@ public class DeviceController {
     @PostMapping("/{deviceId}/uninstall")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object uninstall(@PathVariable String deviceId, @RequestParam String packageName) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.uninstall(agent.getBaseUrl(), device.getSerial(), packageName);
     }
@@ -156,7 +176,7 @@ public class DeviceController {
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object appAction(@PathVariable String deviceId, @PathVariable String action,
                             @RequestParam String packageName) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         if (!action.equals("launch") && !action.equals("stop") && !action.equals("clear")) {
             throw com.easytest.common.web.ApiException.badRequest("action 仅支持 launch/stop/clear");
@@ -168,7 +188,7 @@ public class DeviceController {
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object rotate(@PathVariable String deviceId,
                          @RequestParam(defaultValue = "auto") String direction) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.rotate(agent.getBaseUrl(), device.getSerial(), direction);
     }
@@ -176,7 +196,7 @@ public class DeviceController {
     @PostMapping("/{deviceId}/uia2/start")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object startUia2(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.startUia2(agent.getBaseUrl(), device.getSerial());
     }
@@ -184,14 +204,14 @@ public class DeviceController {
     @PostMapping("/{deviceId}/uia2/stop")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object stopUia2(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.stopUia2(agent.getBaseUrl(), device.getSerial());
     }
 
     @GetMapping("/{deviceId}/uia2/status")
     public Object uia2Status(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.uia2Status(agent.getBaseUrl(), device.getSerial());
     }
@@ -199,7 +219,7 @@ public class DeviceController {
     @PostMapping("/{deviceId}/recording/start")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object startRecording(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.startRecording(agent.getBaseUrl(), device.getSerial());
     }
@@ -207,7 +227,7 @@ public class DeviceController {
     @PostMapping("/{deviceId}/recording/stop")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object stopRecording(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         byte[] video = agentClient.stopRecording(agent.getBaseUrl(), device.getSerial());
         if (video == null || video.length == 0) {
@@ -226,7 +246,7 @@ public class DeviceController {
         if (baseline == null || baseline.isEmpty()) {
             throw com.easytest.common.web.ApiException.badRequest("请上传基准截图");
         }
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         byte[] current = agentClient.screenshot(agent.getBaseUrl(), device.getSerial());
         return imageDiffService.compare(baseline.getBytes(), current, threshold);
@@ -240,7 +260,7 @@ public class DeviceController {
         if (file == null || file.isEmpty()) {
             throw com.easytest.common.web.ApiException.badRequest("文件为空");
         }
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.pushFile(agent.getBaseUrl(), device.getSerial(), file.getBytes(),
                 file.getOriginalFilename(), remotePath);
@@ -259,7 +279,7 @@ public class DeviceController {
 
     @GetMapping("/{deviceId}/performance")
     public Object performance(@PathVariable String deviceId) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.performance(agent.getBaseUrl(), device.getSerial());
     }
@@ -274,7 +294,7 @@ public class DeviceController {
         if (file.getSize() > 200L * 1024 * 1024) {
             throw com.easytest.common.web.ApiException.badRequest("APK 超过 200MB");
         }
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.install(agent.getBaseUrl(), device.getSerial(), file.getBytes(),
                 file.getOriginalFilename());
@@ -283,7 +303,7 @@ public class DeviceController {
     @PostMapping("/{deviceId}/action")
     @RequireRole({Role.ADMIN, Role.TESTER})
     public Object action(@PathVariable String deviceId, @RequestBody Map<String, Object> action) {
-        DeviceEntity device = deviceService.requireDevice(deviceId);
+        DeviceEntity device = requireDevice(deviceId);
         AgentEntity agent = deviceService.requireAgent(device);
         return agentClient.action(agent.getBaseUrl(), device.getSerial(), action);
     }

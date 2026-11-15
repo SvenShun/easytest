@@ -15,9 +15,18 @@ EasyTest 用项目（Project）作为部门级工作空间边界。数据按项�
 | UI 知识库应用 | `kb_app.project_id` | 应用列表、创建、详情、页面/控件按应用项目 |
 | 定时任务 | `test_job.project_id` | 列表、创建、详情、计划/场景引用按项目 |
 | 计划报告 | 通过计划/运行所属项目 | 计划运行/报告跨项目读取 404 |
+| 设备池 | `ue_device.project_id` | ui-execution 按 `X-Project-Id` 过滤设备和队列 |
+| UI 任务 | `ue_task.project_id` | 任务创建/列表/详情按项目；计划触发时由 core 传入项目 |
 
-已有历史数据在启动时回填到 `default` 项目。设备池与 UI 执行服务仍为全局，
-后续把项目头传递到 ui-execution 并给设备/任务加项目归属。
+已有历史数据在启动时回填到 `default` 项目。设备默认归属 `default`，管理员可将设备
+分配到项目：
+
+```text
+POST /api/v1/ui-execution/devices/{deviceId}/project
+{ "projectId": "project_xxx" }
+```
+
+ui-execution 通过 `X-Project-Id` 过滤设备和 UI 任务；计划触发时 core 在任务 payload 中携带项目。
 
 ## 接口
 
@@ -49,5 +58,5 @@ DELETE /api/v1/projects/{id}/members/{memberId}
 ## 尚未完成
 
 - 项目成员角色（ADMIN/TESTER/...）的细粒度权限矩阵
-- 设备池与 UI 执行任务的项目隔离
+- 设备分配 UI 操作入口（当前为管理员 API）
 - 项目级配额/权限矩阵

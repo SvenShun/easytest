@@ -626,6 +626,7 @@ public class PlanRunService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("planId", planId);
         payload.put("planRunId", runId);
+        payload.put("projectId", projectContext.currentProjectId());
         payload.put("caseId", apiCase.getId());
         payload.put("caseName", view.name());
         payload.put("iteration", dataRow.isEmpty() ? 0 : 0);
@@ -663,6 +664,7 @@ public class PlanRunService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("planId", planId);
         payload.put("planRunId", runId);
+        payload.put("projectId", projectContext.currentProjectId());
         payload.put("caseId", clientCase.getId());
         payload.put("caseTitle", clientCase.getTitle());
         payload.put("executorType", executorType == null ? null : executorType.name());

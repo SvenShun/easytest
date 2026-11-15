@@ -27,6 +27,9 @@ public class DeviceEntity {
     @Column(name = "name", length = 200)
     private String name;
 
+    @Column(name = "project_id", length = 64)
+    private String projectId = "default";
+
     @Column(name = "model", length = 200)
     private String model;
 
@@ -60,6 +63,9 @@ public class DeviceEntity {
         this.online = true;
         this.lastSeenAt = Instant.now();
     }
+
+    public String getProjectId() { return projectId; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
 
     public String getId() {
         return id;

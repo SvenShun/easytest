@@ -141,6 +141,10 @@ public class TaskService {
     // ---------------------------------------------------------------- create
 
     public TaskEntity create(CreateTaskRequest request, String actor) {
+        return create(request, actor, null);
+    }
+
+    public TaskEntity create(CreateTaskRequest request, String actor, String projectIdOverride) {
         if (request == null || request.caseId() == null || request.caseId().isBlank()) {
             throw ApiException.badRequest("caseId 不能为空");
         }
@@ -180,6 +184,8 @@ public class TaskService {
         String createdBy = request.createdBy() == null || request.createdBy().isBlank() ? actor : request.createdBy();
         TaskEntity task = new TaskEntity(Ids.newId("task"), caseId, decision.executorType(), TaskStatus.PENDING,
                 timeoutSec, stepTimeoutSec, Instant.now());
+        task.setProjectId(hasText(projectIdOverride) ? projectIdOverride.trim()
+                : hasText(request.projectId()) ? request.projectId().trim() : "default");
         task.setPlanId(blankToNull(request.planId()));
         task.setPlanRunId(blankToNull(request.planRunId()));
         task.setCaseTitle(truncate(hasText(request.caseTitle()) ? request.caseTitle().trim() : context.title(), 500));
@@ -204,7 +210,7 @@ public class TaskService {
             logService.append(task.getId(), List.of(new LogLine("WARN", decision.note())));
         }
 
-        DeviceEntity device = devices.selectDevice(request.targetDeviceSelector());
+        DeviceEntity device = devices.selectDevice(request.targetDeviceSelector(), task.getProjectId());
         if (device == null) {
             log.warn("无可用设备，任务直接失败 caseId={}", caseId);
             finishLocked(task, TaskStatus.FAILED, FailureCategory.EXECUTOR_UNAVAILABLE, "无可用设备");
@@ -644,8 +650,22 @@ public class TaskService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "任务不存在"));
     }
 
+    public TaskEntity requireTask(String taskId, String projectId) {
+        TaskEntity task = requireTask(taskId);
+        if (hasText(projectId) && task.getProjectId() != null && !projectId.equals(task.getProjectId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "任务不存在");
+        }
+        return task;
+    }
+
     public PageResponse<TaskSummaryView> search(String planRunId, String planId, TaskStatus status,
                                                 String deviceId, String caseId, int page, int size) {
+        return search(planRunId, planId, status, deviceId, caseId, null, page, size);
+    }
+
+    public PageResponse<TaskSummaryView> search(String planRunId, String planId, TaskStatus status,
+                                                String deviceId, String caseId, String projectId,
+                                                int page, int size) {
         int pageNumber = Math.max(1, page);
         int pageSize = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         Specification<TaskEntity> spec = (root, query, cb) -> {
@@ -664,6 +684,9 @@ public class TaskService {
             }
             if (hasText(caseId)) {
                 predicates.add(cb.equal(root.get("caseId"), caseId.trim()));
+            }
+            if (hasText(projectId)) {
+                predicates.add(cb.equal(root.get("projectId"), projectId.trim()));
             }
             return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
         };
