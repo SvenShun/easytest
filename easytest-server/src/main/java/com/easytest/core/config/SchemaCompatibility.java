@@ -53,6 +53,7 @@ public class SchemaCompatibility implements ApplicationRunner {
         alter("UPDATE api_case SET project_id = 'default' WHERE project_id IS NULL");
         alter("UPDATE api_scenario SET project_id = 'default' WHERE project_id IS NULL");
         alter("UPDATE test_plan SET project_id = 'default' WHERE project_id IS NULL");
+        alter("UPDATE api_environment SET project_id = 'default' WHERE project_id IS NULL");
     }
 
     private void alter(String sql) {

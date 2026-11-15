@@ -19,6 +19,9 @@ public class ApiEnvironment {
     @Column(name = "name", length = 128, nullable = false)
     private String name;
 
+    @Column(name = "project_id", length = 64)
+    private String projectId = "default";
+
     @Column(name = "base_url", length = 1000, nullable = false)
     private String baseUrl;
 
@@ -64,6 +67,9 @@ public class ApiEnvironment {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
+    public String getProjectId() { return projectId; }
+    public void setProjectId(String projectId) { this.projectId = projectId; }
 
     public String getId() { return id; }
     public String getName() { return name; }

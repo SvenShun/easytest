@@ -272,6 +272,10 @@ public class PlanService {
         if (!environment.isEnabled()) {
             throw ApiException.badRequest("环境已禁用: " + environment.getName());
         }
+        if (environment.getProjectId() != null
+                && !projectContext.currentProjectId().equals(environment.getProjectId())) {
+            throw ApiException.notFound("环境不存在: " + environmentId);
+        }
         return environmentId;
     }
 

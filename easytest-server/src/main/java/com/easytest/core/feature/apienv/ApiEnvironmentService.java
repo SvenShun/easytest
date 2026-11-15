@@ -11,6 +11,7 @@ import com.easytest.core.feature.apienv.ApiEnvironmentDtos.AuthConfig;
 import com.easytest.core.feature.apienv.ApiEnvironmentDtos.EnvironmentRequest;
 import com.easytest.core.feature.apienv.ApiEnvironmentDtos.EnvironmentView;
 import com.easytest.core.feature.plan.TestPlanRepository;
+import com.easytest.core.feature.project.ProjectContext;
 import com.easytest.core.feature.support.PageSupport;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -38,24 +39,31 @@ public class ApiEnvironmentService {
     private final ApiEnvironmentRepository repository;
     private final TestPlanRepository planRepository;
     private final ObjectMapper objectMapper;
+    private final ProjectContext projectContext;
 
     public ApiEnvironmentService(ApiEnvironmentRepository repository, TestPlanRepository planRepository,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper, ProjectContext projectContext) {
         this.repository = repository;
         this.planRepository = planRepository;
         this.objectMapper = objectMapper;
+        this.projectContext = projectContext;
     }
 
     public PageResponse<EnvironmentView> list(String keyword, Integer page, Integer size) {
         PageRequest pageRequest = PageRequest.of(PageSupport.pageIndex(page), PageSupport.pageSize(size),
                 Sort.by(Sort.Direction.DESC, "updatedAt"));
-        Page<ApiEnvironment> result = repository.findAll(keywordSpec(keyword), pageRequest);
+        Page<ApiEnvironment> result = repository.findAll(
+                keywordSpec(keyword, projectContext.currentProjectId()), pageRequest);
         return PageSupport.of(result, this::view);
     }
 
     public ApiEnvironment require(String id) {
-        return repository.findById(id)
+        ApiEnvironment env = repository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("环境不存在: " + id));
+        if (env.getProjectId() != null && !projectContext.currentProjectId().equals(env.getProjectId())) {
+            throw ApiException.notFound("环境不存在: " + id);
+        }
+        return env;
     }
 
     public EnvironmentView get(String id) {
@@ -71,6 +79,7 @@ public class ApiEnvironmentService {
         ApiEnvironment env = new ApiEnvironment(Ids.newId("env"), request.name().trim(), request.baseUrl().trim(),
                 json(request.headers()), json(request.variables()), auth.type(), json(auth),
                 request.enabled() == null || request.enabled(), principal.username(), now, now);
+        env.setProjectId(projectContext.currentProjectId());
         return view(repository.save(env));
     }
 
@@ -143,10 +152,11 @@ public class ApiEnvironmentService {
                 auth.loginBody(), auth.tokenPath(), auth.tokenHeader(), auth.tokenPrefix());
     }
 
-    private Specification<ApiEnvironment> keywordSpec(String keyword) {
+    private Specification<ApiEnvironment> keywordSpec(String keyword, String projectId) {
         return (root, query, cb) -> {
+            Predicate scoped = cb.equal(root.get("projectId"), projectId);
             if (keyword == null || keyword.isBlank()) {
-                return cb.conjunction();
+                return scoped;
             }
             String pattern = "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
             List<Predicate> predicates = new ArrayList<>();
