@@ -49,6 +49,8 @@ public class SchemaCompatibility implements ApplicationRunner {
         alter("ALTER TABLE test_job MODIFY COLUMN plan_id VARCHAR(64) NULL");
         alter("ALTER TABLE plan_run_item MODIFY COLUMN error TEXT NULL");
         alter("ALTER TABLE plan_run_item MODIFY COLUMN summary TEXT NULL");
+        alter("ALTER TABLE case_step MODIFY COLUMN step_type VARCHAR(32) NOT NULL");
+        alter("ALTER TABLE case_step MODIFY COLUMN selector_type VARCHAR(16) NULL");
         alter("UPDATE client_case SET project_id = 'default' WHERE project_id IS NULL");
         alter("UPDATE api_case SET project_id = 'default' WHERE project_id IS NULL");
         alter("UPDATE api_scenario SET project_id = 'default' WHERE project_id IS NULL");

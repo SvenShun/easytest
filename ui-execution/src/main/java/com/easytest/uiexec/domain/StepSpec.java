@@ -16,8 +16,8 @@ public record StepSpec(Integer seq, String stepType, String selectorType, String
                        String assertValue, Integer timeoutMs, Boolean enabled) {
 
     public static final List<String> SUPPORTED_TYPES = List.of(
-            "CLICK", "INPUT", "TAP", "SWIPE", "BACK", "HOME", "WAIT", "LAUNCH",
-            "ASSERT_TEXT", "ASSERT_EXISTS", "SCREENSHOT");
+            "CLICK", "INPUT", "TAP", "SWIPE", "SCROLL", "BACK", "HOME", "WAIT", "LAUNCH",
+            "ASSERT_TEXT", "ASSERT_NOT_TEXT", "ASSERT_EXISTS", "WAIT_FOR", "SCREENSHOT");
 
     public int seqOr(int fallback) {
         return seq == null || seq <= 0 ? fallback : seq;

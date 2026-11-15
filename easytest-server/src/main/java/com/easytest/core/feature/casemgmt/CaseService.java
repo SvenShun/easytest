@@ -310,8 +310,9 @@ public class CaseService {
 
     private SelectorType normalizeSelectorType(StepType stepType, SelectorType selectorType) {
         return switch (stepType) {
-            case TAP, SWIPE -> SelectorType.COORD;
-            case CLICK, INPUT, ASSERT_TEXT, ASSERT_EXISTS -> selectorType == null ? SelectorType.TEXT : selectorType;
+            case TAP, SWIPE, SCROLL -> SelectorType.COORD;
+            case CLICK, INPUT, ASSERT_TEXT, ASSERT_NOT_TEXT, ASSERT_EXISTS, WAIT_FOR ->
+                    selectorType == null ? SelectorType.TEXT : selectorType;
             default -> null;
         };
     }
@@ -347,11 +348,23 @@ public class CaseService {
             }
             case LAUNCH -> requireSelector(stepType, firstNonBlank(value, selector));
             case ASSERT_TEXT -> requireSelector(stepType, firstNonBlank(assertValue, value, selector));
+            case ASSERT_NOT_TEXT -> requireSelector(stepType,
+                    firstNonBlank(assertValue, value, selector));
             case ASSERT_EXISTS -> {
                 requireSelector(stepType, selector);
                 if (selectorType == SelectorType.COORD) {
                     parsePoints(selector, 2, "ASSERT_EXISTS 坐标");
                 }
+            }
+            case WAIT_FOR -> {
+                requireSelector(stepType, firstNonBlank(selector, assertValue, value));
+                if (selectorType == SelectorType.COORD) {
+                    parsePoints(firstNonBlank(selector, assertValue, value), 2, "WAIT_FOR 坐标");
+                }
+            }
+            case SCROLL -> {
+                requireSelector(stepType, firstNonBlank(value, assertValue, selector));
+                parsePoints(firstNonBlank(value, assertValue, selector), 4, "SCROLL 坐标");
             }
             case BACK, HOME, SCREENSHOT -> {
                 // no selector required

@@ -74,6 +74,23 @@ class StepTaskRunnerTest {
     }
 
     @Test
+    void supportsWaitForAssertNotTextAndScroll() {
+        when(agentClient.uiTree(anyString(), anyString())).thenReturn(uiTree("首页"));
+        when(agentClient.action(anyString(), anyString(), anyMap()))
+                .thenReturn(Map.of("ok", true, "message", "swiped"));
+        when(agentClient.screenshot(anyString(), anyString())).thenReturn(new byte[]{1});
+
+        StepTaskRunner.StepRunResult result = runner.run(context(List.of(
+                step(1, "WAIT_FOR", "TEXT", "首页", null, null, 2000, true),
+                step(2, "ASSERT_NOT_TEXT", "TEXT", "崩溃", null, "崩溃", 2000, true),
+                step(3, "SCROLL", "COORD", null, "500,1500,500,500", null, 2000, true))));
+
+        assertThat(result.status()).isEqualTo(TaskStatus.SUCCESS);
+        assertThat(result.summary()).isEqualTo("3/3 steps passed");
+        verify(agentClient, times(1)).action(anyString(), anyString(), anyMap());
+    }
+
+    @Test
     void assertionFailureFinishesWithAssertionFailed() {
         when(agentClient.uiTree(anyString(), anyString())).thenReturn(uiTree("登录失败"));
         when(agentClient.screenshot(anyString(), anyString())).thenReturn(new byte[]{1});

@@ -15,7 +15,10 @@ public enum StepType {
     WAIT,
     LAUNCH,
     ASSERT_TEXT,
+    ASSERT_NOT_TEXT,
     ASSERT_EXISTS,
+    WAIT_FOR,
+    SCROLL,
     SCREENSHOT;
 
     public static StepType parse(String value) {
@@ -32,7 +35,8 @@ public enum StepType {
     /** Steps that need a selector / target to be meaningful. */
     public boolean requiresSelector() {
         return switch (this) {
-            case CLICK, INPUT, TAP, SWIPE, LAUNCH, ASSERT_TEXT, ASSERT_EXISTS -> true;
+            case CLICK, INPUT, TAP, SWIPE, LAUNCH, ASSERT_TEXT, ASSERT_NOT_TEXT, ASSERT_EXISTS,
+                    WAIT_FOR, SCROLL -> true;
             default -> false;
         };
     }

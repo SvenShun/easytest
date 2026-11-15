@@ -159,7 +159,8 @@ export interface CaseDetail {
 export type ExecutionMode = 'AI' | 'STEPS';
 export type StepType =
   | 'CLICK' | 'INPUT' | 'TAP' | 'SWIPE' | 'BACK' | 'HOME' | 'WAIT'
-  | 'LAUNCH' | 'ASSERT_TEXT' | 'ASSERT_EXISTS' | 'SCREENSHOT';
+  | 'LAUNCH' | 'ASSERT_TEXT' | 'ASSERT_NOT_TEXT' | 'ASSERT_EXISTS' | 'WAIT_FOR' | 'SCROLL'
+  | 'SCREENSHOT';
 export type SelectorType = 'TEXT' | 'ID' | 'COORD';
 
 export interface CaseStep {

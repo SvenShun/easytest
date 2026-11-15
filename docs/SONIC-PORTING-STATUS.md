@@ -23,7 +23,7 @@
 
 ## 已落地（步骤化 UI 用例）
 
-- `case_step` 模型 + `executionMode=STEPS`：CLICK/INPUT/TAP/SWIPE/BACK/HOME/WAIT/LAUNCH/ASSERT_TEXT/ASSERT_EXISTS/SCREENSHOT。
+- `case_step` 模型 + `executionMode=STEPS`：CLICK/INPUT/TAP/SWIPE/SCROLL/BACK/HOME/WAIT/LAUNCH/ASSERT_TEXT/ASSERT_NOT_TEXT/ASSERT_EXISTS/WAIT_FOR/SCREENSHOT。
 - 步骤化用例在计划触发时路由到 `STEP` 执行器，由 ui-execution 直接驱动真机，逐步回调/截图，不经过 AI。
 - 前端用例详情可编辑步骤、切换 AI/步骤模式；元素库提供可复用定位器。
 

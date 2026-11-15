@@ -21,6 +21,8 @@ export interface TaskListParams {
 }
 
 export const uiexecApi = {
+  stepSchema: () => request<{ schemaVersion: number; stepTypes: string[]; selectorTypes: string[]; fields: string[] }>(
+    'uexec', '/api/v1/ui-execution/step-schema'),
   stats: () => request<DeviceStats>('uexec', '/api/v1/ui-execution/stats'),
   tasks: (params: TaskListParams = {}) => {
     const page = params.page ?? 1;

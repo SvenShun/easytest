@@ -139,11 +139,14 @@ public class StepTaskRunner {
             case "INPUT" -> input(context, step, timeoutMs);
             case "TAP" -> tap(context, step, timeoutMs);
             case "SWIPE" -> swipe(context, step, timeoutMs);
+            case "SCROLL" -> swipe(context, step, timeoutMs);
             case "BACK" -> act(context, actionBody("back"), timeoutMs, "BACK");
             case "HOME" -> act(context, actionBody("home"), timeoutMs, "HOME");
             case "WAIT" -> waitStep(context, step, timeoutMs);
             case "LAUNCH" -> launch(context, step, timeoutMs);
             case "ASSERT_TEXT" -> assertText(context, step, timeoutMs);
+            case "ASSERT_NOT_TEXT" -> assertNotText(context, step, timeoutMs);
+            case "WAIT_FOR" -> waitFor(context, step, timeoutMs);
             case "ASSERT_EXISTS" -> assertExists(context, step, timeoutMs);
             case "SCREENSHOT" -> StepOutcome.ok("SCREENSHOT", "captured");
             default -> throw new StepActionException("不支持的步骤类型: " + type);
@@ -239,6 +242,52 @@ public class StepTaskRunner {
                     "UI 树文本不包含期望值");
         }
         return StepOutcome.ok("ASSERT_TEXT 命中文本: " + expected, "matched");
+    }
+
+    private StepOutcome assertNotText(Context context, StepSpec step, long timeoutMs) {
+        String unexpected = firstNonBlank(step.assertValue(), step.value(), step.selector());
+        if (unexpected == null) {
+            throw new StepActionException("ASSERT_NOT_TEXT 需要期望文本");
+        }
+        DeviceUiTree tree = uiTree(context, timeoutMs);
+        boolean found = tree.allTexts().stream()
+                .anyMatch(text -> text != null && text.contains(unexpected));
+        if (found) {
+            return StepOutcome.assertionFailed("ASSERT_NOT_TEXT 发现了文本: " + unexpected,
+                    "UI 树文本包含不应出现的值");
+        }
+        return StepOutcome.ok("ASSERT_NOT_TEXT 未出现文本: " + unexpected, "matched");
+    }
+
+    private StepOutcome waitFor(Context context, StepSpec step, long timeoutMs) {
+        String selector = firstNonBlank(step.selector(), step.assertValue(), step.value());
+        if (selector == null) {
+            throw new StepActionException("WAIT_FOR 需要 selector");
+        }
+        String selectorType = defaultSelectorType(step.selectorTypeName(), "TEXT");
+        long deadline = System.currentTimeMillis() + Math.max(1, timeoutMs);
+        while (true) {
+            long remaining = deadline - System.currentTimeMillis();
+            if (remaining <= 0) {
+                return StepOutcome.assertionFailed("WAIT_FOR 超时: " + selectorType + "=" + selector,
+                        "等待元素超时");
+            }
+            DeviceUiTree tree = uiTree(context, remaining);
+            boolean found = switch (selectorType) {
+                case "COORD" -> {
+                    int[] point = parsePoints(selector, 2, "WAIT_FOR");
+                    yield tree.allElements().stream().anyMatch(element -> element != null
+                            && element.bounds() != null && element.bounds().contains(point[0], point[1]));
+                }
+                case "ID" -> tree.allElements().stream()
+                        .anyMatch(element -> element != null && equalsOrContains(element.id(), selector));
+                default -> tree.allTexts().stream().anyMatch(text -> equalsOrContains(text, selector));
+            };
+            if (found) {
+                return StepOutcome.ok("WAIT_FOR 命中: " + selectorType + "=" + selector, "appeared");
+            }
+            sleep(context, Math.min(300, Math.max(0, remaining)));
+        }
     }
 
     private StepOutcome assertExists(Context context, StepSpec step, long timeoutMs) {
