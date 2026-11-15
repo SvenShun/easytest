@@ -57,50 +57,67 @@ public class RestApiExecutionClient implements ApiExecutionClient {
     @Override
     public TaskCreated createTask(Map<String, Object> payload) {
         java.util.Set<String> requiredCapabilities = requiredCapabilities(payload);
-        String reserved = null;
         if (agentRegistry != null && agentRegistry.hasAgents()) {
-            long deadline = System.currentTimeMillis() + agentWaitSeconds * 1000L;
-            do {
-                reserved = agentRegistry.reserve(requiredCapabilities);
-                if (reserved != null || !agentRegistry.hasAgents()) break;
-                if (System.currentTimeMillis() >= deadline) break;
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            } while (true);
+            return createTaskViaAgents(payload, requiredCapabilities);
         }
-        List<String> candidates = reserved != null ? List.of(reserved) : candidateUrls(requiredCapabilities);
+        return createTaskViaBaseUrls(payload, baseUrls);
+    }
+
+    private TaskCreated createTaskViaAgents(Map<String, Object> payload, java.util.Set<String> requiredCapabilities) {
+        long deadline = System.currentTimeMillis() + agentWaitSeconds * 1000L;
+        RuntimeException last = null;
+        while (System.currentTimeMillis() <= deadline) {
+            List<String> available = agentRegistry.availableBaseUrls(requiredCapabilities);
+            for (String baseUrl : available) {
+                if (!agentRegistry.reserveAt(baseUrl)) continue;
+                try {
+                    return postTask(baseUrl, payload);
+                } catch (RuntimeException e) {
+                    last = e;
+                    agentRegistry.release(baseUrl);
+                    log.warn("api-execution 任务下发失败，尝试故障转移 worker={}: {}", baseUrl, e.getMessage());
+                }
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        throw last == null ? ApiException.conflict("没有可用的 API Agent（能力/槽位不足）") : last;
+    }
+
+    private TaskCreated createTaskViaBaseUrls(Map<String, Object> payload, List<String> candidates) {
         if (candidates.isEmpty()) {
-            throw ApiException.conflict("没有可用的 API Agent（能力/槽位不足）");
+            throw ApiException.conflict("没有可用的 API 执行实例");
         }
         RuntimeException last = null;
         int start = Math.floorMod(cursor.getAndIncrement(), candidates.size());
         for (int i = 0; i < candidates.size(); i++) {
             String baseUrl = candidates.get((start + i) % candidates.size());
             try {
-                JsonNode response = client.post()
-                        .uri(baseUrl + "/api/v1/api-execution/tasks")
-                        .body(payload)
-                        .retrieve()
-                        .body(JsonNode.class);
-                JsonNode data = unwrap(response);
-                String taskId = text(data, "taskId");
-                if (taskId == null) {
-                    throw ApiException.internal("api-execution 未返回 taskId");
-                }
-                return new TaskCreated(taskId, textOrDefault(data, "status", "PENDING"));
+                return postTask(baseUrl, payload);
             } catch (RuntimeException e) {
                 last = e;
                 log.warn("api-execution 任务下发失败 worker={}: {}", baseUrl, e.getMessage());
             }
         }
-        if (reserved != null && agentRegistry != null) {
-            agentRegistry.release(reserved);
-        }
         throw last == null ? ApiException.internal("没有可用的 api-execution 实例") : last;
+    }
+
+    private TaskCreated postTask(String baseUrl, Map<String, Object> payload) {
+        JsonNode response = client.post()
+                .uri(baseUrl + "/api/v1/api-execution/tasks")
+                .body(payload)
+                .retrieve()
+                .body(JsonNode.class);
+        JsonNode data = unwrap(response);
+        String taskId = text(data, "taskId");
+        if (taskId == null) {
+            throw ApiException.internal("api-execution 未返回 taskId");
+        }
+        return new TaskCreated(taskId, textOrDefault(data, "status", "PENDING"));
     }
 
     @Override

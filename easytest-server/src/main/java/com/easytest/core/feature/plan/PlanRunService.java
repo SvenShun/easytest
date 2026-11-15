@@ -189,6 +189,8 @@ public class PlanRunService {
                 }
                 PlanRunItem item = new PlanRunItem(Ids.newId("run-item"), run.getId(), scenario.id(),
                         scenario.name(), ExecutorType.SCENARIO, RunItemStatus.PENDING, itemTime);
+                item.setSourcePath(scenario.sourcePath());
+                item.setSourceCommit(scenario.sourceCommit());
                 itemRepository.save(item);
                 try {
                     ApiScenarioService.RunHandle handle = apiScenarioService.startForPlan(

@@ -407,6 +407,8 @@ export interface RunItem {
   failureReportUrl?: string | null;
   summary?: string | null;
   deviceId?: string | null;
+  sourcePath?: string | null;
+  sourceCommit?: string | null;
   updatedAt?: string | null;
 }
 

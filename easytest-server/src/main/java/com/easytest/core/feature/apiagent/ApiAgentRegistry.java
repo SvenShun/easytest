@@ -74,6 +74,15 @@ public class ApiAgentRegistry {
         return selected.baseUrl();
     }
 
+    /** Reserves a specific available agent URL; false if it is full/unknown. */
+    public synchronized boolean reserveAt(String baseUrl) {
+        Agent agent = agents.values().stream().filter(item -> baseUrl.equals(item.baseUrl())).findFirst().orElse(null);
+        if (agent == null || agent.activeTasks() >= agent.slots()) return false;
+        agents.put(agent.agentId(), new Agent(agent.agentId(), agent.name(), agent.baseUrl(), agent.capabilities(),
+                agent.slots(), agent.activeTasks() + 1, agent.lastSeenAt()));
+        return true;
+    }
+
     public synchronized void release(String baseUrl) {
         if (baseUrl == null) return;
         Agent agent = agents.values().stream().filter(item -> baseUrl.equals(item.baseUrl())).findFirst().orElse(null);

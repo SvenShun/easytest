@@ -431,7 +431,7 @@ export function RunDetailPage() {
                     <tr key={`${item.caseId}-${item.taskId || ''}`}>
                       <td>
                         <div className="cell-title">{item.caseTitle}</div>
-                        <div className="cell-sub mono">{item.caseId}</div>
+                        <div className="cell-sub mono">{item.sourcePath ? `git: ${item.sourcePath}${item.sourceCommit ? ` @ ${item.sourceCommit.slice(0, 8)}` : ''}` : item.caseId}</div>
                       </td>
                       <td>
                         <StatusPill meta={metaOf(EXECUTOR_META, item.executorType)} dot={false} />

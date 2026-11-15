@@ -122,7 +122,7 @@ java -cp contract-api/target/classes:examples/api-engineering/target/api-enginee
 
 - manifest 自动写入 Git/平台注册表（当前支持手动/Agent 同步）
 - 方法输出契约与后续变量类型/必填校验
-- 工程 commit 与方法契约版本绑定到每次执行（当前场景运行记录 Git sourcePath/sourceCommit，方法契约记录在组件报告中）
+- 工程 commit 与方法契约版本绑定到每次执行（场景运行和计划运行项已记录 sourcePath/sourceCommit；方法契约记录在组件报告中）
 - Git 工程 commit 固化到执行记录
 - Python 工程 SDK
 - 平台端契约方法列表/补全 UI（目前可在场景表单手工填写）

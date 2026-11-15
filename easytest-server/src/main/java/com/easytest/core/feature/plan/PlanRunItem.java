@@ -56,6 +56,12 @@ public class PlanRunItem {
     @Column(name = "device_id", length = 64)
     private String deviceId;
 
+    @Column(name = "source_path", length = 1000)
+    private String sourcePath;
+
+    @Column(name = "source_commit", length = 80)
+    private String sourceCommit;
+
     @Lob
     @Column(name = "error", length = 4000)
     private String error;
@@ -162,6 +168,11 @@ public class PlanRunItem {
     public void setSummary(String summary) {
         this.summary = summary;
     }
+
+    public String getSourcePath() { return sourcePath; }
+    public String getSourceCommit() { return sourceCommit; }
+    public void setSourcePath(String sourcePath) { this.sourcePath = sourcePath; }
+    public void setSourceCommit(String sourceCommit) { this.sourceCommit = sourceCommit; }
 
     public String getDeviceId() {
         return deviceId;
